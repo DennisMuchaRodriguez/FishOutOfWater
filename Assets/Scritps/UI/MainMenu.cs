@@ -72,18 +72,18 @@ public class MainMenu : MonoBehaviour
         controlsGroup = MenuUI.Stretch("Controls", root);
         MenuUI.CreateText("ControlsTitle", controlsGroup, "CONTROLES", 44f, new Vector2(0.5f, 0.5f), new Vector2(0f, 240f), new Vector2(800f, 60f)).fontStyle = FontStyles.Bold;
         string controls =
-            "<color=#FFFFFF>W / S</color>   Avanzar / retroceder\n" +
-            "<color=#FFFFFF>A / D</color>   Girar\n" +
+            "<color=#FFFFFF>W / S</color>   Avanzar / retroceder      <color=#FFFFFF>A / D</color>   Girar\n" +
             "<color=#FFFFFF>ESPACIO</color>   Propulsor (en agua: subir y salir disparado)\n" +
-            "<color=#FFFFFF>SHIFT</color>   Impulso al nadar\n" +
-            "<color=#FFFFFF>CTRL</color>   Bucear más profundo\n" +
+            "<color=#FFFFFF>SHIFT (mantener)</color>   TURBO: mucho más rápido, gasta combustible\n" +
+            "<color=#FFFFFF>SHIFT (en agua)</color>   Impulso de nado      <color=#FFFFFF>CTRL</color>   Bucear más hondo\n" +
             "<color=#FFFFFF>CLIC IZQ.</color>   Disparar (mantener = ráfaga)\n" +
             "<color=#FFFFFF>CLIC DER.</color>   Cargar disparo (soltar al llenarse)\n" +
-            "<color=#FFFFFF>Q</color>   Cambiar cámara\n" +
-            "<color=#FFFFFF>ESC</color>   Pausa\n\n" +
-            "El traje recarga propulsor y munición dentro del agua.";
-        TextMeshProUGUI ct = MenuUI.CreateText("ControlsList", controlsGroup, controls, 22f, new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(900f, 380f));
-        ct.lineSpacing = 18f;
+            "<color=#FFFFFF>Q</color>   Cambiar cámara      <color=#FFFFFF>ESC</color>   Pausa\n\n" +
+            "<color=#FFFFFF>OBJETIVO:</color> elimina a todos los pájaros antes de que cacen al 70% de los peces.\n" +
+            "El agua recarga el propulsor. La munición está en cápsulas dentro del lago.\n" +
+            "Si un pájaro atrapa un pez, dispárale: lo soltará.";
+        TextMeshProUGUI ct = MenuUI.CreateText("ControlsList", controlsGroup, controls, 20f, new Vector2(0.5f, 0.5f), new Vector2(0f, 10f), new Vector2(1100f, 400f));
+        ct.lineSpacing = 14f;
         MenuUI.CreateButton("VOLVER", controlsGroup, new Vector2(0f, -250f), () => ShowControls(false));
         controlsGroup.gameObject.SetActive(false);
 

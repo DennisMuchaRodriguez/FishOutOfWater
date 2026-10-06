@@ -380,8 +380,12 @@ public class HelmetVisorHUD : MonoBehaviour
         if (player == null) return;
         float dt = Time.deltaTime;
         bool firstPerson = !player.isThirdPerson;
+        bool cinematic = GameDirector.InCinematic;
 
-        frameRoot.gameObject.SetActive(firstPerson);
+        // Durante la cinemática de llegada el visor se oculta (vista "de cámara")
+        frameRoot.gameObject.SetActive(firstPerson && !cinematic);
+        overlayRoot.gameObject.SetActive(!cinematic);
+        swayRoot.gameObject.SetActive(!cinematic);
 
         UpdateBoot(dt);
         UpdateSway(dt, firstPerson);
@@ -436,7 +440,7 @@ public class HelmetVisorHUD : MonoBehaviour
 
         float scale = 1f;
         if (player.IsJetting) scale = 1.012f;
-        if (player.IsDashing) scale = 1.025f;
+        if (player.IsDashing || player.IsTurbo) scale = 1.025f;
         swayRoot.localScale = Vector3.Lerp(swayRoot.localScale, Vector3.one * scale, 1f - Mathf.Exp(-8f * dt));
     }
 
@@ -567,9 +571,18 @@ public class HelmetVisorHUD : MonoBehaviour
             }
             else if (shooting != null && shooting.currentAmmo <= 0)
             {
-                msg = "SIN MUNICIÓN  //  RECARGA EN AGUA"; warn = true;
+                msg = "SIN MUNICIÓN  //  BUSCA CÁPSULAS EN EL LAGO"; warn = true;
             }
-            else if (player.isInWater && (energy01 < 0.999f || (shooting != null && shooting.currentAmmo < shooting.maxAmmo)))
+            else if (player.IsTurbo)
+            {
+                msg = energy01 < 0.25f ? "TURBO  //  COMBUSTIBLE BAJO" : "TURBO";
+                warn = energy01 < 0.25f;
+            }
+            else if (shooting != null && shooting.currentAmmo <= 5)
+            {
+                msg = "MUNICIÓN BAJA  //  BUSCA CÁPSULAS";
+            }
+            else if (player.isInWater && energy01 < 0.999f)
             {
                 msg = "HIDRO-RECARGA EN CURSO";
             }

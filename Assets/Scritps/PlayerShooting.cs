@@ -49,9 +49,11 @@ public class PlayerShooting : MonoBehaviour
     public float chargedRecoilKick = 4f;
 
     [Header("Munición - NUEVO")]
-    public int maxAmmo = 20;
+    public int maxAmmo = 30;
     public int currentAmmo;
     public bool isInWaterForAmmo = false;
+    [Tooltip("Si está activo, el agua también recarga balas. Por defecto solo las cápsulas de munición.")]
+    public bool rechargeAmmoInWater = false;
     [Tooltip("Segundos por bala recargada dentro del agua")]
     public float ammoRechargeInterval = 0.2f;
 
@@ -63,6 +65,7 @@ public class PlayerShooting : MonoBehaviour
 
     public event System.Action<bool> OnShot;          // bool = cargado
     public event System.Action<bool> OnTargetHit;     // bool = objetivo destruido
+    public event System.Action<int> OnAmmoPickup;
 
     private float nextFireTime = 0f;
     private float ammoRechargeTimer = 0f;
@@ -190,7 +193,7 @@ public class PlayerShooting : MonoBehaviour
         }
 
         // --- Recarga de munición en agua ---
-        if (isInWaterForAmmo && currentAmmo < maxAmmo)
+        if (rechargeAmmoInWater && isInWaterForAmmo && currentAmmo < maxAmmo)
         {
             ammoRechargeTimer += dt;
             while (ammoRechargeTimer >= ammoRechargeInterval && currentAmmo < maxAmmo)
@@ -209,6 +212,16 @@ public class PlayerShooting : MonoBehaviour
     {
         IsCharging = false;
         ChargeProgress01 = 0f;
+    }
+
+    // Devuelve cuántas balas se agregaron realmente
+    public int AddAmmo(int amount)
+    {
+        int before = currentAmmo;
+        currentAmmo = Mathf.Min(currentAmmo + amount, maxAmmo);
+        int added = currentAmmo - before;
+        if (added > 0) OnAmmoPickup?.Invoke(added);
+        return added;
     }
 
     public void UpdateWaterState(bool inWater)

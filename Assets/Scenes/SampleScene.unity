@@ -1314,7 +1314,7 @@ MonoBehaviour:
   underwaterTransitionSpeed: 2
   maxJetpackEnergy: 100
   currentJetpackEnergy: 0
-  jetpackDrainRate: 14
+  jetpackDrainRate: 7
   jetpackRechargeRate: 35
   isInWater: 0
   waterEntryThreshold: 15
@@ -1401,7 +1401,7 @@ MonoBehaviour:
   aimLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  maxAmmo: 20
+  maxAmmo: 30
   currentAmmo: 0
   isInWaterForAmmo: 0
   holdToFire: 1
@@ -4981,6 +4981,86 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PauseMenu
   mainMenuScene: MainMenu
   player: {fileID: 405605802}
+--- !u!1 &900000201
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 900000202}
+  - component: {fileID: 900000203}
+  - component: {fileID: 900000204}
+  m_Layer: 0
+  m_Name: GameDirector
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &900000202
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 900000201}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &900000203
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 900000201}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f26bf4254684da2b45e740716e6e6db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameDirector
+  player: {fileID: 405605802}
+  lake: {fileID: 900000204}
+  fishCount: 16
+  fishModel: {fileID: 919132149155446097, guid: 388e8d60ef361b044beea7e945304c83, type: 3}
+  fishModelScale: 28
+  fishModelEuler: {x: 90, y: 0, z: 0}
+  fishColliderRadius: 0.7
+  schools: 3
+  maxFishLossFraction: 0.7
+  birdModel: {fileID: 919132149155446097, guid: eea51bb5daf43514790fb0032790224a, type: 3}
+  birdModelScale: 1
+  birdModelEuler: {x: 0, y: 0, z: 0}
+  birdColliderRadius: 1.3
+  fxMaterialTemplate: {fileID: 2100000, guid: 6a354c1417c134944959abf12f5b0f22, type: 2}
+  splashPrefab: {fileID: 8585649807550039280, guid: 224c4574d4d272a4b92df19ede61b338, type: 3}
+  birdHitPrefab: {fileID: 6042243990886550057, guid: af44cbf49172b8d42b452221c9638892, type: 3}
+  birdDeathPrefab: {fileID: 8294947810415399850, guid: 7a16f43b4abbc0846a15aa17f7ba39bd, type: 3}
+  pickupCollectPrefab: {fileID: 5056385361940353899, guid: 5831d4dc964245b4d935906496064f8f, type: 3}
+  disablePreplacedActors: 1
+--- !u!114 &900000204
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 900000201}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb7d4bad1e0448da29dd31f65dac131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LakeVolume
+  waterTrigger: {fileID: 172605535}
+  surfaceOffset: 0
+  edgeMargin: 4
+  minWaterDepth: 1.2
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -5007,3 +5087,4 @@ SceneRoots:
   - {fileID: 445968008}
   - {fileID: 823620110}
   - {fileID: 1269227670}
+  - {fileID: 900000202}

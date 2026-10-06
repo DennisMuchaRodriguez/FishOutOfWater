@@ -43,6 +43,7 @@ public class SuitFX : MonoBehaviour
 
         controller.OnDash += HandleDash;
         controller.OnJetIgnite += HandleIgnite;
+        controller.OnTurboStart += HandleTurboStart;
     }
 
     void OnDestroy()
@@ -51,6 +52,7 @@ public class SuitFX : MonoBehaviour
         {
             controller.OnDash -= HandleDash;
             controller.OnJetIgnite -= HandleIgnite;
+            controller.OnTurboStart -= HandleTurboStart;
         }
     }
 
@@ -214,7 +216,8 @@ public class SuitFX : MonoBehaviour
         if (motes != null)
         {
             var e = motes.emission;
-            e.rateOverTime = controller.IsEyeSubmerged ? 40f : 0f;
+            // Bajo el agua: partículas flotando; con turbo en el aire: estelas de velocidad
+            e.rateOverTime = controller.IsEyeSubmerged ? 40f : (controller.IsTurbo ? 70f : 0f);
         }
     }
 
@@ -232,8 +235,9 @@ public class SuitFX : MonoBehaviour
     {
         if (jetpackEffect == null) return;
 
-        bool jetting = controller.IsJetting && !controller.isDead;
-        float thrust = controller.JetThrust01;
+        bool turboAir = controller.IsTurbo && !controller.isInWater;
+        bool jetting = (controller.IsJetting || turboAir) && !controller.isDead;
+        float thrust = turboAir ? 1.3f : controller.JetThrust01;
 
         if (jetting && !jetpackEffect.isPlaying) jetpackEffect.Play(true);
         if (!jetting && jetpackEffect.isPlaying) jetpackEffect.Stop(true, ParticleSystemStopBehavior.StopEmitting);
@@ -273,6 +277,18 @@ public class SuitFX : MonoBehaviour
     {
         if (bubbleTrail != null) bubbleTrail.Emit(45);
         FXFactory.SpawnOneShot(dashBurstPrefab, transform.TransformPoint(bubbleOffset), Quaternion.LookRotation(-transform.forward), 0.7f, 3f);
+    }
+
+    void HandleTurboStart()
+    {
+        if (controller.isInWater)
+        {
+            if (bubbleTrail != null) bubbleTrail.Emit(30);
+        }
+        else
+        {
+            HandleIgnite();
+        }
     }
 
     void HandleIgnite()
