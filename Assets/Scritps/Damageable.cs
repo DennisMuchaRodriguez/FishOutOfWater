@@ -14,21 +14,29 @@ public class Damageable : MonoBehaviour
         currentHealth = maxHealth;
     }
 
-    public void TakeDamage(int amount, Vector3 hitPoint)
+    public bool IsDead { get; private set; }
+    public int CurrentHealth { get { return currentHealth; } }
+
+    // Devuelve true si este golpe lo destruy√≥
+    public bool TakeDamage(int amount, Vector3 hitPoint)
     {
+        if (IsDead) return false;
         currentHealth -= amount;
         onDamage?.Invoke();
 
-        Debug.Log($"{gameObject.name} recibiÛ {amount} daÒo. Vida: {currentHealth}");
+        Debug.Log($"{gameObject.name} recibi√≥ {amount} da√±o. Vida: {currentHealth}");
 
         if (currentHealth <= 0)
         {
             Die();
+            return true;
         }
+        return false;
     }
 
     void Die()
     {
+        IsDead = true;
         onDie?.Invoke();
         Destroy(gameObject);
     }

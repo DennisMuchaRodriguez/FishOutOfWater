@@ -1245,6 +1245,7 @@ GameObject:
   - component: {fileID: 405605802}
   - component: {fileID: 405605801}
   - component: {fileID: 405605805}
+  - component: {fileID: 900000101}
   m_Layer: 3
   m_Name: PlayerBase
   m_TagString: Player
@@ -1313,8 +1314,8 @@ MonoBehaviour:
   underwaterTransitionSpeed: 2
   maxJetpackEnergy: 100
   currentJetpackEnergy: 0
-  jetpackDrainRate: 3
-  jetpackRechargeRate: 30
+  jetpackDrainRate: 14
+  jetpackRechargeRate: 35
   isInWater: 0
   waterEntryThreshold: 15
   waterDrag: 1
@@ -1393,7 +1394,7 @@ MonoBehaviour:
   shootKey: 323
   projectilePrefab: {fileID: 8968281187045372582, guid: e5466b337a9476f40a255c67e81ce463, type: 3}
   shootForce: 80
-  fireRate: 0.3
+  fireRate: 0.2
   firePoint: {fileID: 1555813758}
   playerCamera: {fileID: 330585545}
   maxDistance: 500
@@ -1403,6 +1404,12 @@ MonoBehaviour:
   maxAmmo: 20
   currentAmmo: 0
   isInWaterForAmmo: 0
+  holdToFire: 1
+  muzzleFlashPrefab: {fileID: 6042243990886550057, guid: af44cbf49172b8d42b452221c9638892, type: 3}
+  impactEffectPrefab: {fileID: 5911893088733641442, guid: f6573a110c1967643a98d0efdba24be8, type: 3}
+  chargedImpactPrefab: {fileID: 6261345114989098648, guid: f66e2be959a7d4e4e8b050df54d1af73, type: 3}
+  waterSplashPrefab: {fileID: 3323387954473017891, guid: 0b912e9003fba894faa88cf964a6fb8a, type: 3}
+  fxMaterialTemplate: {fileID: 2100000, guid: 6a354c1417c134944959abf12f5b0f22, type: 2}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1811,6 +1818,7 @@ GameObject:
   m_Component:
   - component: {fileID: 703434937}
   - component: {fileID: 703434936}
+  - component: {fileID: 900000103}
   m_Layer: 0
   m_Name: UiManager
   m_TagString: Untagged
@@ -2898,6 +2906,7 @@ GameObject:
   - component: {fileID: 1283857834}
   - component: {fileID: 1283857833}
   - component: {fileID: 1283857832}
+  - component: {fileID: 900000102}
   m_Layer: 5
   m_Name: VistaInterior
   m_TagString: Untagged
@@ -4927,6 +4936,51 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 8602b53c7fe82bb47a9038d63bffb61f, type: 3}
+--- !u!114 &900000101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 405605800}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 972ae94fffef4244b6d61bc8954dc173, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SuitFX
+  fxMaterialTemplate: {fileID: 2100000, guid: 6a354c1417c134944959abf12f5b0f22, type: 2}
+  dashBurstPrefab: {fileID: 3381772053132140057, guid: 673dd86dc0590e84a976de2f8dc35a63, type: 3}
+  jetpackEffect: {fileID: 1214218335}
+  jetIgnitePrefab: {fileID: 3323387954473017891, guid: 0b912e9003fba894faa88cf964a6fb8a, type: 3}
+--- !u!114 &900000102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1283857831}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d71333448fab4380b2cd468ee5cfd6cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HelmetVisorHUD
+  player: {fileID: 405605802}
+  shooting: {fileID: 405605805}
+  hudPanel: {fileID: 1477706645}
+--- !u!114 &900000103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 703434935}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07a0b19fc6604aed8b805340549201b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PauseMenu
+  mainMenuScene: MainMenu
+  player: {fileID: 405605802}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

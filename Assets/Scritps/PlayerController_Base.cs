@@ -48,18 +48,64 @@ public class PlayerController_Base : MonoBehaviour
     [Header("Energía del Jetpack - NUEVO")]
     public float maxJetpackEnergy = 100f;
     public float currentJetpackEnergy;
-    public float jetpackDrainRate = 20f;
-    public float jetpackRechargeRate = 30f;
+    [Tooltip("Energía por segundo mientras el propulsor está encendido")]
+    public float jetpackDrainRate = 14f;
+    [Tooltip("Energía por segundo que recarga el traje dentro del agua")]
+    public float jetpackRechargeRate = 35f;
+    [Tooltip("Coste extra al encender el propulsor (evita spamear la barra espaciadora)")]
+    public float jetpackIgnitionCost = 4f;
+    [Tooltip("Impulso hacia arriba al encender el propulsor")]
+    public float jetpackIgnitionBoost = 3f;
+    [Tooltip("Empuje extra cuando vienes cayendo, para que frenar la caída se sienta responsivo")]
+    public float jetpackFallBrake = 1.5f;
+    [Tooltip("Debajo de este porcentaje el propulsor falla y tose")]
+    [Range(0f, 1f)] public float jetpackSputterThreshold = 0.15f;
     public bool isInWater = false;
+
     [Header("Física en Agua - NUEVO")]
     public float waterEntryThreshold = 5f;
     public float waterDrag = 3f;
     public float waterBuoyancy = 5f;
     public float waterSinkSpeed = 2f;
     public float waterNormalSpeed = 1f;
+    [Tooltip("Ajuste fino de la altura de la superficie (se calcula con el trigger de agua)")]
+    public float waterSurfaceOffset = 0f;
+
+    [Header("Nado - NUEVO")]
+    public float swimSpeed = 11f;
+    [Tooltip("Qué tan rápido alcanza la velocidad de nado")]
+    public float swimResponsiveness = 4f;
+    [Tooltip("Qué tan rápido se frena al soltar (más bajo = planea más)")]
+    public float swimGlide = 1.2f;
+    public float swimTurnSpeed = 170f;
+    [Tooltip("Profundidad de la cámara bajo la superficie al nadar")]
+    public float swimEyeDepth = 0.7f;
+    public KeyCode diveKey = KeyCode.LeftControl;
+    public float diveDepth = 3f;
+    [Tooltip("Fuerza con la que se mantiene a la profundidad de nado")]
+    public float buoyancySpring = 6f;
+    public float buoyancyDamping = 3.5f;
+    [Tooltip("Aceleración hacia arriba al usar el propulsor bajo el agua")]
+    public float swimRiseAcceleration = 22f;
+    [Tooltip("Impulso extra al salir del agua con el propulsor (salto de delfín)")]
+    public float breachBoost = 6f;
+
+    [Header("Impulso de nado (dash) - NUEVO")]
+    public KeyCode swimDashKey = KeyCode.LeftShift;
+    public float swimDashSpeed = 22f;
+    public float swimDashDuration = 0.35f;
+    public float swimDashCooldown = 1.1f;
+
+    [Header("Cámara de nado - NUEVO")]
+    public float swimCameraSway = 1.2f;
+    public float swimFovBoost = 10f;
+    public float dashFovKick = 12f;
+
     private bool hasEnteredWater = false;
     private float waterEntryTime = 0f;
     private float waterEntryVelocity = 0f;
+    private Collider waterCollider;
+
     [Header("Armadura - NUEVO")]
     public float maxArmor = 100f;
     public float currentArmor;
@@ -75,6 +121,7 @@ public class PlayerController_Base : MonoBehaviour
     public ParticleSystem jetpackWaterEffect;
     public ParticleSystem splashEffect;
     private Vector3 cameraOffset;
+
     [Header("Referencias UI")]
     public UI_PlayerStatus uiStatus;
 
@@ -87,11 +134,41 @@ public class PlayerController_Base : MonoBehaviour
     private Vector2 originalUIPosition;
     public bool isDead = false;
 
+    // ---- Estado público para efectos y HUD ----
+    public bool IsJetting { get; private set; }
+    public bool IsSputtering { get; private set; }
+    public float JetThrust01 { get; private set; }
+    public bool IsDashing { get { return Time.time < dashEndTime; } }
+    public bool IsDiving { get; private set; }
+    public bool IsEyeSubmerged { get { return isUnderwater; } }
+    public float SwimSpeed01 { get; private set; }
+    public float WaterSurfaceY { get; private set; }
+    public float TurnInput { get; private set; }
+    public Camera PlayerCamera { get; private set; }
+    public Vector3 Velocity { get { return rb != null ? rb.linearVelocity : Vector3.zero; } }
+
+    public event System.Action OnDash;
+    public event System.Action OnBreach;
+    public event System.Action OnJetIgnite;
+    public event System.Action<bool> OnSubmergedChanged;
+
+    private float dashEndTime = -10f;
+    private float nextDashTime = 0f;
+    private bool dashRequested = false;
+    private float swimPhase = 0f;
+    private float baseFov = 60f;
+    private float fovKick = 0f;
+    private float recoilPitch = 0f;
+    private float recoilShake = 0f;
+    private float currentRoll = 0f;
+    private Coroutine waterFxRoutine;
+
     void Start()
     {
         if (isDead) return;
         rb = GetComponent<Rigidbody>();
         rb.useGravity = true;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         currentArmor = maxArmor;
 
@@ -103,147 +180,155 @@ public class PlayerController_Base : MonoBehaviour
             modeloPez = transform.Find("Capsule") ?? transform.GetChild(0);
         }
 
-
         if (cameraHolder == null)
         {
             cameraHolder = GetComponentInChildren<Camera>()?.transform;
         }
-
 
         if (modeloPez != null)
         {
             initialModelRotation = modeloPez.localRotation;
         }
 
-
         if (cameraHolder != null)
         {
+            PlayerCamera = cameraHolder.GetComponent<Camera>();
+            if (PlayerCamera != null) baseFov = PlayerCamera.fieldOfView;
             cameraOffset = cameraHolder.position - transform.position;
             cameraHolder.SetParent(null);
         }
 
-
-
+        if (jetpackWaterEffect != null) jetpackWaterEffect.Stop();
 
         if (underwaterVolume != null)
         {
             underwaterVolume.weight = 0f;
         }
-
     }
 
     void Update()
     {
         if (isDead) return;
-        if (shakeTimer > 0)
-        {
-            shakeTimer -= Time.deltaTime;
-            if (cameraHolder != null)
-            {
-                float intensity = shakeMagnitude * (shakeTimer / shakeDuration);
-                Vector3 shakeOffset = new Vector3(
-                    Random.Range(-1f, 1f) * intensity,
-                    Random.Range(-1f, 1f) * intensity,
-                    Random.Range(-1f, 1f) * intensity * 0.5f
-                );
-                cameraHolder.position = transform.position + cameraOffset + shakeOffset;
-
-                if (shakeTimer <= 0)
-                {
-                    cameraHolder.position = transform.position + cameraOffset;
-                }
-            }
-        }
-
+        if (PauseMenu.IsPaused) return;
 
         float moveVertical = Input.GetAxis("Vertical");
-        float moveHorizontal = Input.GetAxis("Horizontal");
-        moveInput = new Vector3(0, 0, moveVertical).normalized;
+        TurnInput = Input.GetAxis("Horizontal");
+        moveInput = new Vector3(0, 0, moveVertical);
+        if (moveInput.magnitude > 1f) moveInput.Normalize();
 
         isGrounded = Physics.Raycast(transform.position + Vector3.up * 0.1f,
                                     Vector3.down,
                                     groundCheckDistance,
                                     groundLayer);
 
-
         if (Input.GetKeyDown(toggleCameraKey))
         {
             isThirdPerson = !isThirdPerson;
-            if (cameraHolder != null)
-            {
-                Vector3 targetOffset = isThirdPerson ? thirdPersonOffset : firstPersonOffset;
-                cameraOffset = transform.TransformDirection(targetOffset);
-            }
         }
 
-        if (cameraHolder != null)
+        // El dash se lee en Update para no perder la pulsación
+        if (isInWater && Input.GetKeyDown(swimDashKey) && Time.time >= nextDashTime)
         {
-            cameraHolder.position = transform.position + cameraOffset;
-            cameraHolder.rotation = Quaternion.Euler(0, transform.eulerAngles.y, 0);
+            dashRequested = true;
         }
 
-        if (!isThirdPerson && cameraHolder != null)
-        {
-            HandleCameraEffects(moveVertical, moveHorizontal);
-        }
+        IsDiving = isInWater && Input.GetKey(diveKey);
     }
 
     void FixedUpdate()
     {
         if (isDead) return;
         bool wantsToFly = Input.GetKey(KeyCode.Space);
-        bool hasEnergy = currentJetpackEnergy > 0;
-        bool canFly = wantsToFly && (currentJetpackEnergy > 0 || isInWater);
+
         if (isInWater)
         {
-            HandleWaterPhysics();
-        }
-        if (canFly)
-        {
-            // Consumir energía solo si NO está en agua
-            if (!isInWater)
-            {
-                currentJetpackEnergy -= jetpackDrainRate * Time.fixedDeltaTime;
-                currentJetpackEnergy = Mathf.Max(currentJetpackEnergy, 0);
+            SetJetting(false, 0f);
+            HandleSwimming(wantsToFly);
+            HandleTurning(swimTurnSpeed);
 
-                // Activar efecto de fuego solo fuera del agua
-                if (jetpackWaterEffect != null && !jetpackWaterEffect.isPlaying)
-                    jetpackWaterEffect.Play();
-            }
-            else
-            {
-                // En agua, asegurar que el efecto de fuego esté apagado
-                if (jetpackWaterEffect != null && jetpackWaterEffect.isPlaying)
-                    jetpackWaterEffect.Stop();
-            }
-
-            rb.useGravity = false;
-            rb.AddForce(Vector3.up * flyForce, ForceMode.Force);
-
-            if (rb.linearVelocity.magnitude > maxFlySpeed)
-                rb.linearVelocity = rb.linearVelocity.normalized * maxFlySpeed;
+            // El traje se recarga con agua
+            currentJetpackEnergy = Mathf.Min(currentJetpackEnergy + jetpackRechargeRate * Time.fixedDeltaTime, maxJetpackEnergy);
         }
         else
         {
-            // Apagar efecto de fuego si estaba activo
-            if (jetpackWaterEffect != null && jetpackWaterEffect.isPlaying)
-                jetpackWaterEffect.Stop();
+            bool canFly = HandleJetpack(wantsToFly);
+            HandleGroundAndAirMovement(canFly);
+            HandleTurning(turnSpeed);
+            SwimSpeed01 = Mathf.MoveTowards(SwimSpeed01, 0f, Time.fixedDeltaTime * 2f);
+        }
 
-            rb.useGravity = true;
+        UpdateSubmergedState();
+        UpdateModelTilt(IsJetting);
+    }
 
-            // Recargar energía solo en agua y cuando no vuela
-            if (isInWater)
+    // ---------------- JETPACK ----------------
+
+    bool HandleJetpack(bool wantsToFly)
+    {
+        bool hasEnergy = currentJetpackEnergy > 0f;
+        // Para encender hace falta pagar el coste de ignición; una vez encendido aguanta hasta 0
+        bool canFly = wantsToFly && hasEnergy && (IsJetting || currentJetpackEnergy >= jetpackIgnitionCost);
+
+        if (canFly)
+        {
+            if (!IsJetting)
             {
-                currentJetpackEnergy += jetpackRechargeRate * Time.fixedDeltaTime;
-                currentJetpackEnergy = Mathf.Min(currentJetpackEnergy, maxJetpackEnergy);
+                currentJetpackEnergy -= jetpackIgnitionCost;
+                Vector3 v = rb.linearVelocity;
+                if (v.y < 0f) v.y *= 0.4f;
+                v.y += jetpackIgnitionBoost;
+                rb.linearVelocity = v;
+                OnJetIgnite?.Invoke();
             }
 
-            if (rb.linearVelocity.y < 0 && !isGrounded && !isInWater)
+            currentJetpackEnergy = Mathf.Max(currentJetpackEnergy - jetpackDrainRate * Time.fixedDeltaTime, 0f);
+
+            float energy01 = currentJetpackEnergy / maxJetpackEnergy;
+            IsSputtering = energy01 < jetpackSputterThreshold;
+            float thrust01 = 1f;
+            if (IsSputtering)
+            {
+                // Con poca carga el propulsor tose: el empuje parpadea
+                float noise = Mathf.PerlinNoise(Time.time * 9f, 0.37f);
+                thrust01 = noise > 0.45f ? 0.85f : 0.25f;
+            }
+
+            SetJetting(true, thrust01);
+
+            rb.useGravity = false;
+            float force = flyForce * thrust01;
+            if (rb.linearVelocity.y < 0f) force += Mathf.Min(-rb.linearVelocity.y * jetpackFallBrake * flyForce * 0.25f, flyForce * 2f);
+            rb.AddForce(Vector3.up * force, ForceMode.Force);
+
+            Vector3 vel = rb.linearVelocity;
+            if (vel.y > maxFlySpeed) vel.y = maxFlySpeed;
+            rb.linearVelocity = vel;
+        }
+        else
+        {
+            SetJetting(false, 0f);
+            rb.useGravity = true;
+
+            if (rb.linearVelocity.y < 0 && !isGrounded)
             {
                 rb.linearVelocity += Vector3.up * Physics.gravity.y * (fallMultiplier - 1) * Time.fixedDeltaTime;
             }
         }
 
+        return canFly;
+    }
+
+    void SetJetting(bool on, float thrust01)
+    {
+        IsJetting = on;
+        JetThrust01 = on ? thrust01 : 0f;
+        if (!on) IsSputtering = false;
+    }
+
+    // ---------------- TIERRA / AIRE ----------------
+
+    void HandleGroundAndAirMovement(bool canFly)
+    {
         if (moveInput.magnitude > 0.1f)
         {
             Vector3 moveDirection = transform.forward * moveInput.z;
@@ -256,35 +341,144 @@ public class PlayerController_Base : MonoBehaviour
             rb.AddForce(moveDirection * currentSpeed * acceleration, ForceMode.Force);
         }
 
-        float turnInput = Input.GetAxis("Horizontal");
-        if (Mathf.Abs(turnInput) > 0.1f)
-        {
-            float turnAmount = turnInput * turnSpeed * Time.fixedDeltaTime;
-            transform.Rotate(0, turnAmount, 0);
-            rb.angularVelocity = Vector3.zero;
-        }
-        else
-        {
-            rb.angularVelocity = new Vector3(0, Mathf.Lerp(rb.angularVelocity.y, 0, deceleration * Time.fixedDeltaTime), 0);
-        }
-
-
-
         if (moveInput.magnitude < 0.1f && isGrounded)
         {
             Vector3 horizontalVel = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
             horizontalVel = Vector3.Lerp(horizontalVel, Vector3.zero, deceleration * Time.fixedDeltaTime);
             rb.linearVelocity = new Vector3(horizontalVel.x, rb.linearVelocity.y, horizontalVel.z);
         }
+
         float maxHorizontalSpeed = isGrounded ? walkSpeed : (canFly ? walkSpeed * 1.5f : walkSpeed);
         Vector3 flatVel = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
         if (flatVel.magnitude > maxHorizontalSpeed)
         {
-            flatVel = flatVel.normalized * maxHorizontalSpeed;
+            // Al salir del agua con impulso se conserva la inercia y se va frenando poco a poco
+            flatVel = Vector3.MoveTowards(flatVel, flatVel.normalized * maxHorizontalSpeed, 12f * Time.fixedDeltaTime);
             rb.linearVelocity = new Vector3(flatVel.x, rb.linearVelocity.y, flatVel.z);
         }
-        UpdateModelTilt(wantsToFly);
     }
+
+    void HandleTurning(float speed)
+    {
+        if (Mathf.Abs(TurnInput) > 0.1f)
+        {
+            float turnAmount = TurnInput * speed * Time.fixedDeltaTime;
+            rb.MoveRotation(rb.rotation * Quaternion.Euler(0, turnAmount, 0));
+            rb.angularVelocity = Vector3.zero;
+        }
+        else
+        {
+            rb.angularVelocity = new Vector3(0, Mathf.Lerp(rb.angularVelocity.y, 0, deceleration * Time.fixedDeltaTime), 0);
+        }
+    }
+
+    // ---------------- NADO ----------------
+
+    void HandleSwimming(bool wantsToRise)
+    {
+        float dt = Time.fixedDeltaTime;
+        WaterSurfaceY = GetWaterSurface();
+        Vector3 v = rb.linearVelocity;
+        rb.useGravity = false;
+
+        // Dash de nado
+        if (dashRequested)
+        {
+            dashRequested = false;
+            dashEndTime = Time.time + swimDashDuration;
+            nextDashTime = Time.time + swimDashCooldown;
+            fovKick = dashFovKick;
+            OnDash?.Invoke();
+        }
+
+        // --- Horizontal: rápido y con inercia, como un pez de verdad ---
+        Vector3 flat = new Vector3(v.x, 0f, v.z);
+        Vector3 desired;
+        float response;
+        if (IsDashing)
+        {
+            desired = transform.forward * swimDashSpeed;
+            response = 14f;
+        }
+        else if (moveInput.magnitude > 0.1f)
+        {
+            float dirSpeed = moveInput.z >= 0f ? swimSpeed : swimSpeed * 0.45f;
+            desired = transform.forward * moveInput.z * dirSpeed;
+            response = swimResponsiveness;
+        }
+        else
+        {
+            desired = Vector3.zero;
+            response = swimGlide;
+        }
+
+        // Al girar, la velocidad se curva hacia el frente (sensación ágil, sin derrapar)
+        if (flat.sqrMagnitude > 0.01f && moveInput.z > 0.1f)
+        {
+            flat = Vector3.RotateTowards(flat, transform.forward * flat.magnitude, 4f * dt, 0f);
+        }
+        flat = Vector3.Lerp(flat, desired, 1f - Mathf.Exp(-response * dt));
+
+        // --- Vertical: se mantiene sumergido a una profundidad estable ---
+        float vy = v.y;
+        float tiempoEnAgua = Time.time - waterEntryTime;
+        if (wantsToRise)
+        {
+            // Propulsor bajo el agua: sube rápido para salir disparado
+            vy += swimRiseAcceleration * dt;
+            vy = Mathf.Min(vy, maxFlySpeed * 1.4f);
+        }
+        else
+        {
+            float targetY = WaterSurfaceY - swimEyeDepth - firstPersonOffset.y - (IsDiving ? diveDepth : 0f);
+            float error = targetY - transform.position.y;
+            float spring = buoyancySpring;
+
+            // Justo al caer al agua se deja hundir un poco por la inercia antes de estabilizar
+            if (hasEnteredWater && tiempoEnAgua < 0.6f)
+            {
+                spring *= Mathf.Lerp(0.25f, 1f, tiempoEnAgua / 0.6f);
+            }
+            else
+            {
+                hasEnteredWater = false;
+            }
+
+            float accel = error * spring - vy * buoyancyDamping;
+            accel = Mathf.Clamp(accel, -20f, 20f);
+            vy += accel * dt;
+        }
+
+        rb.linearVelocity = new Vector3(flat.x, vy, flat.z);
+
+        float speed01 = Mathf.Clamp01(flat.magnitude / swimSpeed);
+        SwimSpeed01 = Mathf.Lerp(SwimSpeed01, speed01, 1f - Mathf.Exp(-6f * dt));
+        swimPhase += dt * Mathf.Lerp(3f, 13f, SwimSpeed01);
+    }
+
+    void UpdateSubmergedState()
+    {
+        if (waterCollider == null)
+        {
+            if (isUnderwater) SetSubmerged(false);
+            return;
+        }
+
+        WaterSurfaceY = GetWaterSurface();
+        Vector3 eye = transform.position + Vector3.up * firstPersonOffset.y;
+        Bounds b = waterCollider.bounds;
+        bool insideXZ = eye.x > b.min.x && eye.x < b.max.x && eye.z > b.min.z && eye.z < b.max.z;
+        bool submerged = insideXZ && eye.y < WaterSurfaceY && eye.y > b.min.y;
+        if (submerged != isUnderwater) SetSubmerged(submerged);
+    }
+
+    void SetSubmerged(bool value)
+    {
+        ActivarEfectoAgua(value);
+        OnSubmergedChanged?.Invoke(value);
+    }
+
+    // ---------------- MODELO ----------------
 
     void UpdateModelTilt(bool isFlying)
     {
@@ -296,114 +490,136 @@ public class PlayerController_Base : MonoBehaviour
             Vector3 direction = velocity.normalized;
             float verticalness = Mathf.Abs(direction.y);
 
-            if (verticalness > 0.9f && velocity.magnitude > 1f)
-            {
-                targetTiltX = verticalTiltX;
-            }
-            else
-            {
-                targetTiltX = horizontalTiltX;
-            }
+            targetTiltX = (verticalness > 0.9f && velocity.magnitude > 1f) ? verticalTiltX : horizontalTiltX;
         }
         else
         {
             targetTiltX = horizontalTiltX;
         }
 
-        Quaternion targetRotation = Quaternion.Euler(
-            targetTiltX,
-            modeloPez.localEulerAngles.y,
-            modeloPez.localEulerAngles.z
-        );
+        Vector3 baseEuler = initialModelRotation.eulerAngles;
+        float wiggle = 0f;
+        float roll = 0f;
+        if (isInWater)
+        {
+            // Ondulación del cuerpo al nadar + inclinación al girar
+            float amp = Mathf.Lerp(4f, 16f, SwimSpeed01) * (IsDashing ? 1.6f : 1f);
+            wiggle = Mathf.Sin(swimPhase) * amp;
+            roll = -TurnInput * 18f;
+            if (IsDiving) targetTiltX += 12f;
+        }
+
+        // Con el modelo acostado (tilt en X), su eje local Z queda vertical (coleteo)
+        // y su eje local Y queda hacia adelante (alabeo al girar)
+        Quaternion targetRotation = Quaternion.Euler(targetTiltX, baseEuler.y, baseEuler.z)
+                                    * Quaternion.Euler(0f, roll, wiggle);
 
         modeloPez.localRotation = Quaternion.Slerp(
             modeloPez.localRotation,
             targetRotation,
-            tiltSpeed * Time.deltaTime
+            tiltSpeed * 2f * Time.fixedDeltaTime
         );
     }
 
-    void HandleCameraEffects(float vertical, float horizontal)
+    // ---------------- CÁMARA ----------------
+
+    public void AddRecoil(float pitchKick, float shake)
     {
-        if (cameraHolder == null) return;
-
-        float tilt = -horizontal * cameraTiltAmount;
-
-        cameraHolder.rotation = Quaternion.Euler(0, transform.eulerAngles.y, tilt);
-
-        if (isGrounded && moveInput.magnitude > 0.1f && !Input.GetKey(KeyCode.Space))
-        {
-            float bobTimer = Time.time * cameraBobSpeed;
-            float bobY = Mathf.Sin(bobTimer) * cameraBobAmount;
-            cameraHolder.position += new Vector3(0, bobY, 0);
-        }
+        recoilPitch += pitchKick;
+        recoilShake = Mathf.Max(recoilShake, shake);
     }
 
     void LateUpdate()
     {
-        if (cameraHolder != null)
+        if (cameraHolder == null) return;
+
+        Vector3 targetOffset = isThirdPerson ? thirdPersonOffset : firstPersonOffset;
+        cameraOffset = transform.TransformDirection(targetOffset);
+        Vector3 pos = transform.position + cameraOffset;
+
+        float dt = Time.deltaTime;
+        float yaw = transform.eulerAngles.y;
+        float pitch = 0f;
+        float rollTarget = -TurnInput * cameraTiltAmount;
+
+        if (!isThirdPerson)
         {
-            Vector3 targetOffset = isThirdPerson ? thirdPersonOffset : firstPersonOffset;
-            cameraOffset = transform.TransformDirection(targetOffset);
-            cameraHolder.position = transform.position + cameraOffset;
+            // Balanceo al caminar
+            if (isGrounded && !isInWater && moveInput.magnitude > 0.1f && !IsJetting)
+            {
+                pos.y += Mathf.Sin(Time.time * cameraBobSpeed) * cameraBobAmount;
+            }
+
+            // Vaivén suave al nadar
+            if (isInWater)
+            {
+                float sway = swimCameraSway * (0.4f + SwimSpeed01);
+                pos.y += Mathf.Sin(swimPhase * 0.5f) * 0.04f * sway;
+                rollTarget = -TurnInput * cameraTiltAmount * 2.2f + Mathf.Sin(swimPhase * 0.5f) * 0.8f * sway;
+                pitch += Mathf.Sin(swimPhase * 0.25f + 1.3f) * 0.6f * sway;
+                if (IsDiving) pitch += 8f;
+            }
+
+            // Vibración del propulsor
+            if (IsJetting)
+            {
+                float j = IsSputtering ? 0.05f : 0.015f;
+                pos += Random.insideUnitSphere * j * JetThrust01;
+            }
         }
+
+        // Sacudida por daño
+        if (shakeTimer > 0)
+        {
+            shakeTimer -= dt;
+            float intensity = shakeMagnitude * 0.01f * (shakeTimer / shakeDuration);
+            pos += new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-0.5f, 0.5f)) * intensity;
+        }
+
+        // Retroceso del disparo
+        if (recoilShake > 0f)
+        {
+            pos += Random.insideUnitSphere * recoilShake * 0.03f;
+            recoilShake = Mathf.MoveTowards(recoilShake, 0f, dt * 6f);
+        }
+        recoilPitch = Mathf.Lerp(recoilPitch, 0f, 1f - Mathf.Exp(-12f * dt));
+        pitch -= recoilPitch;
+
+        currentRoll = Mathf.Lerp(currentRoll, rollTarget, 1f - Mathf.Exp(-6f * dt));
+        cameraHolder.position = pos;
+        cameraHolder.rotation = Quaternion.Euler(pitch, yaw, currentRoll);
+
+        // FOV dinámico: se abre con la velocidad de nado y con el dash
+        if (PlayerCamera != null)
+        {
+            fovKick = Mathf.Lerp(fovKick, 0f, 1f - Mathf.Exp(-3f * dt));
+            float targetFov = baseFov + (isInWater ? SwimSpeed01 * swimFovBoost : 0f) + fovKick + (IsJetting ? 3f : 0f);
+            PlayerCamera.fieldOfView = Mathf.Lerp(PlayerCamera.fieldOfView, targetFov, 1f - Mathf.Exp(-5f * dt));
+        }
+    }
+
+    // ---------------- AGUA ----------------
+
+    float GetWaterSurface()
+    {
+        if (waterCollider != null)
+        {
+            return waterCollider.bounds.max.y + waterSurfaceOffset;
+        }
+        return waterSurfaceOffset;
     }
 
     void HandleWaterPhysics()
     {
-        if (!isInWater) return;
-
-        rb.linearVelocity *= (1 - waterDrag * Time.fixedDeltaTime);
-
-        float tiempoEnAgua = Time.time - waterEntryTime;
-
-        if (hasEnteredWater && tiempoEnAgua < 2f)
-        {
-            if (tiempoEnAgua < 1f)
-            {
-                float sinkForce = Mathf.Lerp(waterEntryVelocity * 0.5f, 2f, tiempoEnAgua);
-                rb.AddForce(Vector3.down * sinkForce, ForceMode.Acceleration);
-            }
-            else
-            {
-                float transition = (tiempoEnAgua - 1f);
-                float buoyancyForce = Mathf.Lerp(0f, waterBuoyancy, transition);
-
-                float sinkForce = Mathf.Lerp(2f, 0f, transition);
-                rb.AddForce(Vector3.down * sinkForce, ForceMode.Acceleration);
-                rb.AddForce(Vector3.up * buoyancyForce, ForceMode.Acceleration);
-            }
-        }
-        else
-        {
-            hasEnteredWater = false;
-
-            float depth = transform.position.y - GetWaterSurface();
-
-            if (depth < -1f)
-            {
-                rb.AddForce(Vector3.up * waterBuoyancy * 0.5f, ForceMode.Acceleration);
-            }
-            else if (depth > -0.5f)
-            {
-                if (rb.linearVelocity.y > 0.5f)
-                {
-                    rb.linearVelocity = new Vector3(rb.linearVelocity.x, rb.linearVelocity.y * 0.95f, rb.linearVelocity.z);
-                }
-            }
-
-            rb.AddForce(Vector3.up * waterBuoyancy * 0.3f, ForceMode.Acceleration);
-        }
-    }
-    float GetWaterSurface()
-    {
-        return 0f;
+        // Reemplazado por HandleSwimming(); se deja por compatibilidad.
     }
 
     void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Water"))
         {
+            waterCollider = other;
+            WaterSurfaceY = GetWaterSurface();
             isInWater = true;
 
             waterEntryVelocity = Mathf.Abs(rb.linearVelocity.y);
@@ -411,23 +627,72 @@ public class PlayerController_Base : MonoBehaviour
             hasEnteredWater = true;
 
             Vector3 newVelocity = rb.linearVelocity;
-            newVelocity.y *= 0.3f;
+            newVelocity.y *= 0.45f;
+            newVelocity.x *= 0.85f;
+            newVelocity.z *= 0.85f;
             rb.linearVelocity = newVelocity;
 
-            Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
-            horizontalVelocity *= 0.8f;
-            rb.linearVelocity = new Vector3(horizontalVelocity.x, rb.linearVelocity.y, horizontalVelocity.z);
-
-            if (rb.linearVelocity.magnitude > waterEntryThreshold && splashEffect != null)
+            if (waterEntryVelocity > waterEntryThreshold * 0.5f)
             {
-                splashEffect.Play();
+                SpawnSplash(1f);
             }
 
-            ActivarEfectoAgua(true);
-            Debug.Log("Entró al agua - Velocidad vertical: " + waterEntryVelocity);
+            NotifyWaterState(true);
         }
-
     }
+
+    void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Water") && other == waterCollider)
+        {
+            isInWater = false;
+            hasEnteredWater = false;
+
+            // Salto de delfín: salir con el propulsor da un empujón extra
+            if (rb.linearVelocity.y > 2f)
+            {
+                Vector3 v = rb.linearVelocity;
+                v.y += breachBoost;
+                rb.linearVelocity = v;
+                SpawnSplash(0.8f);
+                OnBreach?.Invoke();
+            }
+
+            waterCollider = null;
+            NotifyWaterState(false);
+        }
+    }
+
+    void OnTriggerStay(Collider other)
+    {
+        if (other.CompareTag("Water") && !isInWater)
+        {
+            waterCollider = other;
+            isInWater = true;
+            hasEnteredWater = true;
+            waterEntryTime = Time.time;
+            waterEntryVelocity = Mathf.Abs(rb.linearVelocity.y);
+            NotifyWaterState(true);
+        }
+    }
+
+    void NotifyWaterState(bool inWater)
+    {
+        PlayerShooting shooting = GetComponent<PlayerShooting>();
+        if (shooting != null) shooting.UpdateWaterState(inWater);
+    }
+
+    void SpawnSplash(float scale)
+    {
+        if (splashEffect == null) return;
+        Vector3 p = transform.position;
+        p.y = GetWaterSurface();
+        ParticleSystem fx = Instantiate(splashEffect, p, Quaternion.identity);
+        fx.transform.localScale *= scale;
+        fx.Play(true);
+        Destroy(fx.gameObject, 3f);
+    }
+
     void OnCollisionEnter(Collision collision)
     {
         if (collision.collider.CompareTag(enemyTag))
@@ -450,29 +715,6 @@ public class PlayerController_Base : MonoBehaviour
             Debug.Log($"!Impacto enemigo! Daño: {damage}, Armadura restante: {currentArmor}");
         }
     }
-    void OnTriggerExit(Collider other)
-    {
-        if (other.CompareTag("Water"))
-        {
-            isInWater = false;
-            hasEnteredWater = false;
-            ActivarEfectoAgua(false);
-        }
-    }
-
-
-    void OnTriggerStay(Collider other)
-    {
-        if (other.CompareTag("Water") && !isInWater)
-        {
-            isInWater = true;
-            hasEnteredWater = true;
-            waterEntryTime = Time.time;
-            waterEntryVelocity = Mathf.Abs(rb.linearVelocity.y);
-            ActivarEfectoAgua(true);
-        }
-    }
-
 
     void ActivarEfectoAgua(bool activar)
     {
@@ -480,13 +722,10 @@ public class PlayerController_Base : MonoBehaviour
 
         if (underwaterVolume != null)
         {
-
-            StopAllCoroutines();
-
-            StartCoroutine(TransicionEfectoAgua(activar));
+            if (waterFxRoutine != null) StopCoroutine(waterFxRoutine);
+            waterFxRoutine = StartCoroutine(TransicionEfectoAgua(activar));
         }
     }
-
 
     System.Collections.IEnumerator TransicionEfectoAgua(bool activar)
     {
@@ -507,6 +746,7 @@ public class PlayerController_Base : MonoBehaviour
     void Die()
     {
         isDead = true;
+        SetJetting(false, 0f);
         rb.useGravity = true;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
 
@@ -523,5 +763,13 @@ public class PlayerController_Base : MonoBehaviour
         Debug.Log("¡Has muerto!");
     }
 
-
+    void OnDrawGizmosSelected()
+    {
+        if (waterCollider == null) return;
+        Gizmos.color = Color.cyan;
+        Vector3 p = transform.position;
+        float y = GetWaterSurface();
+        Gizmos.DrawLine(new Vector3(p.x - 3f, y, p.z), new Vector3(p.x + 3f, y, p.z));
+        Gizmos.DrawLine(new Vector3(p.x, y, p.z - 3f), new Vector3(p.x, y, p.z + 3f));
+    }
 }
