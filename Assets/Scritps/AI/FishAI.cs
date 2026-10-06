@@ -50,6 +50,8 @@ public class FishAI : MonoBehaviour
 
     [Header("Visual")]
     public Transform visual;
+    [Tooltip("Coleteo por código (se apaga si el modelo trae su propia animación)")]
+    public bool proceduralWiggle = true;
     public float wiggleAmount = 14f;
 
     public FishState State { get; private set; }
@@ -116,6 +118,24 @@ public class FishAI : MonoBehaviour
         stamina = panicStamina;
         if (visual != null) visualBaseRotation = visual.localRotation;
         BuildTree();
+    }
+
+    // Ajustes del tipo de pez (lo llama el GameDirector al crearlo)
+    public void ApplyType(FishType type)
+    {
+        if (type == null) return;
+        wanderSpeed *= Mathf.Max(0.1f, type.speedMultiplier);
+        fleeSpeed *= Mathf.Max(0.1f, type.speedMultiplier);
+        panicStamina *= Mathf.Max(0.1f, type.staminaMultiplier);
+        wiggleAmount = type.wiggleAmount;
+        proceduralWiggle = type.proceduralWiggle;
+
+        // Si el modelo ya trae animación (controlador), no se mezcla con el coleteo por código
+        if (visual != null)
+        {
+            Animator anim = visual.GetComponentInChildren<Animator>();
+            if (anim != null && anim.runtimeAnimatorController != null) proceduralWiggle = false;
+        }
     }
 
     // ======================= ÁRBOL =======================
@@ -401,7 +421,7 @@ public class FishAI : MonoBehaviour
 
     void AnimateVisual(float dt)
     {
-        if (visual == null) return;
+        if (visual == null || !proceduralWiggle) return;
         float speed01 = State == FishState.Swimming ? Mathf.Clamp01(velocity.magnitude / fleeSpeed) : 1f;
         float freq = State == FishState.Grabbed ? 22f : Mathf.Lerp(5f, 16f, speed01);
         float amp = State == FishState.Grabbed ? wiggleAmount * 2f : wiggleAmount * Mathf.Lerp(0.5f, 1.3f, speed01);

@@ -58,6 +58,7 @@ public class HelmetVisorHUD : MonoBehaviour
     public float bootDuration = 1.4f;
 
     // ---- Interno ----
+    Canvas visorCanvas;
     RectTransform canvasRect;
     RectTransform frameRoot, swayRoot, overlayRoot;
     RawImage frameImage, scanlines, reflection, glassTint, bootLine;
@@ -119,6 +120,7 @@ public class HelmetVisorHUD : MonoBehaviour
     void OnDisable()
     {
         Cursor.visible = true;
+        if (visorCanvas != null) visorCanvas.enabled = true;
     }
 
     // ======================= CONSTRUCCIÓN =======================
@@ -382,7 +384,10 @@ public class HelmetVisorHUD : MonoBehaviour
         bool firstPerson = !player.isThirdPerson;
         bool cinematic = GameDirector.InCinematic;
 
-        // Durante la cinemática de llegada el visor se oculta (vista "de cámara")
+        // Durante la cinemática se apaga TODO el canvas del casco (marco, HUD, filtros):
+        // la cinemática es una vista de cámara externa, no desde dentro del casco
+        if (visorCanvas == null) visorCanvas = GetComponent<Canvas>();
+        if (visorCanvas != null) visorCanvas.enabled = !cinematic;
         frameRoot.gameObject.SetActive(firstPerson && !cinematic);
         overlayRoot.gameObject.SetActive(!cinematic);
         swayRoot.gameObject.SetActive(!cinematic);

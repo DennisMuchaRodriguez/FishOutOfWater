@@ -166,9 +166,8 @@ public class PlayerController_Base : MonoBehaviour
     public Vector3 Velocity { get { return rb != null ? rb.linearVelocity : Vector3.zero; } }
     public bool IsKnockedBack { get { return Time.time < knockbackEndTime; } }
 
-    // Cinemáticas: bloquea controles y cede la cámara
+    // Cinemáticas: bloquea controles (la cinemática usa su propia cámara)
     public bool InputLocked { get; private set; }
-    public bool CameraOverridden { get; private set; }
 
     public event System.Action OnDash;
     public event System.Action OnBreach;
@@ -619,7 +618,6 @@ public class PlayerController_Base : MonoBehaviour
     public void SetCinematicLock(bool locked)
     {
         InputLocked = locked;
-        CameraOverridden = locked;
         // La cámara de la cinemática está fuera del agua: sin efecto submarino mientras dura
         if (underwaterVolume != null)
         {
@@ -642,7 +640,7 @@ public class PlayerController_Base : MonoBehaviour
 
     void LateUpdate()
     {
-        if (cameraHolder == null || CameraOverridden) return;
+        if (cameraHolder == null) return;
 
         Vector3 targetOffset = isThirdPerson ? thirdPersonOffset : firstPersonOffset;
         cameraOffset = transform.TransformDirection(targetOffset);

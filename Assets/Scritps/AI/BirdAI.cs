@@ -60,8 +60,16 @@ public class BirdAI : MonoBehaviour
 
     [Header("Visual")]
     public Transform visual;
+    [Tooltip("Aleteo por código (se apaga si el modelo trae su propia animación)")]
+    public bool proceduralFlap = true;
     public float flapSpeed = 7f;
     public float flapAngle = 28f;
+    [Tooltip("Huesos de las alas separados por coma (el lado se detecta solo)")]
+    public string wingBoneNames = "LeftArm,RightArm,L_wing,R_wing";
+    [Tooltip("Huesos de las garras separados por coma (el pez cuelga en su punto medio)")]
+    public string talonBoneNames = "LeftFoot,RightFoot";
+    [Tooltip("Punto donde cuelga el pez si no se encuentran las garras (local)")]
+    public Vector3 catchPointOffset = new Vector3(0f, -1.1f, 0f);
 
     [Header("Efectos")]
     public GameObject splashPrefab;
@@ -166,17 +174,51 @@ public class BirdAI : MonoBehaviour
         rb.linearVelocity = dir * arrivalSpeed;
     }
 
+    // Ajustes del tipo de ave (lo llama el GameDirector al crearla)
+    public void ApplyType(BirdType type)
+    {
+        if (type == null) return;
+        float speed = Mathf.Max(0.1f, type.speedMultiplier);
+        arrivalSpeed *= speed;
+        patrolSpeed *= speed;
+        chaseSpeed *= speed;
+        diveSpeed *= speed;
+        carrySpeed *= speed;
+        damage = type.damage;
+        detectRange = type.detectRange;
+        wingBoneNames = type.wingBones;
+        talonBoneNames = type.talonBones;
+        catchPointOffset = type.catchPointOffset;
+        proceduralFlap = type.proceduralWingFlap && type.animatorController == null;
+        SetVisualScale(type.model != null ? type.modelScale : 1f);
+
+        // Si el modelo ya trae animación (controlador), no se pisa con el aleteo por código
+        if (visual != null)
+        {
+            Animator anim = visual.GetComponentInChildren<Animator>();
+            if (anim != null && anim.runtimeAnimatorController != null) proceduralFlap = false;
+        }
+    }
+
+    static bool NameInList(string name, string list)
+    {
+        if (string.IsNullOrEmpty(list)) return false;
+        foreach (string part in list.Split(','))
+            if (part.Trim() == name) return true;
+        return false;
+    }
+
     void SetupVisual()
     {
         if (visual == null) return;
         visualBasePos = visual.localPosition;
 
         // Huesos de alas del modelo (si existen)
-        foreach (Transform t in visual.GetComponentsInChildren<Transform>(true))
+        if (proceduralFlap)
         {
-            string n = t.name;
-            if (n == "LeftArm" || n == "RightArm" || n == "L_wing" || n == "R_wing")
+            foreach (Transform t in visual.GetComponentsInChildren<Transform>(true))
             {
+                if (!NameInList(t.name, wingBoneNames)) continue;
                 wingBones.Add(t);
                 wingRest.Add(t.localRotation);
                 float side = Vector3.Dot(t.position - transform.position, transform.right);
@@ -184,20 +226,20 @@ public class BirdAI : MonoBehaviour
             }
         }
 
-        // Garras: punto medio entre las patas, o un punto bajo el cuerpo
-        Transform lf = FindChild(visual, "LeftFoot");
-        Transform rf = FindChild(visual, "RightFoot");
+        // Garras: punto medio de los huesos indicados, o el punto configurado
+        Vector3 sum = Vector3.zero;
+        int found = 0;
+        foreach (Transform t in visual.GetComponentsInChildren<Transform>(true))
+        {
+            if (!NameInList(t.name, talonBoneNames)) continue;
+            sum += t.position;
+            found++;
+        }
         GameObject t2 = new GameObject("Garras");
         talons = t2.transform;
         talons.SetParent(transform, false);
-        talons.position = (lf != null && rf != null) ? (lf.position + rf.position) * 0.5f : transform.position - transform.up * 1.1f;
-    }
-
-    static Transform FindChild(Transform root, string name)
-    {
-        foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
-            if (t.name == name) return t;
-        return null;
+        if (found > 0) talons.position = sum / found;
+        else talons.localPosition = catchPointOffset;
     }
 
     // ======================= ÁRBOL =======================

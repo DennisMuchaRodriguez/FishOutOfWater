@@ -136,7 +136,7 @@ public class PlayerShooting : MonoBehaviour
 
     void Update()
     {
-        if (PauseMenu.IsPaused || PauseMenu.InputBlockedThisFrame) return;
+        if (PauseMenu.IsPaused || PauseMenu.InputBlockedThisFrame || GameDirector.InCinematic) return;
 
         float dt = Time.deltaTime;
 
