@@ -1,33 +1,41 @@
 PEZ NORMAL (para los peces del lago)
 ====================================
 
-Hecho a partir de PEZ.fbx (el protagonista):
+Hecho a partir de Fish_3DModel.fbx (el protagonista), con su mismo esqueleto:
 - Sin armadura, casco ni traje.
-- Cabeza/cuerpo redondo y liso (sin el ceño esculpido).
-- Ojos simétricos, un poco más grandes y salidos.
-- Boca tranquila (sonrisa leve) pintada en la textura.
-- Mismas aletas azules, pegadas al cuerpo.
+- Cuerpo completo en forma de gota (cabeza redonda arriba, punta abajo).
+- Ojos grandes y blancos, sonrisa tranquila.
+- Las mismas aletas azules (brazos) y la cola de dos aletas (piernas).
+- Conserva los huesos y pesos del original, así que usa sus animaciones
+  (Fish_Swim) directamente.
 
 Archivos
 --------
-PezNormal.obj            Malla (en metros, ~1.1 m de alto; cabeza hacia +Y, cara hacia +Z)
-PezNormal.mtl            Material para Blender / Unity (usa PezNormal_BaseColor.png)
+PezNormal.fbx            Modelo con esqueleto (cabeza hacia +Y, cara hacia +Z)
+PezNado.controller       Animator con la animación Fish_Swim en bucle
 PezNormal_BaseColor.png  Textura naranja (misma distribución UV que el original)
 PezDorado_BaseColor.png  Variante dorada
 PezRosa_BaseColor.png    Variante rosa
-PezNormal.mat / PezDorado.mat / PezRosa.mat   Materiales URP para Unity
+PezNormal.mat / PezDorado.mat / PezRosa.mat   Materiales URP
 
-En Unity
---------
-GameDirector > "Tipos de peces": cada tipo usa PezNormal.obj con un material
-distinto ("Material Override"). Escala 1, rotación (90, 0, 0) para que nade
-acostado como el protagonista. Usa (90, 0, 180) si prefieres ver la cara desde arriba.
+En Unity (GameDirector > "Tipos de peces")
+------------------------------------------
+Model: PezNormal.fbx   Material Override: PezNormal / PezDorado / PezRosa
+Animator Controller: PezNado
+Model Scale: 28   Model Rotation: (90, 0, 0)   Model Offset: (0, 0, -0.18)
+- (90, 0, 0)   nada acostado con la cara hacia abajo (como el protagonista).
+- (-90, 180, 0) nada con la cara hacia arriba (se le ve la cara desde el aire).
+La velocidad de la animación sube sola cuando el pez huye.
+
+Nota: Fish_Swim.fbx tiene activado "Preserve Hierarchy" (Model tab) para que
+sus rutas de huesos coincidan con este modelo. No lo desactives.
 
 Editar en Blender
 -----------------
-1. Archivo > Importar > Wavefront (.obj) > PezNormal.obj (la textura se carga sola).
-2. Las piezas vienen separadas: Head (cuerpo), Ojos, Aleta_brazo, Aleta_pierna.
-3. Para otra especie: duplica la textura, cámbiale el color en cualquier editor
-   (o en Blender con Texture Paint) y crea un material nuevo en Unity con esa textura.
-4. Exporta de nuevo como .obj o .fbx (Forward: -Z, Up: Y) y reemplaza el archivo.
-   Si cambias la forma, mantén la cara mirando hacia +Z.
+1. Archivo > Importar > FBX > PezNormal.fbx (trae el esqueleto).
+2. Piezas: Body (cuerpo), Head (cara), Ojos, Aleta_brazo, Aleta_pierna.
+   La cara y los ojos siguen al hueso Body_jnt.
+3. Para otra especie: duplica la textura, cámbiale el color y crea un material
+   nuevo en Unity con esa textura (no hace falta tocar el modelo).
+4. Si cambias la forma, exporta como FBX (Forward: -Z, Up: Y, con Armature)
+   y conserva los nombres de los huesos para que la animación siga funcionando.

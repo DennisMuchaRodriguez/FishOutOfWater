@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 
 // Mecánica principal:
 //  - Peces nadando en cardúmenes por el lago.
@@ -15,7 +14,7 @@ using UnityEngine.Rendering.Universal;
 public class GameDirector : MonoBehaviour
 {
     public static GameDirector Instance { get; private set; }
-    public static bool InCinematic { get; private set; }
+    public static bool InCinematic { get { return WaveCinematic.IsPlaying; } }
 
     public enum GameState { Calm, WaveIncoming, WaveActive, Intermission, Victory, Defeat }
 
@@ -104,15 +103,12 @@ public class GameDirector : MonoBehaviour
     float anchorTimer;
     bool ended;
 
-    // Cinemática
-    Camera cinematicCamera;
-    bool cinematicActive;
-    float cinematicDeadline;
+    // Cinemática en curso
+    WaveCinematic cinematic;
 
     void Awake()
     {
         Instance = this;
-        InCinematic = false;
     }
 
     void Start()
@@ -143,13 +139,18 @@ public class GameDirector : MonoBehaviour
     void OnDisable()
     {
         // Pase lo que pase, nunca dejar la cámara en modo cinemática
-        EndCinematic();
+        StopCinematic();
+    }
+
+    void StopCinematic()
+    {
+        if (cinematic != null) Destroy(cinematic.gameObject);
+        cinematic = null;
     }
 
     void OnDestroy()
     {
         if (Instance == this) Instance = null;
-        InCinematic = false;
     }
 
     // ======================= FLUJO =======================
@@ -178,10 +179,19 @@ public class GameDirector : MonoBehaviour
 
             bool showCinematic = playArrivalCinematic && (!cinematicOnlyFirstWave || i == 0)
                                  && player != null && player.PlayerCamera != null && !player.isDead;
+            Banner?.Invoke("OLEADA " + CurrentWave + " / " + TotalWaves, "¡DEPREDADORES EN CAMINO!", Danger);
             if (showCinematic)
-                yield return ArrivalCinematic(spawned);
-            else
-                Banner?.Invoke("OLEADA " + CurrentWave + " / " + TotalWaves, "¡DEPREDADORES EN CAMINO!", Danger);
+            {
+                cinematic = WaveCinematic.Play(player, spawned, lake, cinematicDuration, on => Letterbox?.Invoke(on));
+                // Espera a que termine (con tope por si acaso)
+                float guard = 0f;
+                while (cinematic != null && guard < cinematicDuration + 8f)
+                {
+                    if (!PauseMenu.IsPaused) guard += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+                StopCinematic();
+            }
 
             State = GameState.WaveActive;
             while (AliveBirds() > 0)
@@ -199,9 +209,6 @@ public class GameDirector : MonoBehaviour
 
     void Update()
     {
-        // Seguro: si la cinemática se colgó por cualquier motivo, se termina sola
-        if (cinematicActive && Time.time > cinematicDeadline) EndCinematic();
-
         if (ended) return;
 
         if (player != null && player.isDead)
@@ -209,7 +216,7 @@ public class GameDirector : MonoBehaviour
             // La pantalla de muerte la muestra PauseMenu
             ended = true;
             State = GameState.Defeat;
-            EndCinematic();
+            StopCinematic();
             return;
         }
 
@@ -226,7 +233,7 @@ public class GameDirector : MonoBehaviour
     {
         if (ended) return;
         ended = true;
-        EndCinematic();
+        StopCinematic();
         State = victory ? GameState.Victory : GameState.Defeat;
 
         string title = victory ? "¡LAGO A SALVO!" : "LOS PECES FUERON CAZADOS";
@@ -426,20 +433,26 @@ public class GameDirector : MonoBehaviour
     Transform CreateVisual(GameObject model, Transform parent, float scale, Vector3 euler, Vector3 offset,
                            RuntimeAnimatorController controller, Material materialOverride, int layer)
     {
-        GameObject v;
+        // "Visual" es un contenedor con la rotación/escala del Inspector; el modelo va dentro.
+        // Así una animación que mueva la raíz del modelo nunca pisa esa rotación ni la escala.
+        GameObject v = new GameObject("Visual");
+        v.transform.SetParent(parent, false);
+        GameObject inst;
         if (model != null)
         {
-            v = Instantiate(model, parent);
+            inst = Instantiate(model, v.transform, false);
         }
         else
         {
             // Sin modelo asignado: cápsula de prueba para que el juego siga funcionando
-            v = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            v.transform.SetParent(parent, false);
+            inst = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            inst.transform.SetParent(v.transform, false);
             scale = 1f;
             euler = new Vector3(90f, 0f, 0f);
         }
-        v.name = "Visual";
+        inst.transform.localPosition = Vector3.zero;
+        inst.transform.localRotation = Quaternion.identity;
+        inst.transform.localScale = Vector3.one;
         v.transform.localPosition = offset;
         v.transform.localRotation = Quaternion.Euler(euler);
         v.transform.localScale = Vector3.one * scale;
@@ -461,7 +474,7 @@ public class GameDirector : MonoBehaviour
         if (controller != null)
         {
             Animator anim = v.GetComponentInChildren<Animator>();
-            if (anim == null) anim = v.AddComponent<Animator>();
+            if (anim == null) anim = inst.AddComponent<Animator>();
             anim.runtimeAnimatorController = controller;
             anim.applyRootMotion = false;
         }
@@ -469,133 +482,7 @@ public class GameDirector : MonoBehaviour
     }
 
     // ======================= CINEMÁTICA =======================
-    // Usa una cámara propia y temporal: la cámara del jugador nunca se toca,
-    // así que al terminar (o si algo falla) siempre vuelve a la vista normal.
-
-    IEnumerator ArrivalCinematic(List<BirdAI> wave)
-    {
-        BeginCinematic();
-        try
-        {
-            if (cinematicCamera == null) yield break;
-            Camera playerCam = player.PlayerCamera;
-            Transform camT = cinematicCamera.transform;
-            Vector3 startPos = camT.position;
-            Quaternion startRot = camT.rotation;
-            float startFov = cinematicCamera.fieldOfView;
-
-            Vector3 flock = FlockCenter(wave);
-            Vector3 toFlock = flock - player.transform.position;
-            toFlock.y = 0f;
-            toFlock = toFlock.sqrMagnitude > 0.01f ? toFlock.normalized : player.transform.forward;
-            Vector3 side = Vector3.Cross(Vector3.up, toFlock);
-            // Plano por encima del hombro, mirando al cielo por donde llegan
-            Vector3 shotPos = player.transform.position - toFlock * 5f + side * 2.5f + Vector3.up * 3.5f;
-            shotPos.y = Mathf.Max(shotPos.y, lake.SurfaceY + 1.5f, lake.GroundHeight(shotPos.x, shotPos.z) + 1.5f);
-
-            float t = 0f;
-            while (t < cinematicDuration)
-            {
-                if (cinematicCamera == null) yield break;
-                t += Time.deltaTime;
-                flock = FlockCenter(wave);
-                float blend = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / 0.9f));
-                Vector3 dolly = shotPos + toFlock * t * 0.4f;
-                Vector3 pos = Vector3.Lerp(startPos, dolly, blend);
-                Vector3 lookDir = flock - pos;
-                Quaternion look = lookDir.sqrMagnitude > 0.01f ? Quaternion.LookRotation(lookDir.normalized, Vector3.up) : camT.rotation;
-                camT.SetPositionAndRotation(pos, Quaternion.Slerp(startRot, look, blend));
-
-                // Zoom que encuadra a la bandada (más cerrado cuando están lejos)
-                float dist = lookDir.magnitude;
-                float frameFov = Mathf.Clamp(2f * Mathf.Atan(14f / Mathf.Max(1f, dist)) * Mathf.Rad2Deg, 22f, 60f);
-                cinematicCamera.fieldOfView = Mathf.Lerp(startFov, frameFov, blend);
-
-                // Se puede saltar
-                if (t > 0.6f && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0)))
-                    break;
-                yield return null;
-            }
-
-            // Regreso suave a la vista real del jugador (su cámara se sigue actualizando por debajo)
-            Vector3 fromPos = camT.position;
-            Quaternion fromRot = camT.rotation;
-            float fromFov = cinematicCamera.fieldOfView;
-            float back = 0f;
-            while (back < 0.7f)
-            {
-                if (cinematicCamera == null || playerCam == null) yield break;
-                back += Time.deltaTime;
-                float k = Mathf.SmoothStep(0f, 1f, back / 0.7f);
-                camT.SetPositionAndRotation(Vector3.Lerp(fromPos, playerCam.transform.position, k),
-                                            Quaternion.Slerp(fromRot, playerCam.transform.rotation, k));
-                cinematicCamera.fieldOfView = Mathf.Lerp(fromFov, playerCam.fieldOfView, k);
-                yield return null;
-            }
-        }
-        finally
-        {
-            EndCinematic();
-        }
-    }
-
-    void BeginCinematic()
-    {
-        if (cinematicActive) return;
-        Camera playerCam = player.PlayerCamera;
-
-        cinematicActive = true;
-        InCinematic = true;
-        cinematicDeadline = Time.time + cinematicDuration + 3f;
-        player.SetCinematicLock(true);
-
-        GameObject go = new GameObject("CamaraCinematica");
-        go.tag = "MainCamera";
-        cinematicCamera = go.AddComponent<Camera>();
-        cinematicCamera.CopyFrom(playerCam); // copia ajustes y posición
-        cinematicCamera.depth = playerCam.depth + 1f;
-        var src = playerCam.GetUniversalAdditionalCameraData();
-        var dst = cinematicCamera.GetUniversalAdditionalCameraData();
-        dst.renderPostProcessing = src.renderPostProcessing;
-        dst.antialiasing = src.antialiasing;
-        dst.renderShadows = src.renderShadows;
-        dst.volumeLayerMask = src.volumeLayerMask;
-        playerCam.enabled = false;
-
-        Letterbox?.Invoke(true);
-        Banner?.Invoke("OLEADA " + CurrentWave + " / " + TotalWaves, "¡DEPREDADORES EN CAMINO!", Danger);
-    }
-
-    // Se puede llamar varias veces sin problema
-    void EndCinematic()
-    {
-        if (!cinematicActive) return;
-        cinematicActive = false;
-
-        if (player != null)
-        {
-            if (player.PlayerCamera != null) player.PlayerCamera.enabled = true;
-            player.SetCinematicLock(false);
-        }
-        if (cinematicCamera != null) Destroy(cinematicCamera.gameObject);
-        cinematicCamera = null;
-
-        Letterbox?.Invoke(false);
-        InCinematic = false;
-    }
-
-    Vector3 FlockCenter(List<BirdAI> wave)
-    {
-        Vector3 sum = Vector3.zero;
-        int n = 0;
-        foreach (BirdAI b in wave)
-        {
-            if (b == null) continue;
-            sum += b.transform.position;
-            n++;
-        }
-        return n > 0 ? sum / n : lake.Center + Vector3.up * 20f;
-    }
+    // La cinemática de llegada vive en WaveCinematic.cs (objeto independiente con su propia cámara).
 
     // ======================= MUNICIÓN =======================
 

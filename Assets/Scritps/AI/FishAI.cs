@@ -90,6 +90,7 @@ public class FishAI : MonoBehaviour
     float groundCacheY;
     float groundCacheTimer;
     Quaternion visualBaseRotation = Quaternion.identity;
+    Animator swimAnim;
     bool wasGrabbed;
 
     void Awake()
@@ -134,7 +135,11 @@ public class FishAI : MonoBehaviour
         if (visual != null)
         {
             Animator anim = visual.GetComponentInChildren<Animator>();
-            if (anim != null && anim.runtimeAnimatorController != null) proceduralWiggle = false;
+            if (anim != null && anim.runtimeAnimatorController != null)
+            {
+                proceduralWiggle = false;
+                swimAnim = anim;
+            }
         }
     }
 
@@ -421,8 +426,13 @@ public class FishAI : MonoBehaviour
 
     void AnimateVisual(float dt)
     {
-        if (visual == null || !proceduralWiggle) return;
         float speed01 = State == FishState.Swimming ? Mathf.Clamp01(velocity.magnitude / fleeSpeed) : 1f;
+        if (swimAnim != null)
+        {
+            // La animación de nado va más rápida cuanto más rápido nada (y frenética si lo atrapan)
+            swimAnim.speed = State == FishState.Dead ? 0f : State == FishState.Grabbed ? 2.6f : Mathf.Lerp(0.7f, 1.9f, speed01);
+        }
+        if (visual == null || !proceduralWiggle) return;
         float freq = State == FishState.Grabbed ? 22f : Mathf.Lerp(5f, 16f, speed01);
         float amp = State == FishState.Grabbed ? wiggleAmount * 2f : wiggleAmount * Mathf.Lerp(0.5f, 1.3f, speed01);
         if (State == FishState.Dead) amp = 0f;

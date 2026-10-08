@@ -2439,10 +2439,10 @@ MonoBehaviour:
   - name: Pez naranja
     model: {fileID: 919132149155446097, guid: e9d030000c0f489d916fea36f690c554, type: 3}
     modelRotation: {x: 90, y: 0, z: 0}
-    modelOffset: {x: 0, y: 0, z: 0}
-    modelScale: 1
+    modelOffset: {x: 0, y: 0, z: -0.18}
+    modelScale: 28
     materialOverride: {fileID: 2100000, guid: f80a417841c744ad91abb9edecb8732a, type: 2}
-    animatorController: {fileID: 0}
+    animatorController: {fileID: 9100000, guid: 86300c9b41834b7fa84984a4a3d58daf, type: 2}
     proceduralWiggle: 1
     wiggleAmount: 14
     count: 6
@@ -2452,10 +2452,10 @@ MonoBehaviour:
   - name: Pez dorado
     model: {fileID: 919132149155446097, guid: e9d030000c0f489d916fea36f690c554, type: 3}
     modelRotation: {x: 90, y: 0, z: 0}
-    modelOffset: {x: 0, y: 0, z: 0}
-    modelScale: 1
+    modelOffset: {x: 0, y: 0, z: -0.18}
+    modelScale: 28
     materialOverride: {fileID: 2100000, guid: d858919db5b24fcabd45e61dd275101d, type: 2}
-    animatorController: {fileID: 0}
+    animatorController: {fileID: 9100000, guid: 86300c9b41834b7fa84984a4a3d58daf, type: 2}
     proceduralWiggle: 1
     wiggleAmount: 14
     count: 5
@@ -2465,10 +2465,10 @@ MonoBehaviour:
   - name: Pez rosa
     model: {fileID: 919132149155446097, guid: e9d030000c0f489d916fea36f690c554, type: 3}
     modelRotation: {x: 90, y: 0, z: 0}
-    modelOffset: {x: 0, y: 0, z: 0}
-    modelScale: 1
+    modelOffset: {x: 0, y: 0, z: -0.18}
+    modelScale: 28
     materialOverride: {fileID: 2100000, guid: a4be363814074dfeae8e1003678d2b88, type: 2}
-    animatorController: {fileID: 0}
+    animatorController: {fileID: 9100000, guid: 86300c9b41834b7fa84984a4a3d58daf, type: 2}
     proceduralWiggle: 1
     wiggleAmount: 14
     count: 5

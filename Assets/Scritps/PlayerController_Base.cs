@@ -646,6 +646,13 @@ public class PlayerController_Base : MonoBehaviour
     {
         if (cameraHolder == null) return;
 
+        // Seguro: fuera de una cinemática la cámara del jugador siempre está encendida
+        if (!WaveCinematic.IsPlaying)
+        {
+            if (PlayerCamera != null && !PlayerCamera.enabled) PlayerCamera.enabled = true;
+            if (InputLocked) SetCinematicLock(false);
+        }
+
         Vector3 targetOffset = isThirdPerson ? thirdPersonOffset : firstPersonOffset;
         cameraOffset = transform.TransformDirection(targetOffset);
         Vector3 pos = transform.position + cameraOffset;
