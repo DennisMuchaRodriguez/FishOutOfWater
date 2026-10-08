@@ -39,7 +39,10 @@ Material:
     - _RippleSpeed: 3.2
     - _RippleLife: 2.2
     - _RippleWidth: 0.35
+    - _EdgeFoamWidth: 0.35
+    - _EdgeFoamStrength: 1.2
     m_Colors:
+    - _EdgeFoamColor: {r: 1, g: 1, b: 1, a: 1}
     - _ShallowColor: {r: 0.16, g: 0.55, b: 0.95, a: 0.55}
     - _DeepColor: {r: 0.02, g: 0.07, b: 0.22, a: 0.93}
     - _UnderColor: {r: 0.22, g: 0.62, b: 1.0, a: 0.55}

@@ -2436,26 +2436,54 @@ MonoBehaviour:
   player: {fileID: 405605802}
   lake: {fileID: 900000204}
   fishTypes:
-  - name: "Pez com\xFAn"
-    model: {fileID: 0}
+  - name: Pez naranja
+    model: {fileID: 919132149155446097, guid: e9d030000c0f489d916fea36f690c554, type: 3}
     modelRotation: {x: 90, y: 0, z: 0}
     modelOffset: {x: 0, y: 0, z: 0}
-    modelScale: 28
+    modelScale: 1
+    materialOverride: {fileID: 2100000, guid: f80a417841c744ad91abb9edecb8732a, type: 2}
     animatorController: {fileID: 0}
     proceduralWiggle: 1
     wiggleAmount: 14
-    count: 16
+    count: 6
+    colliderRadius: 0.7
+    speedMultiplier: 1
+    staminaMultiplier: 1
+  - name: Pez dorado
+    model: {fileID: 919132149155446097, guid: e9d030000c0f489d916fea36f690c554, type: 3}
+    modelRotation: {x: 90, y: 0, z: 0}
+    modelOffset: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    materialOverride: {fileID: 2100000, guid: d858919db5b24fcabd45e61dd275101d, type: 2}
+    animatorController: {fileID: 0}
+    proceduralWiggle: 1
+    wiggleAmount: 14
+    count: 5
+    colliderRadius: 0.7
+    speedMultiplier: 1
+    staminaMultiplier: 1
+  - name: Pez rosa
+    model: {fileID: 919132149155446097, guid: e9d030000c0f489d916fea36f690c554, type: 3}
+    modelRotation: {x: 90, y: 0, z: 0}
+    modelOffset: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    materialOverride: {fileID: 2100000, guid: a4be363814074dfeae8e1003678d2b88, type: 2}
+    animatorController: {fileID: 0}
+    proceduralWiggle: 1
+    wiggleAmount: 14
+    count: 5
     colliderRadius: 0.7
     speedMultiplier: 1
     staminaMultiplier: 1
   schools: 3
   maxFishLossFraction: 0.7
   birdTypes:
-  - name: Ave depredadora
-    model: {fileID: 0}
+  - name: Ave de arcilla
+    model: {fileID: 919132149155446097, guid: eea51bb5daf43514790fb0032790224a, type: 3}
     modelRotation: {x: 0, y: 0, z: 0}
     modelOffset: {x: 0, y: 0, z: 0}
     modelScale: 1
+    materialOverride: {fileID: 0}
     animatorController: {fileID: 0}
     proceduralWingFlap: 1
     wingBones: LeftArm,RightArm,L_wing,R_wing

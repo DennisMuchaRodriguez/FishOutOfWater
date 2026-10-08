@@ -288,7 +288,7 @@ public class GameDirector : MonoBehaviour
                 go.GetComponent<SphereCollider>().radius = type.colliderRadius;
                 fish.schoolId = school;
                 fish.visual = CreateVisual(type.model, go.transform, type.modelScale, type.modelRotation, type.modelOffset,
-                                           type.animatorController, fishLayer);
+                                           type.animatorController, type.materialOverride, fishLayer);
                 fish.ApplyType(type);
                 WaterInteractor wi = go.AddComponent<WaterInteractor>();
                 wi.size = 0.8f;
@@ -403,7 +403,7 @@ public class GameDirector : MonoBehaviour
 
         BirdAI bird = go.AddComponent<BirdAI>();
         bird.visual = CreateVisual(type.model, go.transform, type.modelScale, type.modelRotation, type.modelOffset,
-                                   type.animatorController, go.layer);
+                                   type.animatorController, type.materialOverride, go.layer);
         bird.ApplyType(type);
         WaterInteractor bw = go.AddComponent<WaterInteractor>();
         bw.size = 1.5f;
@@ -424,7 +424,7 @@ public class GameDirector : MonoBehaviour
     }
 
     Transform CreateVisual(GameObject model, Transform parent, float scale, Vector3 euler, Vector3 offset,
-                           RuntimeAnimatorController controller, int layer)
+                           RuntimeAnimatorController controller, Material materialOverride, int layer)
     {
         GameObject v;
         if (model != null)
@@ -445,6 +445,16 @@ public class GameDirector : MonoBehaviour
         v.transform.localScale = Vector3.one * scale;
 
         foreach (Collider c in v.GetComponentsInChildren<Collider>()) Destroy(c);
+
+        if (materialOverride != null)
+        {
+            foreach (Renderer r in v.GetComponentsInChildren<Renderer>())
+            {
+                Material[] mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++) mats[i] = materialOverride;
+                r.sharedMaterials = mats;
+            }
+        }
         if (layer >= 0)
             foreach (Transform t in v.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = layer;
 

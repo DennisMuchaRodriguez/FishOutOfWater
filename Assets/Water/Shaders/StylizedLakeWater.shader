@@ -22,6 +22,11 @@ Shader "FishOutOfWater/Agua Estilizada"
         _FoamDepth ("Ancho de la espuma (m)", Float) = 0.9
         _FoamGlow ("Brillo de la espuma", Range(0, 3)) = 1.3
 
+        [Header(Borde en objetos medio sumergidos)]
+        _EdgeFoamColor ("Color del borde", Color) = (1, 1, 1, 1)
+        _EdgeFoamWidth ("Ancho del borde (m)", Range(0.02, 1.5)) = 0.35
+        _EdgeFoamStrength ("Intensidad del borde", Range(0, 2)) = 1.2
+
         [Header(Ondas (agua calmada))]
         _WaveHeight ("Altura de las ondas (m)", Range(0, 0.3)) = 0.035
         _WaveScale ("Tamaño de las ondas", Float) = 0.08
@@ -61,6 +66,7 @@ Shader "FishOutOfWater/Agua Estilizada"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 
             #define MAX_RIPPLES 16
 
@@ -75,6 +81,9 @@ Shader "FishOutOfWater/Agua Estilizada"
                 half4 _FoamColor;
                 half4 _SunColor;
                 half4 _RippleColor;
+                half4 _EdgeFoamColor;
+                float _EdgeFoamWidth;
+                float _EdgeFoamStrength;
                 float _MaxDepth;
                 float _RimPower;
                 float _RimStrength;
@@ -237,8 +246,22 @@ Shader "FishOutOfWater/Agua Estilizada"
                 // Anillos
                 col += _RippleColor.rgb * rippleGlow * 0.9;
 
+                // ---------- Borde blanco donde un objeto atraviesa la superficie ----------
+                // Compara la profundidad de la escena detrás del agua con la del agua misma:
+                // si la diferencia es pequeña, aquí hay un pez/jugador/roca saliendo del agua.
+                float2 screenUV = GetNormalizedScreenSpaceUV(i.positionCS);
+                float sceneEye = LinearEyeDepth(SampleSceneDepth(screenUV), _ZBufferParams);
+                float waterEye = LinearEyeDepth(i.positionCS.z, _ZBufferParams);
+                float thickness = max(0.0, sceneEye - waterEye);
+                float edgeNoise = ValueNoise(xz * 3.0 + t * 0.9);
+                float edgeBand = 1.0 - saturate(thickness / max(0.01, _EdgeFoamWidth));
+                float edgeFoam = smoothstep(0.35, 0.65, edgeBand + (edgeNoise - 0.5) * 0.4);
+                float edgeGlow = (1.0 - saturate(thickness / max(0.01, _EdgeFoamWidth * 2.0))) * 0.25;
+                float edge = saturate(edgeFoam + edgeGlow) * _EdgeFoamStrength;
+                col = lerp(col, _EdgeFoamColor.rgb, saturate(edge));
+
                 float alpha = lerp(_ShallowColor.a, _DeepColor.a, dShade);
-                alpha = saturate(alpha + fres * 0.25 + foam + rippleGlow * 0.5 + spec * 0.5);
+                alpha = saturate(alpha + fres * 0.25 + foam + rippleGlow * 0.5 + spec * 0.5 + edge);
 
                 col = MixFog(col, i.fogFactor);
                 return half4(col, alpha);

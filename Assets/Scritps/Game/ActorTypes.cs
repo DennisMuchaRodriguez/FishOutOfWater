@@ -21,6 +21,8 @@ public class FishType
     public Vector3 modelRotation = new Vector3(90f, 0f, 0f);
     public Vector3 modelOffset = Vector3.zero;
     public float modelScale = 28f;
+    [Tooltip("Opcional: material que reemplaza al del modelo")]
+    public Material materialOverride;
     [Tooltip("Opcional: controlador de animación (nado). Si lo pones, se usa en vez del coleteo por código")]
     public RuntimeAnimatorController animatorController;
     [Tooltip("Coleteo hecho por código (si el modelo no trae animación)")]
@@ -52,6 +54,8 @@ public class BirdType
     public Vector3 modelRotation = Vector3.zero;
     public Vector3 modelOffset = Vector3.zero;
     public float modelScale = 1f;
+    [Tooltip("Opcional: material que reemplaza al del modelo")]
+    public Material materialOverride;
     [Tooltip("Opcional: controlador de animación (vuelo). Si lo pones, se desactiva el aleteo por código")]
     public RuntimeAnimatorController animatorController;
 
