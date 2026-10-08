@@ -185,6 +185,7 @@ public class PlayerController_Base : MonoBehaviour
     private bool turboHeld = false;
     private float swimPhase = 0f;
     private float baseFov = 60f;
+    private float smoothFov = 60f;
     private float fovKick = 0f;
     private float recoilPitch = 0f;
     private float recoilShake = 0f;
@@ -221,7 +222,7 @@ public class PlayerController_Base : MonoBehaviour
         if (cameraHolder != null)
         {
             PlayerCamera = cameraHolder.GetComponent<Camera>();
-            if (PlayerCamera != null) baseFov = PlayerCamera.fieldOfView;
+            if (PlayerCamera != null) baseFov = smoothFov = PlayerCamera.fieldOfView;
             cameraOffset = cameraHolder.position - transform.position;
             cameraHolder.SetParent(null);
         }
@@ -706,17 +707,29 @@ public class PlayerController_Base : MonoBehaviour
         pitch -= recoilPitch;
 
         currentRoll = Mathf.Lerp(currentRoll, rollTarget, 1f - Mathf.Exp(-6f * dt));
-        cameraHolder.position = pos;
-        cameraHolder.rotation = Quaternion.Euler(pitch, yaw, currentRoll);
+        Quaternion rot = Quaternion.Euler(pitch, yaw, currentRoll);
 
         // FOV dinámico: se abre con la velocidad de nado, el dash y el turbo
-        if (PlayerCamera != null)
+        fovKick = Mathf.Lerp(fovKick, 0f, 1f - Mathf.Exp(-3f * dt));
+        float targetFov = baseFov + (isInWater ? SwimSpeed01 * swimFovBoost : 0f) + fovKick
+                          + (IsJetting ? 3f : 0f) + (IsTurbo ? turboFovKick : 0f);
+        smoothFov = Mathf.Lerp(smoothFov, targetFov, 1f - Mathf.Exp(-5f * dt));
+        float fov = smoothFov;
+
+        // Cinemática de oleada: se mezcla con la vista normal (la cámara siempre es esta)
+        Vector3 cinePos;
+        Quaternion cineRot;
+        float cineFov, cineWeight;
+        if (WaveCinematic.TryGetPose(out cinePos, out cineRot, out cineFov, out cineWeight))
         {
-            fovKick = Mathf.Lerp(fovKick, 0f, 1f - Mathf.Exp(-3f * dt));
-            float targetFov = baseFov + (isInWater ? SwimSpeed01 * swimFovBoost : 0f) + fovKick
-                              + (IsJetting ? 3f : 0f) + (IsTurbo ? turboFovKick : 0f);
-            PlayerCamera.fieldOfView = Mathf.Lerp(PlayerCamera.fieldOfView, targetFov, 1f - Mathf.Exp(-5f * dt));
+            pos = Vector3.Lerp(pos, cinePos, cineWeight);
+            rot = Quaternion.Slerp(rot, cineRot, cineWeight);
+            fov = Mathf.Lerp(fov, cineFov, cineWeight);
         }
+
+        cameraHolder.position = pos;
+        cameraHolder.rotation = rot;
+        if (PlayerCamera != null) PlayerCamera.fieldOfView = fov;
     }
 
     // ---------------- AGUA ----------------

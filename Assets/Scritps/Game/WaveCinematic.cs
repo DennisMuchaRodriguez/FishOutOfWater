@@ -1,42 +1,67 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 
 // Cinemática de llegada de una oleada (estilo Star Fox: plano por encima del hombro
 // siguiendo a la escuadrilla que llega desde el cielo).
 //
-// Es un objeto independiente con su propia cámara temporal:
-//  - La cámara del jugador nunca se mueve; solo se apaga mientras dura.
-//  - Al destruirse (termine bien, se salte, falle algo o se cambie de escena)
-//    SIEMPRE devuelve la cámara y los controles al jugador.
-//  - Tiene un tope de tiempo real: nunca puede quedarse pegada.
+// NO crea, apaga ni cambia cámaras. Solo calcula cada frame una "pose" (posición,
+// rotación, FOV) y un peso 0..1. La cámara del jugador (PlayerController_Base.LateUpdate)
+// mezcla su vista normal con esa pose según el peso:
+//   peso 0 -> vista normal del jugador     peso 1 -> plano de la cinemática
+// Si este objeto desaparece por cualquier motivo (termina, se salta, se destruye,
+// cambia la escena, hay un error...), en el siguiente frame la cámara vuelve sola a la
+// vista normal: no hay nada que "restaurar" y no se puede quedar trabada.
 public class WaveCinematic : MonoBehaviour
 {
-    public static bool IsPlaying { get; private set; }
+    static WaveCinematic active;
+
+    // True mientras hay una cinemática en curso (el HUD se oculta y el jugador no se mueve).
+    // Si por lo que sea la cinemática deja de actualizarse medio segundo, se da por terminada.
+    public static bool IsPlaying { get { return active != null && Time.unscaledTime - active.lastTick < 0.5f; } }
 
     PlayerController_Base player;
-    Camera playerCam;
-    Camera cam;
     List<BirdAI> birds;
     LakeVolume lake;
     System.Action<bool> letterbox;
 
     float duration;
-    float t;
-    float back = -1f;
-    float realTime;
-    float maxRealTime;
-    Vector3 startPos, shotPos, toFlock, fromPos;
-    Quaternion startRot, fromRot;
-    float startFov, fromFov;
-    bool restored;
+    float t;          // tiempo del plano (no avanza en pausa)
+    float back = -1f; // >= 0: volviendo a la vista del jugador
+    float life;       // tiempo real total (tope de seguridad)
+    float weight;
+    float lastTick;
+    Vector3 shotPos, toFlock, posePos;
+    Quaternion poseRot = Quaternion.identity;
+    float poseFov = 60f;
+    bool finished;
 
-    const float ReturnTime = 0.7f;
+    const float BlendIn = 0.9f;
+    const float BlendOut = 0.7f;
+
+    // Pose que la cámara del jugador debe mezclar con la suya (false = no hay cinemática)
+    public static bool TryGetPose(out Vector3 position, out Quaternion rotation, out float fov, out float blend)
+    {
+        if (!IsPlaying || active.weight <= 0f)
+        {
+            position = Vector3.zero;
+            rotation = Quaternion.identity;
+            fov = 60f;
+            blend = 0f;
+            return false;
+        }
+        position = active.posePos;
+        rotation = active.poseRot;
+        fov = active.poseFov;
+        blend = active.weight;
+        return true;
+    }
 
     public static WaveCinematic Play(PlayerController_Base player, List<BirdAI> birds, LakeVolume lake,
                                      float duration, System.Action<bool> letterbox)
     {
-        if (player == null || player.PlayerCamera == null) return null;
+        if (player == null) return null;
+        if (active != null) Destroy(active.gameObject);
+
         GameObject go = new GameObject("CinematicaOleada");
         WaveCinematic c = go.AddComponent<WaveCinematic>();
         try
@@ -45,7 +70,7 @@ public class WaveCinematic : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            // Si algo falla al empezar, no hay cinemática (y se devuelve todo al jugador)
+            // Si algo falla al empezar, simplemente no hay cinemática
             Debug.LogException(e);
             Destroy(go);
             return null;
@@ -55,42 +80,15 @@ public class WaveCinematic : MonoBehaviour
 
     // Por si el proyecto entra a Play sin recargar el dominio
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { IsPlaying = false; }
+    static void ResetStatics() { active = null; }
 
     void Init(PlayerController_Base p, List<BirdAI> wave, LakeVolume l, float d, System.Action<bool> lb)
     {
         player = p;
-        playerCam = p.PlayerCamera;
         birds = wave;
         lake = l;
         duration = Mathf.Max(0.5f, d);
         letterbox = lb;
-        maxRealTime = duration + ReturnTime + 4f;
-
-        IsPlaying = true;
-        player.SetCinematicLock(true);
-
-        // Cámara propia (copia los ajustes de la del jugador)
-        cam = gameObject.AddComponent<Camera>();
-        cam.CopyFrom(playerCam);
-        cam.depth = playerCam.depth + 1f;
-        try
-        {
-            var src = playerCam.GetUniversalAdditionalCameraData();
-            var dst = cam.GetUniversalAdditionalCameraData();
-            dst.renderPostProcessing = src.renderPostProcessing;
-            dst.antialiasing = src.antialiasing;
-            dst.volumeLayerMask = src.volumeLayerMask;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning("WaveCinematic: no se pudieron copiar los ajustes de URP: " + e.Message);
-        }
-        playerCam.enabled = false;
-
-        startPos = cam.transform.position;
-        startRot = cam.transform.rotation;
-        startFov = cam.fieldOfView;
 
         Vector3 flock = FlockCenter();
         toFlock = flock - player.transform.position;
@@ -100,55 +98,57 @@ public class WaveCinematic : MonoBehaviour
         shotPos = player.transform.position - toFlock * 5f + side * 2.5f + Vector3.up * 3.5f;
         if (lake != null)
             shotPos.y = Mathf.Max(shotPos.y, lake.SurfaceY + 1.5f, lake.GroundHeight(shotPos.x, shotPos.z) + 1.5f);
+        ComputePose(flock);
 
+        lastTick = Time.unscaledTime;
+        active = this;
+        player.SetCinematicLock(true);
         if (letterbox != null) letterbox(true);
     }
 
-    void LateUpdate()
+    void Update()
     {
-        // Tope de seguridad en tiempo real (no cuenta mientras el juego está en pausa)
-        if (!PauseMenu.IsPaused) realTime += Time.unscaledDeltaTime;
-        if (realTime > maxRealTime || player == null || playerCam == null || cam == null)
+        // Tope de seguridad en tiempo real (cuenta aunque el juego esté en pausa)
+        lastTick = Time.unscaledTime;
+        life += Time.unscaledDeltaTime;
+        if (player == null || life > duration + BlendOut + 15f)
         {
             Destroy(gameObject);
             return;
         }
+        if (PauseMenu.IsPaused) return;
 
-        float dt = Time.deltaTime;
-        Transform ct = cam.transform;
+        // Tiempo real: no depende de Time.timeScale
+        float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+        t += dt;
+        ComputePose(FlockCenter());
 
         if (back < 0f)
         {
-            // --- Plano siguiendo a la escuadrilla ---
-            t += dt;
-            Vector3 flock = FlockCenter();
-            float blend = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / 0.9f));
-            Vector3 pos = Vector3.Lerp(startPos, shotPos + toFlock * t * 0.4f, blend);
-            Vector3 lookDir = flock - pos;
-            Quaternion look = lookDir.sqrMagnitude > 0.01f ? Quaternion.LookRotation(lookDir.normalized, Vector3.up) : ct.rotation;
-            ct.SetPositionAndRotation(pos, Quaternion.Slerp(startRot, look, blend));
-            float frameFov = Mathf.Clamp(2f * Mathf.Atan(14f / Mathf.Max(1f, lookDir.magnitude)) * Mathf.Rad2Deg, 22f, 60f);
-            cam.fieldOfView = Mathf.Lerp(startFov, frameFov, blend);
-
+            weight = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / BlendIn));
             bool skip = t > 0.6f && (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0));
             if (t >= duration || skip)
             {
+                // La cámara regresa a la vista del jugador; los controles vuelven al terminar
                 back = 0f;
-                fromPos = ct.position;
-                fromRot = ct.rotation;
-                fromFov = cam.fieldOfView;
+                if (letterbox != null && active == this) letterbox(false);
             }
         }
         else
         {
-            // --- Regreso suave a la vista del jugador (que se sigue actualizando por debajo) ---
             back += dt;
-            float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(back / ReturnTime));
-            ct.SetPositionAndRotation(Vector3.Lerp(fromPos, playerCam.transform.position, k),
-                                      Quaternion.Slerp(fromRot, playerCam.transform.rotation, k));
-            cam.fieldOfView = Mathf.Lerp(fromFov, playerCam.fieldOfView, k);
-            if (back >= ReturnTime) Destroy(gameObject);
+            weight = (1f - Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(back / BlendOut))) * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / BlendIn));
+            if (back >= BlendOut) Destroy(gameObject);
         }
+    }
+
+    void ComputePose(Vector3 flock)
+    {
+        posePos = shotPos + toFlock * t * 0.4f;
+        Vector3 lookDir = flock - posePos;
+        if (lookDir.sqrMagnitude > 0.01f) poseRot = Quaternion.LookRotation(lookDir.normalized, Vector3.up);
+        // Zoom que encuadra a la bandada (más cerrado cuando están lejos)
+        poseFov = Mathf.Clamp(2f * Mathf.Atan(14f / Mathf.Max(1f, lookDir.magnitude)) * Mathf.Rad2Deg, 22f, 60f);
     }
 
     Vector3 FlockCenter()
@@ -157,27 +157,33 @@ public class WaveCinematic : MonoBehaviour
         int n = 0;
         if (birds != null)
         {
-            foreach (BirdAI b in birds)
+            for (int i = 0; i < birds.Count; i++)
             {
+                BirdAI b = birds[i];
                 if (b == null) continue;
                 sum += b.transform.position;
                 n++;
             }
         }
         if (n > 0) return sum / n;
-        return lake != null ? lake.Center + Vector3.up * 20f : transform.position + Vector3.forward * 50f;
+        if (lake != null) return lake.Center + Vector3.up * 20f;
+        return player != null ? player.transform.position + player.transform.forward * 50f + Vector3.up * 20f : Vector3.zero;
     }
 
-    void Restore()
+    // Devuelve los controles y quita las barras (la cámara ya está en la vista normal)
+    void Finish()
     {
-        if (restored) return;
-        restored = true;
-        IsPlaying = false;
-        if (playerCam != null) playerCam.enabled = true;
+        if (finished) return;
+        finished = true;
+        // Si ya empezó otra cinemática, es ella la que manda
+        if (active != null && active != this) return;
         if (player != null) player.SetCinematicLock(false);
         if (letterbox != null) letterbox(false);
     }
 
-    void OnDisable() { Restore(); }
-    void OnDestroy() { Restore(); }
+    void OnDestroy()
+    {
+        if (active == this) active = null;
+        Finish();
+    }
 }

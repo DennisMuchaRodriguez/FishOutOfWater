@@ -482,7 +482,8 @@ public class GameDirector : MonoBehaviour
     }
 
     // ======================= CINEMÁTICA =======================
-    // La cinemática de llegada vive en WaveCinematic.cs (objeto independiente con su propia cámara).
+    // La cinemática de llegada vive en WaveCinematic.cs: no usa cámaras propias, solo le pasa una
+    // pose a la cámara del jugador (PlayerController_Base.LateUpdate), que la mezcla con su vista.
 
     // ======================= MUNICIÓN =======================
 
