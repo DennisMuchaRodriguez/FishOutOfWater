@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AguaLago
+  m_Shader: {fileID: 4800000, guid: d68cea71b41842eab48258c85629d859, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _MaxDepth: 6
+    - _RimPower: 3
+    - _RimStrength: 0.7
+    - _FoamDepth: 0.9
+    - _FoamGlow: 1.3
+    - _WaveHeight: 0.035
+    - _WaveScale: 0.08
+    - _WaveSpeed: 0.22
+    - _NormalStrength: 0.6
+    - _SunSize: 0.975
+    - _Sparkle: 0.4
+    - _RippleSpeed: 3.2
+    - _RippleLife: 2.2
+    - _RippleWidth: 0.35
+    m_Colors:
+    - _ShallowColor: {r: 0.16, g: 0.55, b: 0.95, a: 0.55}
+    - _DeepColor: {r: 0.02, g: 0.07, b: 0.22, a: 0.93}
+    - _UnderColor: {r: 0.22, g: 0.62, b: 1.0, a: 0.55}
+    - _RimColor: {r: 0.3, g: 0.7, b: 1.0, a: 1}
+    - _FoamColor: {r: 0.7, g: 0.93, b: 1.0, a: 1}
+    - _SunColor: {r: 1, g: 1, b: 1, a: 1}
+    - _RippleColor: {r: 0.75, g: 0.96, b: 1, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

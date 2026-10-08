@@ -121,13 +121,11 @@ public class GameDirector : MonoBehaviour
 
         if (lake == null) lake = FindFirstObjectByType<LakeVolume>();
         if (lake == null) lake = gameObject.AddComponent<LakeVolume>();
-        if (player != null) lake.surfaceOffset = player.waterSurfaceOffset;
-        if (lake.waterTrigger == null) lake.waterTrigger = LakeVolume.FindWaterTrigger();
         lake.Recalculate();
 
-        if (lake.waterTrigger == null)
+        if (!lake.IsValid)
         {
-            Debug.LogError("GameDirector: no hay ningún trigger con tag 'Water'. El lago no puede funcionar.");
+            Debug.LogError("GameDirector: no hay agua. Agrega un objeto con el componente LakeWater dentro del hueco del lago.");
             enabled = false;
             return;
         }
@@ -292,6 +290,9 @@ public class GameDirector : MonoBehaviour
                 fish.visual = CreateVisual(type.model, go.transform, type.modelScale, type.modelRotation, type.modelOffset,
                                            type.animatorController, fishLayer);
                 fish.ApplyType(type);
+                WaterInteractor wi = go.AddComponent<WaterInteractor>();
+                wi.size = 0.8f;
+                wi.minSpeed = 1f;
                 fish.Died += OnFishDied;
                 fish.Rescued += OnFishRescued;
                 TotalFish++;
@@ -404,6 +405,9 @@ public class GameDirector : MonoBehaviour
         bird.visual = CreateVisual(type.model, go.transform, type.modelScale, type.modelRotation, type.modelOffset,
                                    type.animatorController, go.layer);
         bird.ApplyType(type);
+        WaterInteractor bw = go.AddComponent<WaterInteractor>();
+        bw.size = 1.5f;
+        bw.wakeMinSpeed = 4f;
         bird.splashPrefab = splashPrefab;
         bird.hitPrefab = birdHitPrefab;
         bird.deathPrefab = birdDeathPrefab;

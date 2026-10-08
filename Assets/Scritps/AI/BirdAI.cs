@@ -72,6 +72,7 @@ public class BirdAI : MonoBehaviour
     public Vector3 catchPointOffset = new Vector3(0f, -1.1f, 0f);
 
     [Header("Efectos")]
+    [Tooltip("(Opcional) Ya no se usa: las salpicaduras las hace el agua (LakeWater)")]
     public GameObject splashPrefab;
     public GameObject hitPrefab;
     public GameObject deathPrefab;
@@ -121,7 +122,6 @@ public class BirdAI : MonoBehaviour
     float groundCacheTimer;
     float sightTimer;
     bool canSeePlayer;
-    bool touchedWater;
 
     // Aleteo procedural (huesos de las alas)
     readonly List<Transform> wingBones = new List<Transform>();
@@ -288,11 +288,7 @@ public class BirdAI : MonoBehaviour
         tree.Tick();
 
         if (!dead) Move(dt);
-        else if (!touchedWater && lake.IsInWater(transform.position))
-        {
-            touchedWater = true;
-            FXFactory.SpawnOneShot(splashPrefab, new Vector3(transform.position.x, lake.SurfaceY, transform.position.z), Quaternion.identity, 1.2f, 3f);
-        }
+
     }
 
     // ======================= CONDICIONES =======================
@@ -562,8 +558,7 @@ public class BirdAI : MonoBehaviour
         stalkTimer = 0f;
         stalkDuration = Random.Range(stalkTime.x, stalkTime.y);
         diveCooldownTimer = Random.Range(diveCooldown.x, diveCooldown.y);
-        if (transform.position.y < lake.SurfaceY + 1f)
-            FXFactory.SpawnOneShot(splashPrefab, new Vector3(transform.position.x, lake.SurfaceY, transform.position.z), Quaternion.identity, 0.7f, 3f);
+        // La salpicadura al tocar el agua la hace WaterInteractor
         // A veces cambia de presa
         if (Random.value < 0.4f) ReleaseTarget();
     }
@@ -576,7 +571,8 @@ public class BirdAI : MonoBehaviour
         CarriedFish = fish;
         carryTimer = carryTime;
         fish.Grab(talons != null ? talons : transform);
-        FXFactory.SpawnOneShot(splashPrefab, new Vector3(transform.position.x, lake.SurfaceY, transform.position.z), Quaternion.identity, 1f, 3f);
+        // Las garras golpean el agua: salpicadura y anillos aunque el cuerpo no se sumerja
+        LakeWater.Splash(new Vector3(fish.transform.position.x, lake.SurfaceY, fish.transform.position.z), 0.7f, false);
         FishCaught?.Invoke(this, fish);
     }
 

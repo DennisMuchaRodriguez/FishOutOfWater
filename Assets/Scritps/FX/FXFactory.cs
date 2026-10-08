@@ -8,6 +8,20 @@ public static class FXFactory
     static Texture2D bubble;
     static Texture2D streak;
     static Texture2D white;
+    static Texture2D ring;
+
+    // Anillo suave (ondas de espuma, retícula)
+    public static Texture2D Ring
+    {
+        get
+        {
+            if (ring == null)
+            {
+                ring = MakeRadial(128, d => Mathf.Clamp01(1f - Mathf.Abs(d - 0.82f) / 0.12f) * Mathf.Clamp01((1f - d) * 8f), "FX_Ring");
+            }
+            return ring;
+        }
+    }
 
     public static Texture2D White
     {
@@ -138,6 +152,20 @@ public static class FXFactory
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", tint);
         if (mat.HasProperty("_Color")) mat.SetColor("_Color", tint);
         mat.name = "FX_" + texture.name;
+        return mat;
+    }
+
+    // Igual que ParticleMaterial pero con transparencia normal (no aditiva):
+    // se ve bien sobre fondos claros (cielo, espuma)
+    public static Material ParticleMaterialAlpha(Material template, Texture texture, Color tint)
+    {
+        Material mat = ParticleMaterial(template, texture, tint);
+        if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 0f);
+        if (mat.HasProperty("_SrcBlend")) mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        if (mat.HasProperty("_DstBlend")) mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        if (mat.HasProperty("_SrcBlendAlpha")) mat.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+        if (mat.HasProperty("_DstBlendAlpha")) mat.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        mat.name = "FX_Alpha_" + texture.name;
         return mat;
     }
 

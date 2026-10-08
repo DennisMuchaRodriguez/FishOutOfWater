@@ -630,16 +630,19 @@ public class HelmetVisorHUD : MonoBehaviour
         altitudeTimer = 0.1f;
 
         Vector3 origin = player.transform.position;
-        RaycastHit[] hits = Physics.RaycastAll(origin + Vector3.up * 0.5f, Vector3.down, 500f, ~0, QueryTriggerInteraction.Collide);
+        RaycastHit[] hits = Physics.RaycastAll(origin + Vector3.up * 0.5f, Vector3.down, 500f, ~0, QueryTriggerInteraction.Ignore);
         float best = 500f;
         foreach (RaycastHit h in hits)
         {
             if (h.collider.transform.IsChildOf(player.transform)) continue;
-            if (h.collider.isTrigger && !h.collider.CompareTag("Water")) continue;
-            // La superficie del agua cuenta como "suelo" para la altitud
-            float dist = h.collider.isTrigger ? origin.y - h.collider.bounds.max.y : h.distance - 0.5f;
+            if (h.collider.attachedRigidbody != null) continue;
+            float dist = h.distance - 0.5f;
             if (dist >= 0f && dist < best) best = dist;
         }
+        // La superficie del agua cuenta como "suelo" para la altitud
+        float surface;
+        if (LakeWater.TryGetSurface(origin, out surface) && origin.y >= surface)
+            best = Mathf.Min(best, origin.y - surface);
         altitudeCache = best;
         return best;
     }

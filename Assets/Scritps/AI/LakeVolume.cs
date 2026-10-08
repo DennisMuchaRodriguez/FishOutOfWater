@@ -1,32 +1,33 @@
 using UnityEngine;
 
 // Describe el lago para las IA: superficie, fondo (terreno) y puntos válidos para nadar.
-// Se basa en el trigger con tag "Water" y en raycasts al terreno, así que si cambias
-// la forma del lago o el terreno, peces y pájaros se adaptan solos.
+// Lee la forma real del agua desde LakeWater (que se adapta al hueco del terreno),
+// así que si cambias el lago o el terreno, peces y pájaros se adaptan solos.
 public class LakeVolume : MonoBehaviour
 {
     public static LakeVolume Instance { get; private set; }
 
-    [Tooltip("Trigger del agua. Si está vacío se busca el collider con tag Water más grande")]
-    public Collider waterTrigger;
-    [Tooltip("Mismo ajuste que 'Water Surface Offset' del jugador")]
-    public float surfaceOffset = 0f;
-    [Tooltip("Margen con los bordes del trigger")]
+    [Tooltip("Agua del lago. Si está vacío se busca la primera LakeWater de la escena")]
+    public LakeWater water;
+    [Tooltip("Distancia mínima a la orilla para elegir puntos de nado")]
     public float edgeMargin = 4f;
     [Tooltip("Profundidad mínima de agua para que una zona cuente como lago")]
     public float minWaterDepth = 1.2f;
 
-    public Bounds Bounds { get { return waterTrigger != null ? waterTrigger.bounds : new Bounds(transform.position, Vector3.one * 100f); } }
-    public float SurfaceY { get { return Bounds.max.y + surfaceOffset; } }
+    public bool IsValid { get { return water != null && water.HasData; } }
+    public Bounds Bounds { get { return IsValid ? water.WaterBounds : new Bounds(transform.position, Vector3.one * 100f); } }
+    public float SurfaceY { get { return water != null ? water.SurfaceY : transform.position.y; } }
 
-    // Centro aproximado del agua (promedio de puntos válidos)
+    // Centro del agua y radio aproximado (para patrullas y cardúmenes)
     public Vector3 Center { get; private set; }
     public float Radius { get; private set; }
+
+    bool computed;
 
     void Awake()
     {
         Instance = this;
-        if (waterTrigger == null) waterTrigger = FindWaterTrigger();
+        if (water == null) water = FindFirstObjectByType<LakeWater>();
     }
 
     void Start()
@@ -34,48 +35,15 @@ public class LakeVolume : MonoBehaviour
         if (!computed) Recalculate();
     }
 
-    bool computed;
-
-    public static Collider FindWaterTrigger()
-    {
-        Collider best = null;
-        float bestSize = 0f;
-        foreach (GameObject go in GameObject.FindGameObjectsWithTag("Water"))
-        {
-            foreach (Collider c in go.GetComponents<Collider>())
-            {
-                if (!c.isTrigger) continue;
-                float size = c.bounds.size.x * c.bounds.size.z;
-                if (size > bestSize) { bestSize = size; best = c; }
-            }
-        }
-        return best;
-    }
-
-    // Vuelve a calcular el centro del agua (llámalo si cambias el terreno en tiempo de ejecución)
+    // Vuelve a leer el agua (llámalo si cambias el terreno o el nivel en tiempo de ejecución)
     public void Recalculate()
     {
         computed = true;
-        if (waterTrigger == null) waterTrigger = FindWaterTrigger();
-        Bounds b = Bounds;
-        Vector3 sum = Vector3.zero;
-        int count = 0;
-        // Muestreo en rejilla para encontrar dónde hay agua de verdad
-        for (int ix = 0; ix < 12; ix++)
-        {
-            for (int iz = 0; iz < 12; iz++)
-            {
-                float x = Mathf.Lerp(b.min.x + edgeMargin, b.max.x - edgeMargin, (ix + 0.5f) / 12f);
-                float z = Mathf.Lerp(b.min.z + edgeMargin, b.max.z - edgeMargin, (iz + 0.5f) / 12f);
-                if (WaterDepthAt(x, z) >= minWaterDepth)
-                {
-                    sum += new Vector3(x, SurfaceY, z);
-                    count++;
-                }
-            }
-        }
-        Center = count > 0 ? sum / count : new Vector3(b.center.x, SurfaceY, b.center.z);
-        Radius = Mathf.Max(10f, Mathf.Min(b.extents.x, b.extents.z) - edgeMargin);
+        if (water == null) water = FindFirstObjectByType<LakeWater>();
+        if (water == null) return;
+        water.EnsureBuilt();
+        Center = water.Centroid;
+        Radius = Mathf.Max(10f, Mathf.Sqrt(water.Area / Mathf.PI) * 0.85f);
     }
 
     // Altura del fondo / terreno (ignora objetos con Rigidbody y triggers)
@@ -89,26 +57,28 @@ public class LakeVolume : MonoBehaviour
             if (h.collider.attachedRigidbody != null) continue;
             if (h.point.y > best) best = h.point.y;
         }
-        if (float.IsNegativeInfinity(best)) best = Bounds.min.y;
-        return Mathf.Max(best, Bounds.min.y);
+        if (float.IsNegativeInfinity(best)) best = water != null ? water.GroundAt(x, z) : SurfaceY - 30f;
+        return best;
     }
 
     public float WaterDepthAt(float x, float z)
     {
-        Bounds b = Bounds;
-        if (x < b.min.x || x > b.max.x || z < b.min.z || z > b.max.z) return 0f;
+        if (!IsValid || !water.IsWaterXZ(x, z)) return 0f;
         return SurfaceY - GroundHeight(x, z);
     }
 
+    // ¿El punto está sobre el agua, a al menos 'margin' metros de la orilla?
     public bool IsInsideXZ(Vector3 p, float margin)
     {
-        Bounds b = Bounds;
-        return p.x > b.min.x + margin && p.x < b.max.x - margin && p.z > b.min.z + margin && p.z < b.max.z - margin;
+        if (!IsValid || !water.IsWaterXZ(p.x, p.z)) return false;
+        if (margin <= 0.01f) return true;
+        return water.IsWaterXZ(p.x + margin, p.z) && water.IsWaterXZ(p.x - margin, p.z)
+            && water.IsWaterXZ(p.x, p.z + margin) && water.IsWaterXZ(p.x, p.z - margin);
     }
 
     public bool IsInWater(Vector3 p)
     {
-        return IsInsideXZ(p, 0f) && p.y < SurfaceY && p.y > Bounds.min.y;
+        return IsInsideXZ(p, 0f) && p.y < SurfaceY && p.y > Bounds.min.y - 1f;
     }
 
     // ¿Puede un pez estar en este punto? (dentro del agua, bajo la superficie y sobre el fondo)
@@ -150,15 +120,14 @@ public class LakeVolume : MonoBehaviour
     {
         if (TryGetSwimPoint(Center, Radius, minDepth, maxDepth, clearance, out point, 25)) return true;
         Bounds b = Bounds;
-        return TryGetSwimPoint(new Vector3(b.center.x, SurfaceY, b.center.z), Mathf.Max(b.extents.x, b.extents.z), minDepth, maxDepth, clearance, out point, 40);
+        return TryGetSwimPoint(new Vector3(b.center.x, SurfaceY, b.center.z), Mathf.Max(b.extents.x, b.extents.z), minDepth, maxDepth, clearance, out point, 60);
     }
 
     void OnDrawGizmosSelected()
     {
-        if (waterTrigger == null) return;
-        Bounds b = Bounds;
+        if (!IsValid) return;
         Gizmos.color = new Color(0f, 0.8f, 1f, 0.5f);
-        Gizmos.DrawWireCube(new Vector3(b.center.x, SurfaceY, b.center.z), new Vector3(b.size.x, 0.05f, b.size.z));
         Gizmos.DrawWireSphere(Center, 1f);
+        Gizmos.DrawWireSphere(new Vector3(Center.x, SurfaceY, Center.z), Radius);
     }
 }

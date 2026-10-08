@@ -125,7 +125,9 @@ public class PlayerController_Base : MonoBehaviour
     private bool hasEnteredWater = false;
     private float waterEntryTime = 0f;
     private float waterEntryVelocity = 0f;
-    private Collider waterCollider;
+    private LakeWater currentWater;
+    [Tooltip("Qué tan abajo del centro del jugador empieza a 'tocar' el agua (m)")]
+    public float waterContactHeight = 0.45f;
 
     [Header("Armadura - NUEVO")]
     public float maxArmor = 100f;
@@ -138,6 +140,7 @@ public class PlayerController_Base : MonoBehaviour
     private bool isGrounded;
     private Quaternion initialModelRotation;
     public ParticleSystem jetpackWaterEffect;
+    [Tooltip("(Ya no se usa: las salpicaduras las hace LakeWater)")]
     public ParticleSystem splashEffect;
     private Vector3 cameraOffset;
 
@@ -225,6 +228,14 @@ public class PlayerController_Base : MonoBehaviour
 
         if (jetpackWaterEffect != null) jetpackWaterEffect.Stop();
 
+        // Salpicaduras y anillos al entrar/salir del agua
+        if (GetComponent<WaterInteractor>() == null)
+        {
+            WaterInteractor wi = gameObject.AddComponent<WaterInteractor>();
+            wi.size = 1.3f;
+            wi.wakeMinSpeed = 4f;
+        }
+
         if (underwaterVolume != null)
         {
             underwaterVolume.weight = 0f;
@@ -273,6 +284,7 @@ public class PlayerController_Base : MonoBehaviour
     void FixedUpdate()
     {
         if (isDead || rb == null || rb.isKinematic) return;
+        UpdateWaterContact();
         bool wantsToFly = !InputLocked && Input.GetKey(KeyCode.Space);
 
         if (isInWater)
@@ -540,17 +552,9 @@ public class PlayerController_Base : MonoBehaviour
 
     void UpdateSubmergedState()
     {
-        if (waterCollider == null)
-        {
-            if (isUnderwater) SetSubmerged(false);
-            return;
-        }
-
-        WaterSurfaceY = GetWaterSurface();
         Vector3 eye = transform.position + Vector3.up * firstPersonOffset.y;
-        Bounds b = waterCollider.bounds;
-        bool insideXZ = eye.x > b.min.x && eye.x < b.max.x && eye.z > b.min.z && eye.z < b.max.z;
-        bool submerged = insideXZ && eye.y < WaterSurfaceY && eye.y > b.min.y;
+        float surface;
+        bool submerged = LakeWater.TryGetSurface(eye, out surface) && eye.y < surface + waterSurfaceOffset;
         if (submerged != isUnderwater) SetSubmerged(submerged);
     }
 
@@ -712,90 +716,69 @@ public class PlayerController_Base : MonoBehaviour
 
     float GetWaterSurface()
     {
-        if (waterCollider != null)
-        {
-            return waterCollider.bounds.max.y + waterSurfaceOffset;
-        }
-        return waterSurfaceOffset;
+        if (currentWater != null) return currentWater.SurfaceY + waterSurfaceOffset;
+        return WaterSurfaceY;
     }
 
-    void OnTriggerEnter(Collider other)
+    // El agua se consulta a LakeWater (se adapta a la forma del hueco del terreno)
+    void UpdateWaterContact()
     {
-        if (other.CompareTag("Water"))
+        Vector3 pos = rb.position;
+        LakeWater water = LakeWater.FindAt(pos);
+        bool nowIn = false;
+        if (water != null)
         {
-            waterCollider = other;
-            WaterSurfaceY = GetWaterSurface();
-            isInWater = true;
-
-            waterEntryVelocity = Mathf.Abs(rb.linearVelocity.y);
-            waterEntryTime = Time.time;
-            hasEnteredWater = true;
-
-            Vector3 newVelocity = rb.linearVelocity;
-            newVelocity.y *= 0.45f;
-            newVelocity.x *= 0.85f;
-            newVelocity.z *= 0.85f;
-            rb.linearVelocity = newVelocity;
-
-            if (waterEntryVelocity > waterEntryThreshold * 0.5f)
-            {
-                SpawnSplash(1f);
-            }
-
-            NotifyWaterState(true);
+            float surface = water.SurfaceY + waterSurfaceOffset;
+            float bottom = pos.y - waterContactHeight;
+            // Pequeña histéresis para no entrar/salir sin parar justo en la superficie
+            nowIn = isInWater ? bottom < surface + 0.1f : bottom < surface;
+            currentWater = water;
         }
+
+        if (nowIn && !isInWater) EnterWater();
+        else if (!nowIn && isInWater) ExitWater();
+        if (isInWater) WaterSurfaceY = GetWaterSurface();
     }
 
-    void OnTriggerExit(Collider other)
+    void EnterWater()
     {
-        if (other.CompareTag("Water") && other == waterCollider)
-        {
-            isInWater = false;
-            hasEnteredWater = false;
+        isInWater = true;
+        WaterSurfaceY = GetWaterSurface();
+        waterEntryVelocity = Mathf.Abs(rb.linearVelocity.y);
+        waterEntryTime = Time.time;
+        hasEnteredWater = true;
 
-            // Salto de delfín: salir con el propulsor da un empujón extra
-            if (rb.linearVelocity.y > 2f)
-            {
-                Vector3 v = rb.linearVelocity;
-                v.y += breachBoost;
-                rb.linearVelocity = v;
-                SpawnSplash(0.8f);
-                OnBreach?.Invoke();
-            }
+        // Frenazo al entrar (la salpicadura la hace WaterInteractor)
+        Vector3 newVelocity = rb.linearVelocity;
+        newVelocity.y *= 0.45f;
+        newVelocity.x *= 0.85f;
+        newVelocity.z *= 0.85f;
+        rb.linearVelocity = newVelocity;
 
-            waterCollider = null;
-            NotifyWaterState(false);
-        }
+        NotifyWaterState(true);
     }
 
-    void OnTriggerStay(Collider other)
+    void ExitWater()
     {
-        if (other.CompareTag("Water") && !isInWater)
+        isInWater = false;
+        hasEnteredWater = false;
+
+        // Salto de delfín: salir con el propulsor da un empujón extra
+        if (rb.linearVelocity.y > 2f)
         {
-            waterCollider = other;
-            isInWater = true;
-            hasEnteredWater = true;
-            waterEntryTime = Time.time;
-            waterEntryVelocity = Mathf.Abs(rb.linearVelocity.y);
-            NotifyWaterState(true);
+            Vector3 v = rb.linearVelocity;
+            v.y += breachBoost;
+            rb.linearVelocity = v;
+            OnBreach?.Invoke();
         }
+
+        NotifyWaterState(false);
     }
 
     void NotifyWaterState(bool inWater)
     {
         PlayerShooting shooting = GetComponent<PlayerShooting>();
         if (shooting != null) shooting.UpdateWaterState(inWater);
-    }
-
-    void SpawnSplash(float scale)
-    {
-        if (splashEffect == null) return;
-        Vector3 p = transform.position;
-        p.y = GetWaterSurface();
-        ParticleSystem fx = Instantiate(splashEffect, p, Quaternion.identity);
-        fx.transform.localScale *= scale;
-        fx.Play(true);
-        Destroy(fx.gameObject, 3f);
     }
 
     // ---------------- DAÑO ----------------
@@ -892,7 +875,7 @@ public class PlayerController_Base : MonoBehaviour
 
     void OnDrawGizmosSelected()
     {
-        if (waterCollider == null) return;
+        if (currentWater == null) return;
         Gizmos.color = Color.cyan;
         Vector3 p = transform.position;
         float y = GetWaterSurface();

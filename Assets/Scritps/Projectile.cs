@@ -7,6 +7,7 @@ public class Projectile : MonoBehaviour
 
     [Header("Efectos - NUEVO")]
     public GameObject impactEffectPrefab;
+    [Tooltip("(Ya no se usa: las salpicaduras las hace LakeWater)")]
     public GameObject waterSplashPrefab;
     [Tooltip("Al entrar al agua el proyectil se frena a este factor")]
     public float waterSlowdown = 0.55f;
@@ -58,6 +59,15 @@ public class Projectile : MonoBehaviour
         {
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         }
+
+        // Salpica y hace anillos al cruzar la superficie
+        WaterInteractor wi = gameObject.AddComponent<WaterInteractor>();
+        wi.size = isCharged ? 0.7f : 0.35f;
+        wi.minSpeed = 1f;
+        wi.wake = false;
+
+        // Si se dispara bajo el agua no cuenta como "entrar"
+        inWater = LakeWater.IsUnderwater(transform.position);
     }
 
     void Update()
@@ -96,15 +106,14 @@ public class Projectile : MonoBehaviour
         Destroy(gameObject);
     }
 
-    void OnTriggerEnter(Collider other)
+    void FixedUpdate()
     {
-        if (inWater || !other.CompareTag("Water")) return;
-        inWater = true;
-
-        // Solo salpica si entra desde arriba (no cuando se dispara bajo el agua)
-        if (transform.position.y < other.bounds.max.y - 0.5f) return;
-
-        FXFactory.SpawnOneShot(waterSplashPrefab, transform.position, Quaternion.identity, isCharged ? 0.8f : 0.4f, 3f);
-        if (rb != null) rb.linearVelocity *= waterSlowdown;
+        // Al entrar al agua desde arriba se frena
+        if (inWater || rb == null) return;
+        if (LakeWater.IsUnderwater(transform.position))
+        {
+            inWater = true;
+            rb.linearVelocity *= waterSlowdown;
+        }
     }
 }
