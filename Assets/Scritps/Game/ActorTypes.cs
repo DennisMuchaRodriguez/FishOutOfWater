@@ -2,9 +2,11 @@ using UnityEngine;
 
 // ============================================================================
 //  APARTADOS PARA TUS MODELOS
-//  Se configuran en el Inspector del objeto "GameDirector":
-//    - "Tipos de peces": un elemento por cada especie de pez del lago.
-//    - "Tipos de aves enemigas": un elemento por cada ave depredadora.
+//  Se usan en dos sitios:
+//    - Archivos de datos (recomendado): Create > Fish Out Of Water > Ave / Pez,
+//      y se juntan en un Nivel (LevelDefinition) que se asigna al GameDirector.
+//    - Las listas "Tipos de peces" / "Tipos de aves enemigas" del GameDirector
+//      (se usan solo si el GameDirector no tiene un Nivel asignado).
 //  Solo arrastra tu modelo (FBX o prefab) al campo "Model" y ajusta rotación /
 //  escala hasta que mire hacia +Z (adelante). Los tipos sin modelo se ignoran.
 // ============================================================================
@@ -80,4 +82,6 @@ public class BirdType
     public float damage = 15f;
     [Tooltip("Distancia a la que te ve y te ataca")]
     public float detectRange = 26f;
+    [Tooltip("Segundos que tarda en comerse un pez atrapado (tiempo que tienes para rescatarlo)")]
+    public float carryTime = 3.5f;
 }

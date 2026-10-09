@@ -49,6 +49,7 @@ public class PlayerController_Base : MonoBehaviour
 
     [Header("Efectos bajo agua - NUEVO")]
     public Volume underwaterVolume;
+    [Tooltip("Rapidez con la que se quita el filtro al sacar la cámara del agua (al meterla es inmediato)")]
     public float underwaterTransitionSpeed = 2f;
     private bool isUnderwater = false;
 
@@ -192,7 +193,6 @@ public class PlayerController_Base : MonoBehaviour
     private float currentRoll = 0f;
     private float modelPitch = 0f;
     private float knockbackEndTime = -10f;
-    private Coroutine waterFxRoutine;
 
     void Start()
     {
@@ -240,6 +240,17 @@ public class PlayerController_Base : MonoBehaviour
         if (underwaterVolume != null)
         {
             underwaterVolume.weight = 0f;
+        }
+
+        // El terreno siempre cuenta como suelo (si "Ground Layer" no lo incluye, nunca se pisa tierra)
+        foreach (Terrain t in Terrain.activeTerrains)
+        {
+            if (t == null) continue;
+            int bit = 1 << t.gameObject.layer;
+            if ((groundLayer.value & bit) != 0) continue;
+            groundLayer.value |= bit;
+            Debug.LogWarning("PlayerController: 'Ground Layer' no incluía la capa del terreno (" +
+                             LayerMask.LayerToName(t.gameObject.layer) + "). Se agregó automáticamente.");
         }
     }
 
@@ -311,7 +322,6 @@ public class PlayerController_Base : MonoBehaviour
             SwimSpeed01 = Mathf.MoveTowards(SwimSpeed01, 0f, Time.fixedDeltaTime * 2f);
         }
 
-        UpdateSubmergedState();
         UpdateModelTilt();
     }
 
@@ -551,12 +561,36 @@ public class PlayerController_Base : MonoBehaviour
         swimPhase += dt * Mathf.Lerp(3f, 13f, Mathf.Clamp01(SwimSpeed01));
     }
 
-    void UpdateSubmergedState()
+    // El filtro submarino depende de dónde está la CÁMARA de verdad (con balanceo, tercera persona
+    // o cinemática), no de la altura de los ojos del jugador. Además la cámara nunca queda
+    // partida por la superficie: media pantalla bajo el agua sin filtro se veía gris.
+    Vector3 ResolveCameraWaterline(Vector3 camPos, float fov)
     {
-        Vector3 eye = transform.position + Vector3.up * firstPersonOffset.y;
         float surface;
-        bool submerged = LakeWater.TryGetSurface(eye, out surface) && eye.y < surface + waterSurfaceOffset;
+        if (!LakeWater.TryGetSurface(camPos, out surface))
+        {
+            if (isUnderwater) SetSubmerged(false);
+            return camPos;
+        }
+        surface += waterSurfaceOffset;
+
+        float near = PlayerCamera != null ? PlayerCamera.nearClipPlane : 0.3f;
+        float gap = near * Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad) * 1.15f + 0.04f;
+        float d = camPos.y - surface;
+        if (Mathf.Abs(d) < gap) camPos.y = surface + (d >= 0f ? gap : -gap);
+
+        bool submerged = camPos.y < surface;
         if (submerged != isUnderwater) SetSubmerged(submerged);
+        return camPos;
+    }
+
+    void UpdateUnderwaterFx(float dt)
+    {
+        if (underwaterVolume == null) return;
+        // Al entrar: inmediato (si no, se ve el fondo sin color). Al salir: un desvanecido corto.
+        underwaterVolume.weight = isUnderwater
+            ? 1f
+            : Mathf.MoveTowards(underwaterVolume.weight, 0f, dt * Mathf.Max(0.5f, underwaterTransitionSpeed) * 4f);
     }
 
     void SetSubmerged(bool value)
@@ -623,12 +657,6 @@ public class PlayerController_Base : MonoBehaviour
     public void SetCinematicLock(bool locked)
     {
         InputLocked = locked;
-        // La cámara de la cinemática está fuera del agua: sin efecto submarino mientras dura
-        if (underwaterVolume != null)
-        {
-            if (waterFxRoutine != null) StopCoroutine(waterFxRoutine);
-            underwaterVolume.weight = locked ? 0f : (isUnderwater ? 1f : 0f);
-        }
         if (rb == null) return;
         if (locked)
         {
@@ -727,9 +755,11 @@ public class PlayerController_Base : MonoBehaviour
             fov = Mathf.Lerp(fov, cineFov, cineWeight);
         }
 
+        pos = ResolveCameraWaterline(pos, fov);
         cameraHolder.position = pos;
         cameraHolder.rotation = rot;
         if (PlayerCamera != null) PlayerCamera.fieldOfView = fov;
+        UpdateUnderwaterFx(dt);
     }
 
     // ---------------- AGUA ----------------
@@ -843,29 +873,8 @@ public class PlayerController_Base : MonoBehaviour
 
     void ActivarEfectoAgua(bool activar)
     {
+        // El peso del Volume lo actualiza UpdateUnderwaterFx cada frame
         isUnderwater = activar;
-
-        if (underwaterVolume != null)
-        {
-            if (waterFxRoutine != null) StopCoroutine(waterFxRoutine);
-            waterFxRoutine = StartCoroutine(TransicionEfectoAgua(activar));
-        }
-    }
-
-    System.Collections.IEnumerator TransicionEfectoAgua(bool activar)
-    {
-        float tiempo = 0f;
-        float pesoInicial = underwaterVolume.weight;
-        float pesoFinal = activar ? 1f : 0f;
-
-        while (tiempo < 1f)
-        {
-            tiempo += Time.deltaTime * underwaterTransitionSpeed;
-            underwaterVolume.weight = Mathf.Lerp(pesoInicial, pesoFinal, tiempo);
-            yield return null;
-        }
-
-        underwaterVolume.weight = pesoFinal;
     }
 
     void Die()

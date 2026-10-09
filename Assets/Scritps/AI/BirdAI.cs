@@ -186,6 +186,7 @@ public class BirdAI : MonoBehaviour
         carrySpeed *= speed;
         damage = type.damage;
         detectRange = type.detectRange;
+        carryTime = Mathf.Max(0.5f, type.carryTime);
         wingBoneNames = type.wingBones;
         talonBoneNames = type.talonBones;
         catchPointOffset = type.catchPointOffset;

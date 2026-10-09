@@ -8,7 +8,8 @@ Los valores "En escena" son los que tiene ahora `SampleScene` (los que no aparec
 2. [Estructura de la escena](#2-estructura-de-la-escena)
 3. [Cómo se genera todo al darle Play](#3-cómo-se-genera-todo-al-darle-play)
 4. [Flujo de la partida (oleadas, victoria y derrota)](#4-flujo-de-la-partida)
-5. [Inspector: GameDirector](#5-inspector-gamedirector) (incluye Tipos de peces, Tipos de aves y Oleadas)
+5. [Inspector: GameDirector](#5-inspector-gamedirector) (incluye Nivel, Tipos de peces, Tipos de aves y Oleadas)
+   - [Archivos de datos: Niveles, Aves y Peces](#archivos-de-datos-niveles-aves-y-peces)
 6. [Inspector: agua (LakeVolume, LakeWater y material del agua)](#6-inspector-agua)
 7. [Inspector: PlayerController_Base (el pez protagonista)](#7-inspector-playercontroller_base)
 8. [Inspector: PlayerShooting y SuitFX](#8-inspector-playershooting-y-suitfx)
@@ -39,6 +40,11 @@ Las versiones anteriores de la cinemática **cambiaban de cámara**: apagaban la
   - Usa tiempo real: no le afecta `Time.timeScale`. En pausa se detiene.
   - Tiene un tope de seguridad de duración + 15 s.
 - Mientras dura: el jugador queda congelado (no se mueve ni dispara), el casco y el HUD se ocultan y aparecen las barras de cine. Los controles vuelven cuando la cámara termina de regresar.
+
+### El filtro bajo el agua
+- El efecto submarino (el `Underwater Volume` y el tinte del casco) se decide **cada frame según dónde está la cámara**, no según la altura de los ojos del jugador. Por eso también funciona en tercera persona y durante la cinemática.
+- Al meter la cámara en el agua el filtro entra de golpe; al sacarla se quita en un instante corto (`Underwater Transition Speed`).
+- La cámara nunca queda partida por la superficie: si quedaría justo en la línea del agua, se coloca unos centímetros arriba o abajo. Antes, con media pantalla bajo el agua y el filtro apagado, se veía el fondo gris.
 
 ### Qué no hacer
 - **No pongas otra cámara activa** en la escena (ni otra "Main Camera"). La que agregaste ("Main Camera ") quedó **desactivada**, porque renderizaba todo dos veces y duplicaba el AudioListener. Puedes borrarla.
@@ -88,14 +94,15 @@ En orden:
    1. Busca al jugador y al `LakeVolume` si no están asignados, y hace `lake.Recalculate()`, que lee la forma del agua.
    2. Si no hay agua válida, muestra un error en la consola y **se apaga** (no habrá peces ni oleadas). Revisa la consola si "no pasa nada".
    3. Si `Disable Preplaced Actors` está activo, desactiva los pájaros viejos (`EnemyBird`) y los objetos con tag Fish que pusiste a mano.
-   4. Agrega `GameHUD`.
-   5. **Genera los peces** (`SpawnFish`):
+   4. **Arma el plan de la partida** (`BuildPlan`): si el campo `Level` tiene un Nivel, toma de ahí los peces, los cardúmenes, el % de pérdida y las oleadas; si no (o si el Nivel está vacío), usa las listas del Inspector.
+   5. Agrega `GameHUD`.
+   6. **Genera los peces** (`SpawnFish`):
       - Crea `Schools` puntos de cardumen dentro del agua.
-      - Por cada tipo de pez **que tenga modelo**, crea `Count` peces, repartidos entre los cardúmenes, a 0.5–1.6 m bajo la superficie.
+      - Por cada tipo de pez del plan, crea su cantidad de peces, repartidos entre los cardúmenes, a 0.5–1.6 m bajo la superficie.
       - A cada pez le pone el modelo con `CreateVisual` y le aplica su tipo (velocidad, aguante, animación).
-   6. **Genera las cápsulas de munición** (`Ammo Pickups` veces):
+   7. **Genera las cápsulas de munición** (`Ammo Pickups` veces):
       - Con probabilidad `Underwater Pickup Chance` aparece bajo el agua (1.2–3 m); si no, flota en la superficie.
-   7. Arranca el **flujo de la partida** (`GameFlow`).
+   8. Arranca el **flujo de la partida** (`GameFlow`).
 
 **`CreateVisual` (cómo se pone tu modelo):**
 1. Crea un hijo vacío llamado `Visual`, con la **rotación**, **posición** (`Model Offset`) y **escala** del tipo.
@@ -111,17 +118,18 @@ Si un tipo **no tiene modelo**, se ignora. Si ningún tipo tiene modelo, se usan
 
 ## 4. Flujo de la partida
 
-`GameFlow` repite esto por cada elemento de la lista **Waves**:
+`GameFlow` repite esto por cada oleada del plan (las **Waves** del Nivel asignado, o la lista **Waves** del GameDirector si no hay Nivel):
 
-1. **Calma**: cuenta atrás de `Delay Before` segundos (en el HUD aparece "EL LAGO ESTÁ EN CALMA"). Los peces nadan en cardumen y los cardúmenes se mueven cada 8–14 s.
+1. **Calma**: cuenta atrás de `Delay Before` segundos (en el HUD aparece el nombre del nivel, o "EL LAGO ESTÁ EN CALMA"). Los peces nadan en cardumen y los cardúmenes se mueven cada 8–14 s.
 2. **Aparecen los pájaros** (`SpawnWave`):
    - Elige una dirección: `Arrival Yaw` en grados, o aleatoria si vale -1.
-   - Coloca `Birds` pájaros en **formación en V** a `Arrival Distance` metros del centro del lago y `Arrival Height` metros de altura.
-   - Cada pájaro usa un tipo de `Bird Types` de la oleada (índices de la lista "Tipos de aves"; vacío = cualquiera con modelo) y su vida es `Health × Health Multiplier`.
+   - Coloca los pájaros de la oleada en **formación en V** a `Arrival Distance` metros del centro del lago y `Arrival Height` metros de altura.
+   - Con Nivel: salen exactamente las aves de su lista **Birds** (tipo y cantidad). Sin Nivel: `Birds` pájaros, cada uno de un tipo de `Bird Types` (índices de la lista "Tipos de aves"; vacío = cualquiera con modelo).
+   - La vida de cada pájaro es `Health × Health Multiplier` de la oleada.
    - Los pájaros vuelan hacia el lago a 14–20 m de altura. Mientras llegan, no cazan.
 3. **Cinemática** (si `Play Arrival Cinematic` está activo y, con `Cinematic Only First Wave`, solo en la primera oleada). El juego espera a que termine.
 4. **Oleada activa**: espera hasta que **todos los pájaros de la partida estén muertos**. Entonces muestra "OLEADA SUPERADA" y pasa a la siguiente.
-5. Al terminar la última oleada: **victoria** ("¡LAGO A SALVO!").
+5. Al terminar la última oleada: **victoria** ("¡LAGO A SALVO!") con **1 a 3 estrellas** según los peces salvados (`Two Stars` / `Three Stars` del Nivel; sin Nivel: 60 % y 90 %).
 
 **Derrota**: si cazan `Max Fish Loss` peces (= `TotalFish × Max Fish Loss Fraction`, redondeado hacia arriba) o si el jugador muere (armadura en 0).
 
@@ -165,7 +173,37 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 | **Player** | — | PlayerBase | El jugador. Si está vacío, lo busca solo |
 | **Lake** | — | LakeVolume (del mismo objeto) | Describe el lago para las IA. Si está vacío, lo busca o lo agrega |
 
-### Tipos de peces (pon aquí tus modelos)
+### Nivel (archivo de datos)
+| Campo | Defecto | En escena | Qué hace |
+|---|---|---|---|
+| **Level** | vacío | Nivel_01 | El nivel que se juega. **Si está asignado, sus peces y oleadas reemplazan a las listas "Tipos de peces", "Tipos de aves" y "Oleadas" de abajo.** Vacío = se usan esas listas |
+
+### Archivos de datos: Niveles, Aves y Peces
+Están en `Assets/Data/`. Se crean con **clic derecho en la carpeta > Create > Fish Out Of Water > Nivel / Ave / Pez** y se editan en el Inspector como cualquier archivo.
+
+| Archivo | Carpeta | Qué contiene |
+|---|---|---|
+| **Ave** (`BirdDefinition`) | `Data/Aves` (ej. Ave_Arcilla) | Un campo **Bird** con los mismos valores que un elemento de "Tipos de aves" (tabla de abajo), más **Carry Time** |
+| **Pez** (`FishDefinition`) | `Data/Peces` (ej. Pez_Naranja, Pez_Dorado, Pez_Rosa) | Un campo **Fish** con los mismos valores que un elemento de "Tipos de peces". Su `Count` solo se usa si el nivel deja la cantidad en 0 |
+| **Nivel** (`LevelDefinition`) | `Data/Niveles` (ej. Nivel_01) | Peces, oleadas y estrellas de un nivel (tabla siguiente) |
+
+**Campos de un Nivel**
+
+| Campo | Defecto | En Nivel_01 | Qué hace |
+|---|---|---|---|
+| **Number** / **Display Name** | 1 / "Nivel 1" | 1 / Nivel 1 | Número y nombre; el nombre sale como título al empezar |
+| **Description** | — | texto | Descripción (para el futuro mapa de niveles) |
+| **Fish** | vacío | Pez_Naranja 6, Pez_Dorado 5, Pez_Rosa 5 | Lista de peces: **Type** (un archivo Pez) y **Count** (cuántos; 0 = usar el Count del pez) |
+| **Schools** | 3 | 3 | Número de cardúmenes |
+| **Max Fish Loss Fraction** | 0.7 | 0.7 | Pierdes si cazan este porcentaje de peces |
+| **Waves** | vacío | 3 oleadas | Lista de oleadas, en orden. Cada una: **Delay Before** (segundos de calma antes), **Birds** (lista de **Type** = un archivo Ave + **Count**) y **Health Multiplier** |
+| **Two Stars** / **Three Stars** | 0.6 / 0.9 | 0.6 / 0.9 | Porcentaje de peces salvados para 2 y 3 estrellas (ganar = al menos 1). Las estrellas salen en la pantalla final |
+
+Nivel_01 reproduce la partida que había en la escena: 16 peces y oleadas de 2, 3 y 4 aves de arcilla (15 s, 12 s y 12 s de calma; la última con ×1.25 de vida).
+
+**Para hacer otro nivel:** duplica `Nivel_01` (Ctrl+D), cámbiale los peces y las oleadas y arrástralo al campo **Level** del GameDirector. Para una ave nueva: duplica `Ave_Arcilla`, cambia el modelo y los valores, y úsala en las oleadas.
+
+### Tipos de peces (solo si no hay Nivel)
 Lista **Fish Types**: un elemento por especie. Cada elemento:
 
 | Campo | Defecto | En escena (los 3 tipos) | Qué hace |
@@ -189,7 +227,7 @@ Lista **Fish Types**: un elemento por especie. Cada elemento:
 | **Schools** | 3 | 3 | Número de cardúmenes. Los peces se reparten entre ellos |
 | **Max Fish Loss Fraction** | 0.7 | 0.7 | Pierdes si cazan este porcentaje de peces (0.7 = 70 %) |
 
-### Tipos de aves enemigas (pon aquí tus modelos)
+### Tipos de aves enemigas (solo si no hay Nivel)
 Lista **Bird Types**: un elemento por ave. Su **índice** (0, 1, 2...) es el que usas en `Waves > Bird Types`.
 
 | Campo | Defecto | En escena ("Ave de arcilla") | Qué hace |
@@ -211,6 +249,7 @@ Lista **Bird Types**: un elemento por ave. Su **índice** (0, 1, 2...) es el que
 | **Speed Multiplier** | 1 | 1 | Multiplica todas sus velocidades (llegada, patrulla, persecución, picada, huida con presa) |
 | **Damage** | 15 | 15 | Armadura que te quita al embestirte |
 | **Detect Range** | 26 | 26 | Distancia a la que te ve y te ataca |
+| **Carry Time** | 3.5 | 3.5 | Segundos que tarda en comerse un pez atrapado (el tiempo que tienes para rescatarlo) |
 
 ### Oleadas
 Lista **Waves**: una entrada por oleada, en orden.
@@ -361,7 +400,7 @@ En **PlayerBase**. "SIN USO" = el campo existe, pero ningún script lo lee.
 |---|---|---|---|
 | **Fall Multiplier** | 2.5 | 2.5 | Gravedad extra al caer (caída más pesada) |
 | **Ground Check Distance** | 0.2 | 0.2 | Largo del rayo hacia abajo para saber si pisas suelo |
-| **Ground Layer** | Nothing | **Water** ⚠️ | Capas que cuentan como suelo. **Debe ser Default** (la capa del terreno); ver sección 11 |
+| **Ground Layer** | Nothing | Water | Capas que cuentan como suelo. La capa del terreno se agrega sola al empezar (sale un aviso en la consola si faltaba) |
 
 ### Efectos de pez
 | Campo | Defecto | En escena | Qué hace |
@@ -377,7 +416,7 @@ En **PlayerBase**. "SIN USO" = el campo existe, pero ningún script lo lee.
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
 | **Underwater Volume** | — | Global Volume (1) | Postproceso que se activa con los ojos bajo el agua |
-| **Underwater Transition Speed** | 2 | 2 | Rapidez de la transición del efecto |
+| **Underwater Transition Speed** | 2 | 2 | Rapidez con la que se quita el efecto al sacar la cámara del agua. Al meterla es inmediato |
 
 ### Energía del Jetpack
 | Campo | Defecto | En escena | Qué hace |
@@ -625,7 +664,7 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
 | Stalk Time | (1.5, 3) | Segundos acechando antes de lanzarse |
 | Max Dive Distance | 22 | Distancia máxima para lanzarse en picada |
 | Catch Radius / Catch Depth | 2.4 / 2 | Alcance y profundidad máxima para atrapar |
-| Carry Time | 3.5 | Segundos hasta comerse el pez (tiempo para rescatarlo) |
+| Carry Time | **por tipo** (3.5) | Segundos hasta comerse el pez (tiempo para rescatarlo) |
 | Dive Cooldown | (2.5, 4.5) | Espera entre picadas |
 | Detect Range | **por tipo** (26) | Distancia a la que te ve |
 | Lose Range | 80 | Si te alejas más, pierde el interés |
@@ -661,12 +700,7 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
 
 ## 11. Cosas a revisar en la escena
 
-1. **PlayerController_Base > Ground Layer está en "Water"**: el terreno está en la capa *Default*, así que el jugador **nunca detecta que pisa suelo**. Efectos:
-   - No frena al soltar las teclas sobre tierra.
-   - No hay balanceo de cámara al caminar.
-   - El modelo se inclina como si cayera.
-
-   👉 Cámbialo a **Default** (o Default + lo que uses como suelo).
+1. **PlayerController_Base > Ground Layer**: en la escena está en "Water", pero ya no importa: al empezar, el código agrega solo la capa del terreno y avisa en la consola. Si quieres quitar el aviso, ponlo en **Default**.
 2. **"Main Camera " duplicada**: quedó desactivada. Bórrala. Solo debe haber una cámara activa (`PlayerCamera`) y un AudioListener.
 3. Campos **SIN USO** (puedes ignorarlos):
    - Vertical Tilt X, Water Entry Threshold, Water Drag, Water Buoyancy, Water Sink Speed, Water Normal Speed y Splash Effect (jugador).

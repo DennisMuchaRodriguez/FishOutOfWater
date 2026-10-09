@@ -451,7 +451,8 @@ public class HelmetVisorHUD : MonoBehaviour
 
     void UpdateGlass(float dt)
     {
-        submergedWeight = Mathf.MoveTowards(submergedWeight, player.IsEyeSubmerged ? 1f : 0f, dt * 2.5f);
+        // Al hundirse el tinte entra casi de golpe (igual que el filtro); al salir se va más despacio
+        submergedWeight = Mathf.MoveTowards(submergedWeight, player.IsEyeSubmerged ? 1f : 0f, dt * (player.IsEyeSubmerged ? 10f : 2.5f));
         float caustic = 0.85f + Mathf.Sin(Time.time * 1.7f) * 0.1f + Mathf.Sin(Time.time * 3.1f) * 0.05f;
         glassTint.color = new Color(waterTint.r, waterTint.g, waterTint.b, submergedWeight * underwaterTintOpacity * caustic);
 

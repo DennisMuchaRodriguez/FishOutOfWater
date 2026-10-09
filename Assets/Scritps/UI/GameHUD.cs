@@ -214,7 +214,7 @@ public class GameHUD : MonoBehaviour
         fishText.color = danger ? Color.Lerp(GameDirector.Danger, Color.white, Mathf.PingPong(Time.unscaledTime * 3f, 0.5f)) : GameDirector.Cyan;
 
         fishBarFill.rectTransform.anchorMax = new Vector2(alive01, 1f);
-        fishBarFill.color = Color.Lerp(GameDirector.Danger, GameDirector.Cyan, Mathf.Clamp01((alive01 - (1f - director.maxFishLossFraction)) / 0.3f));
+        fishBarFill.color = Color.Lerp(GameDirector.Danger, GameDirector.Cyan, Mathf.Clamp01((alive01 - (1f - director.FishLossFraction)) / 0.3f));
         // Línea roja: si los peces bajan de aquí, pierdes
         float limit01 = (float)(total - director.MaxFishLoss) / total;
         fishBarLimit.rectTransform.anchoredPosition = new Vector2((limit01 - 0.5f) * BarWidth, 0f);

@@ -2436,6 +2436,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameDirector
   player: {fileID: 405605802}
   lake: {fileID: 900000204}
+  level: {fileID: 11400000, guid: fc3927f0e2764990a4716d11dc0a82e5, type: 2}
   fishTypes:
   - name: Pez naranja
     model: {fileID: 919132149155446097, guid: e9d030000c0f489d916fea36f690c554, type: 3}
