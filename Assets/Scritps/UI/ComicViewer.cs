@@ -11,10 +11,13 @@ using TMPro;
 public class ComicViewer : MonoBehaviour
 {
     public static bool IsShowing { get; private set; }
+    // Cuadro en el que se cerró: quien escuche Esc lo ignora ese cuadro (si no, Esc cerraría también su pantalla)
+    public static int ClosedFrame { get; private set; }
 
     ComicDefinition comic;
     System.Action onDone;
     int index;
+    int lastAdvanceFrame = -1;
     bool finished;
     float pop;
     float tilt;
@@ -29,7 +32,7 @@ public class ComicViewer : MonoBehaviour
     Image[] dots;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { IsShowing = false; }
+    static void ResetStatics() { IsShowing = false; ClosedFrame = -1; }
 
     public static ComicViewer Show(ComicDefinition comic, System.Action onDone)
     {
@@ -137,7 +140,9 @@ public class ComicViewer : MonoBehaviour
 
     void Next()
     {
-        if (finished) return;
+        // Una sola viñeta por cuadro (Enter puede llegar a la vez por el teclado y por un botón seleccionado)
+        if (finished || Time.frameCount == lastAdvanceFrame) return;
+        lastAdvanceFrame = Time.frameCount;
         if (index + 1 < comic.panels.Count) ShowPanel(index + 1);
         else Finish();
     }
@@ -147,6 +152,7 @@ public class ComicViewer : MonoBehaviour
         if (finished) return;
         finished = true;
         IsShowing = false;
+        ClosedFrame = Time.frameCount;
         System.Action done = onDone;
         onDone = null;
         Destroy(gameObject);

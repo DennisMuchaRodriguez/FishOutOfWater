@@ -363,16 +363,19 @@ public static class MenuUI
     }
 
     // Fila de 3 estrellas (las ganadas en amarillo). Devuelve las imágenes para animarlas
-    public static Image[] Stars(Transform parent, Vector2 anchor, Vector2 pos, float size, int earned, float spacing = 1.1f)
+    // Devuelve el contenedor de cada estrella (estrella + sombra) para poder animarlas juntas
+    public static RectTransform[] Stars(Transform parent, Vector2 anchor, Vector2 pos, float size, int earned, float spacing = 1.1f)
     {
-        Image[] imgs = new Image[3];
+        RectTransform[] holders = new RectTransform[3];
         for (int i = 0; i < 3; i++)
         {
             Vector2 p = pos + new Vector2((i - 1) * size * spacing, i == 1 ? size * 0.12f : 0f);
-            Img("EstrellaSombra" + i, parent, Star, Ink, anchor, p + new Vector2(size * 0.06f, -size * 0.08f), Vector2.one * size * 1.12f);
-            imgs[i] = Img("Estrella" + i, parent, Star, i < earned ? Yellow : new Color(0.35f, 0.42f, 0.5f, 1f), anchor, p, Vector2.one * size);
+            RectTransform h = Rect("Estrella" + i, parent, anchor, p, Vector2.one * size);
+            Img("Sombra", h, Star, Ink, new Vector2(0.5f, 0.5f), new Vector2(size * 0.06f, -size * 0.08f), Vector2.one * size * 1.12f);
+            Img("Relleno", h, Star, i < earned ? Yellow : new Color(0.35f, 0.42f, 0.5f, 1f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.one * size);
+            holders[i] = h;
         }
-        return imgs;
+        return holders;
     }
 
     // Etiqueta pequeña tipo píldora (JEFE, TALLER, PRÓXIMAMENTE...)

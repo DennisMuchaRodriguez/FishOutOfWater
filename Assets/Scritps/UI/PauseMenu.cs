@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 using System.Collections;
 
@@ -74,7 +75,7 @@ public class PauseMenu : MonoBehaviour
             {
                 deathGroup.gameObject.SetActive(true);
                 ShowCursor();
-                deathGroup.GetComponentInChildren<Button>().Select();
+                StartCoroutine(ArmButtons(deathGroup, deathGroup.GetComponentInChildren<Button>()));
             }
             return;
         }
@@ -135,7 +136,7 @@ public class PauseMenu : MonoBehaviour
                      new Vector2(0.5f, 1f), new Vector2(0f, -90f), new Vector2(600f, 80f), victory ? MenuUI.Orange : MenuUI.Red);
 
         int stars = director != null ? director.Stars : 0;
-        Image[] starImgs = MenuUI.Stars(card, new Vector2(0.5f, 1f), new Vector2(0f, -178f), 70f, stars);
+        RectTransform[] starImgs = MenuUI.Stars(card, new Vector2(0.5f, 1f), new Vector2(0f, -178f), 70f, stars);
         StartCoroutine(PopStars(starImgs, stars));
 
         if (director != null)
@@ -168,7 +169,7 @@ public class PauseMenu : MonoBehaviour
         {
             if (GameSession.HasNextLevel)
             {
-                first = MenuUI.ComicButton("SIGUIENTE NIVEL", card, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(380f, 64f), MenuUI.Orange, GameSession.PlayNextLevel, 30f);
+                first = MenuUI.ComicButton("SIGUIENTE NIVEL", card, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(380f, 64f), MenuUI.Orange, PlayNext, 30f);
                 MenuUI.ComicButton("REPETIR", card, new Vector2(0.5f, 0f), new Vector2(-130f, 66f), new Vector2(230f, 54f), MenuUI.Blue, GameSession.ReplayLevel, 22f);
                 MenuUI.ComicButton("MAPA DE NIVELES", card, new Vector2(0.5f, 0f), new Vector2(130f, 66f), new Vector2(230f, 54f), MenuUI.Blue, GameSession.GoToLevelMap, 20f);
             }
@@ -183,9 +184,34 @@ public class PauseMenu : MonoBehaviour
             first = MenuUI.ComicButton("REINTENTAR", card, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(380f, 64f), MenuUI.Orange, GameSession.ReplayLevel, 30f);
             MenuUI.ComicButton("MAPA DE NIVELES", card, new Vector2(0.5f, 0f), new Vector2(0f, 66f), new Vector2(300f, 54f), MenuUI.Blue, GameSession.GoToLevelMap, 22f);
         }
-        first.Select();
-
+        StartCoroutine(ArmButtons(group, first));
         StartCoroutine(PopIn(card));
+    }
+
+    // Siguiente nivel: si tiene cómic de antes y no se ha visto, primero el cómic
+    // (así se ven las presentaciones de los jefes sin pasar por el mapa)
+    void PlayNext()
+    {
+        LevelCatalog catalog = GameSession.Catalog;
+        LevelDefinition next = catalog != null ? catalog.Get(GameSession.LevelIndex + 1) : null;
+        ComicDefinition comic = next != null ? next.comicBefore : null;
+        if (comic != null && !SaveSystem.HasSeen(comic))
+            ComicViewer.Show(comic, () => { SaveSystem.MarkSeen(comic); GameSession.PlayNextLevel(); });
+        else
+            GameSession.PlayNextLevel();
+    }
+
+    // Los botones no responden durante medio segundo: así un clic o tecla que venía
+    // del juego (disparo, propulsor) no pulsa REINTENTAR o SIGUIENTE NIVEL sin querer
+    IEnumerator ArmButtons(RectTransform group, Button first)
+    {
+        CanvasGroup cg = group.GetComponent<CanvasGroup>();
+        if (cg == null) cg = group.gameObject.AddComponent<CanvasGroup>();
+        cg.blocksRaycasts = false;
+        if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
+        yield return new WaitForSecondsRealtime(0.5f);
+        cg.blocksRaycasts = true;
+        if (first != null) first.Select();
     }
 
     IEnumerator PopIn(RectTransform card)
@@ -202,9 +228,9 @@ public class PauseMenu : MonoBehaviour
         card.localScale = Vector3.one;
     }
 
-    IEnumerator PopStars(Image[] stars, int earned)
+    IEnumerator PopStars(RectTransform[] stars, int earned)
     {
-        foreach (Image s in stars) s.rectTransform.localScale = Vector3.zero;
+        foreach (RectTransform s in stars) s.localScale = Vector3.zero;
         yield return new WaitForSecondsRealtime(0.25f);
         for (int i = 0; i < stars.Length; i++)
         {
@@ -215,10 +241,10 @@ public class PauseMenu : MonoBehaviour
                 t += Time.unscaledDeltaTime;
                 float k = Mathf.Clamp01(t / dur);
                 float s = i < earned ? 1f + Mathf.Sin(k * Mathf.PI) * 0.35f : k;
-                stars[i].rectTransform.localScale = Vector3.one * (k < 1f ? Mathf.Max(k, s * k) : 1f);
+                stars[i].localScale = Vector3.one * (k < 1f ? Mathf.Max(k, s * k) : 1f);
                 yield return null;
             }
-            stars[i].rectTransform.localScale = Vector3.one;
+            stars[i].localScale = Vector3.one;
         }
     }
 

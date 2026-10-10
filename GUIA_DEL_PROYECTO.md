@@ -186,7 +186,7 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
    - Solo puedes jugar los niveles **desbloqueados**: al principio solo el 1, y cada victoria desbloquea el siguiente (de uno en uno).
    - Cada nivel muestra su número, sus estrellas, un candado si está bloqueado y las etiquetas **JEFE** y **TALLER**.
    - El nivel que te toca jugar late y tiene un anillo. Al hacer clic en uno, la ficha de la derecha muestra nombre, descripción, estrellas, peces, oleadas y aves, con los botones **JUGAR** y **VER CÓMIC** (si tiene cómic antes).
-4. **Cómic de antes** (`Comic Before`): solo la primera vez que juegas ese nivel. Después se puede ver con "VER CÓMIC".
+4. **Cómic de antes** (`Comic Before`): solo la primera vez que juegas ese nivel, ya sea desde el mapa o con SIGUIENTE NIVEL. Después se puede ver con "VER CÓMIC".
 5. **El lago** (SampleScene) con los datos del nivel elegido.
 6. **Resultado**:
    - Victoria: estrellas animadas, peces a salvo, aves abatidas y peces rescatados. Botones **SIGUIENTE NIVEL**, **REPETIR** y **MAPA**. Si el nivel tiene `Workshop After`, avisa que ahí irá el Taller (todavía no existe).
@@ -194,6 +194,8 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 7. **MAPA** vuelve al menú, directamente a la pantalla del mapa.
 
 **Pausa (Esc)**: CONTINUAR, REINICIAR NIVEL, MAPA DE NIVELES y MENÚ PRINCIPAL.
+
+**Botones con teclado**: Enter o clic. **Espacio no pulsa botones** (se quitó del eje *Submit* en Project Settings > Input Manager, porque es el propulsor). Los botones del resultado y de "TRAJE DESTRUIDO" esperan medio segundo antes de responder, para no pulsarlos sin querer mientras juegas.
 
 **Visor de cómics** (`ComicViewer`): clic, Espacio, Enter o flecha derecha pasan a la siguiente viñeta; Esc o **SALTAR** lo cierran. Una viñeta sin dibujo sale en blanco con el texto "VIÑETA 2 DE 6" para saber dónde va cada dibujo.
 

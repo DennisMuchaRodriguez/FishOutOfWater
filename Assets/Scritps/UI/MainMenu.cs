@@ -522,8 +522,13 @@ public class MainMenu : MonoBehaviour
             if (level.comicBefore != null)
             {
                 ComicDefinition comic = level.comicBefore;
-                MenuUI.ComicButton("VER CÓMIC", infoContent, new Vector2(0.5f, 0f), new Vector2(0f, 40f), new Vector2(230f, 44f), MenuUI.Blue,
-                                   () => ComicViewer.Show(comic, () => SaveSystem.MarkSeen(comic)), 20f);
+                Button comicButton = null;
+                comicButton = MenuUI.ComicButton("VER CÓMIC", infoContent, new Vector2(0.5f, 0f), new Vector2(0f, 40f), new Vector2(230f, 44f), MenuUI.Blue,
+                                   () => ComicViewer.Show(comic, () =>
+                                   {
+                                       SaveSystem.MarkSeen(comic);
+                                       if (comicButton != null) comicButton.Select();   // recupera la navegación con teclado
+                                   }), 20f);
             }
         }
         else
@@ -619,7 +624,19 @@ public class MainMenu : MonoBehaviour
     {
         if (busy || target == current) return;
         if (target == mapScreen) { selectedLevel = -1; RebuildMap(); }
+        if (target == modesScreen) target = RebuildModes();
         StartCoroutine(SwitchTo(target));
+    }
+
+    // La tarjeta de Historia muestra el progreso: se rehace al volver (por si se borró o desbloqueó con F9)
+    CanvasGroup RebuildModes()
+    {
+        int sibling = modesScreen.transform.GetSiblingIndex();
+        Destroy(modesScreen.gameObject);
+        modesScreen = BuildModesScreen();
+        modesScreen.transform.SetSiblingIndex(sibling);
+        Hide(modesScreen);
+        return modesScreen;
     }
 
     IEnumerator SwitchTo(CanvasGroup target)
@@ -733,7 +750,7 @@ public class MainMenu : MonoBehaviour
             }
         }
 
-        if (busy || ComicViewer.IsShowing) return;
+        if (busy || ComicViewer.IsShowing || Time.frameCount == ComicViewer.ClosedFrame) return;
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (current == mapScreen) Go(modesScreen);
