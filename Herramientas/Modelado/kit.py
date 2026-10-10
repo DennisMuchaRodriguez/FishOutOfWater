@@ -1091,7 +1091,7 @@ class Bird:
         return out_png
 
     def assemble(self):
-        """Objetos finales: raíz, Cuerpo, L_wing/Ala_I, R_wing/Ala_D, LeftFoot/RightFoot."""
+        """Objetos finales: raíz, Cuerpo, L_wing y R_wing (mallas de las alas), LeftFoot/RightFoot."""
         body, wl, wr = self._groups
         uvs = self._uvs
         mat = final_material('M_' + self.name, self.png)
@@ -1101,8 +1101,11 @@ class Bird:
         li = 0
         piv = self.wing_pivot
         pivr = piv * V((-1, 1, 1))
-        specs = [('Cuerpo', body, None, (0, 0, 0)), ('Ala_I', wl, 'L_wing', piv), ('Ala_D', wr, 'R_wing', pivr)]
-        for oname, parts, pname, off in specs:
+        # Las alas son mallas hijas directas de la raíz con el origen en el hombro (L_wing / R_wing):
+        # BirdAI gira esos transforms. Una malla dentro de un vacío sale girada 90° del exportador FBX
+        # con bake_space_transform, por eso no se usan vacíos intermedios.
+        specs = [('Cuerpo', body, (0, 0, 0)), ('L_wing', wl, piv), ('R_wing', wr, pivr)]
+        for oname, parts, off in specs:
             if not parts:
                 continue
             ob = mesh_from_parts(oname, parts, offset=off)
@@ -1113,15 +1116,8 @@ class Bird:
             for a in ('kit_a', 'kit_b'):
                 ob.data.attributes.remove(ob.data.attributes[a])
             ob.data.materials.append(mat)
-            if pname:
-                e = bpy.data.objects.new(pname, None)
-                bpy.context.scene.collection.objects.link(e)
-                e.empty_display_size = 0.15
-                e.parent = root
-                e.location = Vector(off)
-                ob.parent = e
-            else:
-                ob.parent = root
+            ob.parent = root
+            ob.location = Vector(off)
             self.objects[oname] = ob
         if self.feet is not None:
             for nm_, p in (('LeftFoot', self.feet), ('RightFoot', self.feet * V((-1, 1, 1)))):
@@ -1134,8 +1130,8 @@ class Bird:
         self.root = root
         self.stats['triangles'] = sum(p.tri_count() for p in body + wl + wr)
         self.stats['triangles_by_object'] = {'Cuerpo': sum(p.tri_count() for p in body),
-                                             'Ala_I': sum(p.tri_count() for p in wl),
-                                             'Ala_D': sum(p.tri_count() for p in wr)}
+                                             'L_wing': sum(p.tri_count() for p in wl),
+                                             'R_wing': sum(p.tri_count() for p in wr)}
         return root
 
     def export(self, out_dir):

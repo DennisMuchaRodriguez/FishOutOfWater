@@ -20,8 +20,10 @@ Salida en `Assets/Models/Aves/<Nombre>/`: `<Nombre>.fbx`, `<Nombre>_BaseColor.pn
 ## Reglas que usa el juego (BirdAI)
 - 1 unidad = 1 m. En Blender el pico mira a **-Y**, arriba es **+Z** y el ala izquierda está en **+X**
   (en Unity queda mirando a +Z).
-- Jerarquía: raíz `<Nombre>` → `Cuerpo` (todo lo que no aletea), `L_wing` → `Ala_I`, `R_wing` → `Ala_D`,
-  y los puntos `LeftFoot` / `RightFoot` (de ahí cuelga el pez atrapado).
+- Jerarquía: raíz `<Nombre>` → `Cuerpo` (todo lo que no aletea), `L_wing` y `R_wing` (las mallas de las alas,
+  con el origen en el hombro) y los puntos `LeftFoot` / `RightFoot` (de ahí cuelga el pez atrapado; en las aves
+  que pescan con el pico están en la punta del pico).
+- No metas mallas dentro de vacíos: el exportador FBX de Blender (con *Apply Transform*) las deja giradas 90°.
 - `BirdAI` aletea girando `L_wing` y `R_wing` sobre el eje de avance, así que el pivote del ala va en el hombro.
 - Un solo material `M_<Nombre>`; el `.meta` del FBX lo reemplaza por el `.mat` del proyecto.
 
