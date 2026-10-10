@@ -21,7 +21,6 @@ public class UI_PlayerStatus : MonoBehaviour
     [Header("Munición")]
     public TextMeshProUGUI ammoText;
     public Image ammoIcon;
-    public Color ammoNormalColor = Color.white;
     public Color ammoEmptyColor = Color.red;
 
     [Header("Configuración de Parpadeo - NUEVO")]
@@ -36,7 +35,6 @@ public class UI_PlayerStatus : MonoBehaviour
     public TextMeshProUGUI armorText;
     public Image crackOverlay;
     public Image redFilter;
-    public Color armorNormalColor = Color.cyan;
     public Color armorLowColor = Color.red;
     public float armorLowThreshold = 25f;
     public float redFilterIntensity = 0.3f;

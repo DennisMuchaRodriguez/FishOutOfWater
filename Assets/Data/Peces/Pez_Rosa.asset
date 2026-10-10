@@ -22,7 +22,6 @@ MonoBehaviour:
     animatorController: {fileID: 9100000, guid: 86300c9b41834b7fa84984a4a3d58daf, type: 2}
     proceduralWiggle: 1
     wiggleAmount: 14
-    count: 5
     colliderRadius: 0.7
     speedMultiplier: 1
     staminaMultiplier: 1

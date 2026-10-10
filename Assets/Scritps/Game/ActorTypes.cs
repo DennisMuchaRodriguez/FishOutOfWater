@@ -2,11 +2,8 @@ using UnityEngine;
 
 // ============================================================================
 //  APARTADOS PARA TUS MODELOS
-//  Se usan en dos sitios:
-//    - Archivos de datos (recomendado): Create > Fish Out Of Water > Ave / Pez,
-//      y se juntan en un Nivel (LevelDefinition) que se asigna al GameDirector.
-//    - Las listas "Tipos de peces" / "Tipos de aves enemigas" del GameDirector
-//      (se usan solo si el GameDirector no tiene un Nivel asignado).
+//  Se editan dentro de los archivos de datos (Create > Fish Out Of Water > Ave / Pez).
+//  Cada Nivel (LevelDefinition) dice qué peces y aves aparecen y cuántos.
 //  Solo arrastra tu modelo (FBX o prefab) al campo "Model" y ajusta rotación /
 //  escala hasta que mire hacia +Z (adelante). Los tipos sin modelo se ignoran.
 // ============================================================================
@@ -30,9 +27,6 @@ public class FishType
     [Tooltip("Coleteo hecho por código (si el modelo no trae animación)")]
     public bool proceduralWiggle = true;
     public float wiggleAmount = 14f;
-
-    [Header("Cantidad en el lago")]
-    public int count = 16;
 
     [Header("Física")]
     public float colliderRadius = 0.7f;

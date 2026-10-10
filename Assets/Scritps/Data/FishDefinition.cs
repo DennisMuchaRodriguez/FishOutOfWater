@@ -6,7 +6,6 @@ using UnityEngine;
 [CreateAssetMenu(menuName = "Fish Out Of Water/Pez", fileName = "Pez_Nuevo", order = 2)]
 public class FishDefinition : ScriptableObject
 {
-    [Tooltip("Modelo, material, animación y comportamiento de este pez. " +
-             "'Count' solo se usa si el nivel deja la cantidad en 0")]
+    [Tooltip("Modelo, material, animación y comportamiento de este pez (la cantidad la pone cada nivel)")]
     public FishType fish = new FishType();
 }

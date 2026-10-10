@@ -8,8 +8,8 @@ Los valores "En escena" son los que tiene ahora `SampleScene` (los que no aparec
 2. [Estructura de la escena](#2-estructura-de-la-escena)
 3. [Cómo se genera todo al darle Play](#3-cómo-se-genera-todo-al-darle-play)
 4. [Flujo de la partida (oleadas, victoria y derrota)](#4-flujo-de-la-partida)
-5. [Inspector: GameDirector](#5-inspector-gamedirector) (incluye Nivel, Tipos de peces, Tipos de aves y Oleadas)
-   - [Archivos de datos: Niveles, Aves y Peces](#archivos-de-datos-niveles-aves-y-peces)
+   - [Menú, mapa de niveles, cómics y progreso](#menú-mapa-de-niveles-cómics-y-progreso)
+5. [Inspector: GameDirector y archivos de datos (Niveles, Aves, Peces, Cómics)](#5-inspector-gamedirector)
 6. [Inspector: agua (LakeVolume, LakeWater y material del agua)](#6-inspector-agua)
 7. [Inspector: PlayerController_Base (el pez protagonista)](#7-inspector-playercontroller_base)
 8. [Inspector: PlayerShooting y SuitFX](#8-inspector-playershooting-y-suitfx)
@@ -54,6 +54,18 @@ Las versiones anteriores de la cinemática **cambiaban de cámara**: apagaban la
 
 ## 2. Estructura de la escena
 
+El juego tiene dos escenas (en Build Settings, en este orden):
+- **MainMenu**: menú principal, elección de modo y mapa de niveles. Tiene una cámara y un objeto con `MainMenu`, que construye toda la interfaz por código.
+- **SampleScene**: el lago donde se juega cada nivel (objetos en la tabla de abajo).
+
+Datos del juego (fuera de las escenas):
+- `Assets/Data/Niveles`: los 20 niveles (Nivel_01 a Nivel_20).
+- `Assets/Data/Aves`: Ave_Arcilla y Jefe_Provisional.
+- `Assets/Data/Peces`: Pez_Naranja, Pez_Dorado y Pez_Rosa.
+- `Assets/Data/Comics`: los cómics de la historia (viñetas en blanco por ahora).
+- `Assets/Resources/LevelCatalog`: la lista ordenada de niveles que lee el mapa.
+- `Assets/Resources/Fonts`: fuentes de la interfaz (Bangers y Lilita One, licencia OFL).
+
 | Objeto (SampleScene) | Componentes propios | Para qué |
 |---|---|---|
 | **PlayerBase** (tag Player, capa Player) | Rigidbody, `PlayerController_Base`, `PlayerShooting`, `SuitFX` | El pez protagonista: movimiento, cámara, disparo y efectos del traje |
@@ -93,8 +105,8 @@ En orden:
 2. **`GameDirector.Start`**:
    1. Busca al jugador y al `LakeVolume` si no están asignados, y hace `lake.Recalculate()`, que lee la forma del agua.
    2. Si no hay agua válida, muestra un error en la consola y **se apaga** (no habrá peces ni oleadas). Revisa la consola si "no pasa nada".
-   3. Si `Disable Preplaced Actors` está activo, desactiva los pájaros viejos (`EnemyBird`) y los objetos con tag Fish que pusiste a mano.
-   4. **Arma el plan de la partida** (`BuildPlan`): si el campo `Level` tiene un Nivel, toma de ahí los peces, los cardúmenes, el % de pérdida y las oleadas; si no (o si el Nivel está vacío), usa las listas del Inspector.
+   3. **Elige el nivel** (`ResolveLevel`): el que elegiste en el mapa del menú. Si diste Play directo en SampleScene, usa `Test Level` (y si está vacío, el primero del catálogo).
+   4. **Arma el plan de la partida** (`BuildPlan`) con los datos del nivel: peces, cardúmenes, % de pérdida y oleadas. Si el nivel no tiene peces u oleadas con aves, muestra un error y no empieza.
    5. Agrega `GameHUD`.
    6. **Genera los peces** (`SpawnFish`):
       - Crea `Schools` puntos de cardumen dentro del agua.
@@ -112,28 +124,28 @@ En orden:
 5. Pone todo en la capa del actor.
 6. Si pusiste `Animator Controller`, lo asigna al Animator del modelo (o le agrega uno) y desactiva el root motion.
 
-Si un tipo **no tiene modelo**, se ignora. Si ningún tipo tiene modelo, se usan cápsulas de prueba.
+Si un pez o un ave **no tiene modelo**, se usa una cápsula de prueba.
 
 ---
 
 ## 4. Flujo de la partida
 
-`GameFlow` repite esto por cada oleada del plan (las **Waves** del Nivel asignado, o la lista **Waves** del GameDirector si no hay Nivel):
+`GameFlow` repite esto por cada oleada del plan (las **Waves** del Nivel que se está jugando):
 
-1. **Calma**: cuenta atrás de `Delay Before` segundos (en el HUD aparece el nombre del nivel, o "EL LAGO ESTÁ EN CALMA"). Los peces nadan en cardumen y los cardúmenes se mueven cada 8–14 s.
+1. **Calma**: cuenta atrás de `Delay Before` segundos (en el HUD aparece "NIVEL n · NOMBRE"). Los peces nadan en cardumen y los cardúmenes se mueven cada 8–14 s.
 2. **Aparecen los pájaros** (`SpawnWave`):
    - Elige una dirección: `Arrival Yaw` en grados, o aleatoria si vale -1.
    - Coloca los pájaros de la oleada en **formación en V** a `Arrival Distance` metros del centro del lago y `Arrival Height` metros de altura.
-   - Con Nivel: salen exactamente las aves de su lista **Birds** (tipo y cantidad). Sin Nivel: `Birds` pájaros, cada uno de un tipo de `Bird Types` (índices de la lista "Tipos de aves"; vacío = cualquiera con modelo).
+   - Salen exactamente las aves de su lista **Birds** (tipo y cantidad).
    - La vida de cada pájaro es `Health × Health Multiplier` de la oleada.
    - Los pájaros vuelan hacia el lago a 14–20 m de altura. Mientras llegan, no cazan.
 3. **Cinemática** (si `Play Arrival Cinematic` está activo y, con `Cinematic Only First Wave`, solo en la primera oleada). El juego espera a que termine.
 4. **Oleada activa**: espera hasta que **todos los pájaros de la partida estén muertos**. Entonces muestra "OLEADA SUPERADA" y pasa a la siguiente.
-5. Al terminar la última oleada: **victoria** ("¡LAGO A SALVO!") con **1 a 3 estrellas** según los peces salvados (`Two Stars` / `Three Stars` del Nivel; sin Nivel: 60 % y 90 %).
+5. Al terminar la última oleada: **victoria** ("¡LAGO A SALVO!") con **1 a 3 estrellas** según los peces salvados (`Two Stars` / `Three Stars` del Nivel). En modo Historia se guardan las estrellas y se desbloquea el nivel siguiente.
 
-**Derrota**: si cazan `Max Fish Loss` peces (= `TotalFish × Max Fish Loss Fraction`, redondeado hacia arriba) o si el jugador muere (armadura en 0).
+**Derrota**: si cazan `TotalFish × Max Fish Loss Fraction` peces (redondeado hacia arriba; la fracción es la del Nivel) o si el jugador muere (armadura en 0).
 
-**Al terminar**: cámara lenta 2 s y luego el menú de fin (`PauseMenu`).
+**Al terminar**: cámara lenta 2 s, el cómic de después (si lo hay y es la primera vez que lo ganas) y la pantalla de resultado (`PauseMenu`).
 
 **Eventos que escucha el HUD**:
 - `Banner`: título grande.
@@ -163,9 +175,43 @@ Cuando atrapan a un pez, este alerta a los peces a `Alarm Radius` metros. Si der
 
 No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 
+### Menú, mapa de niveles, cómics y progreso
+
+**Recorrido completo:**
+1. **Menú principal** (escena MainMenu): JUGAR, CONTROLES y SALIR. El pez flota junto al título.
+2. **Elige modo**:
+   - **HISTORIA** (1 jugador): abre el mapa de niveles. La tarjeta muestra tus estrellas y cuántos niveles completaste.
+   - **SUPERVIVENCIA** y **COOPERATIVO**: bloqueados, con la etiqueta "PRÓXIMAMENTE" (están en el GDD, todavía no existen).
+3. **Mapa de niveles**: 20 nenúfares en zigzag, agrupados en los 4 bloques del GDD.
+   - Solo puedes jugar los niveles **desbloqueados**: al principio solo el 1, y cada victoria desbloquea el siguiente (de uno en uno).
+   - Cada nivel muestra su número, sus estrellas, un candado si está bloqueado y las etiquetas **JEFE** y **TALLER**.
+   - El nivel que te toca jugar late y tiene un anillo. Al hacer clic en uno, la ficha de la derecha muestra nombre, descripción, estrellas, peces, oleadas y aves, con los botones **JUGAR** y **VER CÓMIC** (si tiene cómic antes).
+4. **Cómic de antes** (`Comic Before`): solo la primera vez que juegas ese nivel. Después se puede ver con "VER CÓMIC".
+5. **El lago** (SampleScene) con los datos del nivel elegido.
+6. **Resultado**:
+   - Victoria: estrellas animadas, peces a salvo, aves abatidas y peces rescatados. Botones **SIGUIENTE NIVEL**, **REPETIR** y **MAPA**. Si el nivel tiene `Workshop After`, avisa que ahí irá el Taller (todavía no existe).
+   - Derrota (o traje destruido): **REINTENTAR** y **MAPA DE NIVELES**.
+7. **MAPA** vuelve al menú, directamente a la pantalla del mapa.
+
+**Pausa (Esc)**: CONTINUAR, REINICIAR NIVEL, MAPA DE NIVELES y MENÚ PRINCIPAL.
+
+**Visor de cómics** (`ComicViewer`): clic, Espacio, Enter o flecha derecha pasan a la siguiente viñeta; Esc o **SALTAR** lo cierran. Una viñeta sin dibujo sale en blanco con el texto "VIÑETA 2 DE 6" para saber dónde va cada dibujo.
+
+**Progreso guardado** (`SaveSystem`): se guarda solo en el archivo `progreso.json`, en `Application.persistentDataPath` (en Windows: `C:\Users\<tú>\AppData\LocalLow\<Company>\<Product>`). Guarda:
+- `unlockedLevels`: cuántos niveles están desbloqueados.
+- `stars`: la mejor cantidad de estrellas de cada nivel (nunca baja si repites y sacas menos).
+- `comicsSeen`: los cómics que ya viste (para no repetirlos solos).
+
+**Atajos para probar:**
+- **F9** en el mapa: desbloquea todos los niveles.
+- **BORRAR PROGRESO** (abajo a la izquierda del mapa): pulsa dos veces para confirmar. Deja todo como nuevo.
+- Para probar un nivel sin pasar por el menú: ponlo en **Test Level** del GameDirector y dale Play en SampleScene (no guarda progreso si no está en el catálogo).
+
 ---
 
 ## 5. Inspector: GameDirector
+
+El GameDirector ya **no tiene listas de peces, aves ni oleadas**: todo eso vive en los archivos de datos (más abajo). En el Inspector solo queda lo que es igual para todos los niveles.
 
 ### Referencias
 | Campo | Defecto | En escena | Qué hace |
@@ -173,94 +219,12 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 | **Player** | — | PlayerBase | El jugador. Si está vacío, lo busca solo |
 | **Lake** | — | LakeVolume (del mismo objeto) | Describe el lago para las IA. Si está vacío, lo busca o lo agrega |
 
-### Nivel (archivo de datos)
+### Nivel de prueba
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
-| **Level** | vacío | Nivel_01 | El nivel que se juega. **Si está asignado, sus peces y oleadas reemplazan a las listas "Tipos de peces", "Tipos de aves" y "Oleadas" de abajo.** Vacío = se usan esas listas |
+| **Test Level** | vacío | Nivel_01 | Nivel que se juega al dar Play **directo en SampleScene**. Desde el menú se juega el que elijas en el mapa |
 
-### Archivos de datos: Niveles, Aves y Peces
-Están en `Assets/Data/`. Se crean con **clic derecho en la carpeta > Create > Fish Out Of Water > Nivel / Ave / Pez** y se editan en el Inspector como cualquier archivo.
-
-| Archivo | Carpeta | Qué contiene |
-|---|---|---|
-| **Ave** (`BirdDefinition`) | `Data/Aves` (ej. Ave_Arcilla) | Un campo **Bird** con los mismos valores que un elemento de "Tipos de aves" (tabla de abajo), más **Carry Time** |
-| **Pez** (`FishDefinition`) | `Data/Peces` (ej. Pez_Naranja, Pez_Dorado, Pez_Rosa) | Un campo **Fish** con los mismos valores que un elemento de "Tipos de peces". Su `Count` solo se usa si el nivel deja la cantidad en 0 |
-| **Nivel** (`LevelDefinition`) | `Data/Niveles` (ej. Nivel_01) | Peces, oleadas y estrellas de un nivel (tabla siguiente) |
-
-**Campos de un Nivel**
-
-| Campo | Defecto | En Nivel_01 | Qué hace |
-|---|---|---|---|
-| **Number** / **Display Name** | 1 / "Nivel 1" | 1 / Nivel 1 | Número y nombre; el nombre sale como título al empezar |
-| **Description** | — | texto | Descripción (para el futuro mapa de niveles) |
-| **Fish** | vacío | Pez_Naranja 6, Pez_Dorado 5, Pez_Rosa 5 | Lista de peces: **Type** (un archivo Pez) y **Count** (cuántos; 0 = usar el Count del pez) |
-| **Schools** | 3 | 3 | Número de cardúmenes |
-| **Max Fish Loss Fraction** | 0.7 | 0.7 | Pierdes si cazan este porcentaje de peces |
-| **Waves** | vacío | 3 oleadas | Lista de oleadas, en orden. Cada una: **Delay Before** (segundos de calma antes), **Birds** (lista de **Type** = un archivo Ave + **Count**) y **Health Multiplier** |
-| **Two Stars** / **Three Stars** | 0.6 / 0.9 | 0.6 / 0.9 | Porcentaje de peces salvados para 2 y 3 estrellas (ganar = al menos 1). Las estrellas salen en la pantalla final |
-
-Nivel_01 reproduce la partida que había en la escena: 16 peces y oleadas de 2, 3 y 4 aves de arcilla (15 s, 12 s y 12 s de calma; la última con ×1.25 de vida).
-
-**Para hacer otro nivel:** duplica `Nivel_01` (Ctrl+D), cámbiale los peces y las oleadas y arrástralo al campo **Level** del GameDirector. Para una ave nueva: duplica `Ave_Arcilla`, cambia el modelo y los valores, y úsala en las oleadas.
-
-### Tipos de peces (solo si no hay Nivel)
-Lista **Fish Types**: un elemento por especie. Cada elemento:
-
-| Campo | Defecto | En escena (los 3 tipos) | Qué hace |
-|---|---|---|---|
-| **Name** | "Pez" | Pez naranja / Pez dorado / Pez rosa | Solo para identificarlo y nombrar los objetos |
-| **Model** | — | PezNormal.fbx | Tu modelo (FBX o prefab). Sin modelo, el tipo se ignora |
-| **Model Rotation** | (90, 0, 0) | (90, 0, 0) | Rotación para que la cabeza mire hacia adelante (+Z). (90,0,0): cara hacia abajo; (-90,180,0): cara hacia arriba |
-| **Model Offset** | (0, 0, 0) | (0, 0, -0.18) | Desplaza el modelo para centrarlo en la esfera del pez |
-| **Model Scale** | 28 | 28 | Escala del modelo |
-| **Material Override** | — | PezNormal / PezDorado / PezRosa | Material que reemplaza a todos los del modelo (así cambias el color por especie) |
-| **Animator Controller** | — | PezNado | Animación de nado. Si lo pones, se apaga el coleteo por código y la velocidad de la animación sube cuando huye |
-| **Procedural Wiggle** | ✔ | ✔ | Coleteo por código (solo si no hay Animator Controller) |
-| **Wiggle Amount** | 14 | 14 | Grados del coleteo por código |
-| **Count** | 16 | 6 / 5 / 5 | Cuántos peces de este tipo aparecen |
-| **Collider Radius** | 0.7 | 0.7 | Radio de la esfera del pez (para atraparlo, rescatarlo, etc.) |
-| **Speed Multiplier** | 1 | 1 | Multiplica la velocidad de nado y de huida |
-| **Stamina Multiplier** | 1 | 1 | Multiplica cuánto aguanta escondido en lo profundo |
-
-| Campo | Defecto | En escena | Qué hace |
-|---|---|---|---|
-| **Schools** | 3 | 3 | Número de cardúmenes. Los peces se reparten entre ellos |
-| **Max Fish Loss Fraction** | 0.7 | 0.7 | Pierdes si cazan este porcentaje de peces (0.7 = 70 %) |
-
-### Tipos de aves enemigas (solo si no hay Nivel)
-Lista **Bird Types**: un elemento por ave. Su **índice** (0, 1, 2...) es el que usas en `Waves > Bird Types`.
-
-| Campo | Defecto | En escena ("Ave de arcilla") | Qué hace |
-|---|---|---|---|
-| **Name** | "Ave" | Ave de arcilla | Nombre |
-| **Model** | — | Bird Clay Dedidara.fbx | Tu modelo. Sin modelo, el tipo se ignora |
-| **Model Rotation** | (0, 0, 0) | (0, 0, 0) | Rotación para que el pico mire hacia +Z |
-| **Model Offset** | (0, 0, 0) | (0, 0, 0) | Desplazamiento del modelo |
-| **Model Scale** | 1 | 1 | Escala |
-| **Material Override** | — | vacío | Material que reemplaza al del modelo |
-| **Animator Controller** | — | vacío | Animación de vuelo. Si lo pones, se apaga el aleteo por código |
-| **Procedural Wing Flap** | ✔ | ✔ | Aleteo por código rotando los huesos de las alas |
-| **Wing Bones** | LeftArm,RightArm,L_wing,R_wing | igual | Nombres de los huesos de las alas, separados por coma |
-| **Talon Bones** | LeftFoot,RightFoot | igual | Huesos de las garras: el pez atrapado cuelga entre ellos |
-| **Catch Point Offset** | (0, -1.1, 0) | igual | Dónde cuelga el pez si no encuentra las garras |
-| **Collider Radius** | 1.3 | 1.3 | Radio de la esfera del ave (para que la golpeen tus balas) |
-| **Collider Center** | (0, 0.3, 0) | igual | Centro de esa esfera |
-| **Health** | 40 | 40 | Vida (se multiplica por el `Health Multiplier` de la oleada) |
-| **Speed Multiplier** | 1 | 1 | Multiplica todas sus velocidades (llegada, patrulla, persecución, picada, huida con presa) |
-| **Damage** | 15 | 15 | Armadura que te quita al embestirte |
-| **Detect Range** | 26 | 26 | Distancia a la que te ve y te ataca |
-| **Carry Time** | 3.5 | 3.5 | Segundos que tarda en comerse un pez atrapado (el tiempo que tienes para rescatarlo) |
-
-### Oleadas
-Lista **Waves**: una entrada por oleada, en orden.
-
-| Campo | Defecto | En escena (oleadas 1 / 2 / 3) | Qué hace |
-|---|---|---|---|
-| **Birds** | 2 | 2 / 3 / 4 | Cuántos pájaros llegan |
-| **Delay Before** | 12 | 15 / 12 / 12 | Segundos de calma antes de la oleada |
-| **Bird Types** | vacío | vacío | Índices de "Tipos de aves" permitidos (ej. 0, 2). Vacío = cualquiera |
-| **Health Multiplier** | 1 | 1 / 1 / 1.25 | Multiplica la vida de los pájaros de esta oleada |
-
+### Llegada de las aves
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
 | **Arrival Distance** | 120 | 120 | A cuántos metros del centro del lago aparecen |
@@ -286,15 +250,94 @@ Lista **Waves**: una entrada por oleada, en orden.
 | Campo | En escena | Qué hace |
 |---|---|---|
 | **Fx Material Template** | material de partículas | Base para las partículas de las cápsulas |
-| **Splash Prefab** | prefab de salpicadura | Se pasa a los pájaros (ya no se usa: las salpicaduras las hace el agua) |
 | **Bird Hit Prefab** | prefab | Efecto al dispararle a un pájaro |
 | **Bird Death Prefab** | prefab | Efecto al morir un pájaro |
 | **Pickup Collect Prefab** | prefab | Efecto al recoger una cápsula |
 
-### Opciones
-| Campo | Defecto | En escena | Qué hace |
+### Archivos de datos: Niveles, Aves, Peces y Cómics
+Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel / Ave / Pez / Cómic** y se editan en el Inspector como cualquier archivo.
+
+| Archivo | Carpeta | Qué contiene |
+|---|---|---|
+| **Nivel** (`LevelDefinition`) | `Data/Niveles` | Peces, oleadas, estrellas, marcas del mapa y cómics de un nivel |
+| **Ave** (`BirdDefinition`) | `Data/Aves` | Un campo **Bird** con el modelo y los valores del ave |
+| **Pez** (`FishDefinition`) | `Data/Peces` | Un campo **Fish** con el modelo y los valores del pez |
+| **Cómic** (`ComicDefinition`) | `Data/Comics` | Título y lista de viñetas (dibujo + texto) |
+| **Catálogo de niveles** (`LevelCatalog`) | `Resources/LevelCatalog` | La lista **ordenada** de niveles del modo Historia. El mapa muestra estos, en este orden |
+
+**Campos de un Nivel**
+
+| Campo | Defecto | Qué hace |
+|---|---|---|
+| **Number** / **Display Name** | 1 / "Nivel 1" | Número y nombre (sale en el mapa, al empezar y en el resultado) |
+| **Description** | — | Texto corto de la ficha del mapa |
+| **Fish** | vacío | Lista de peces: **Type** (un archivo Pez) y **Count** (cuántos) |
+| **Schools** | 3 | Número de cardúmenes |
+| **Max Fish Loss Fraction** | 0.7 | Pierdes si cazan este porcentaje de peces |
+| **Waves** | vacío | Oleadas, en orden. Cada una: **Delay Before** (segundos de calma antes), **Birds** (lista de **Type** = un archivo Ave + **Count**) y **Health Multiplier** |
+| **Is Boss Level** | ✘ | Marca el nivel con "JEFE" en el mapa |
+| **Workshop After** | ✘ | Marca "TALLER" en el mapa y avisa al ganar (el Taller todavía no existe) |
+| **Comic Before** | vacío | Cómic que se ve antes de jugarlo la primera vez (se puede repetir con "VER CÓMIC") |
+| **Comic After** | vacío | Cómic que se ve al ganarlo la primera vez |
+| **Two Stars** / **Three Stars** | 0.6 / 0.9 | Porcentaje de peces salvados para 2 y 3 estrellas (ganar = al menos 1) |
+
+**Los 20 niveles** siguen la progresión del GDD:
+
+| Bloque | Niveles | Peces | Pierdes con | Aves por oleada | Jefe | Taller después de |
+|---|---|---|---|---|---|---|
+| 1 · La llegada | 1–5 | 16 | 70 % | de 2/3/4 a 3/4/6 | Nivel 5 | 3 |
+| 2 · La orilla | 6–10 | 20 | 65 % | de 4/5/6 a 5/6/8 | Nivel 10 | 6 y 9 |
+| 3 · Bajo el agua | 11–15 | 24 | 60 % | de 5/7/8 a 6/8/10 | Nivel 15 | 12 y 15 |
+| 4 · Los cielos | 16–20 | 28 | 55 % | de 7/9/10 a 8/10/12 | Nivel 20 | 18 |
+
+- La vida de las aves sube 5 % por nivel, y la tercera oleada lleva 15 % más.
+- Por ahora todas las aves son **Ave_Arcilla**. En los niveles de jefe, la tercera oleada trae un **Jefe_Provisional**: el ave de arcilla al doble de tamaño, con 220 de vida y 25 de daño. Cuando tengas los modelos de cormorán, garza, etc., crea un archivo Ave por cada uno y cámbialos en las oleadas.
+- Cómics (en blanco): origen antes del nivel 1; antes y después de los jefes 5, 10 y 15; antes del jefe 20 y el final después del nivel 20.
+
+**Para agregar un nivel:** duplica uno (Ctrl+D), cámbiale los datos y súmalo al final de la lista **Levels** de `Resources/LevelCatalog`.
+**Para un ave nueva:** duplica `Ave_Arcilla`, cambia el modelo y los valores, y úsala en las oleadas.
+
+**Valores de un Pez** (campo **Fish**; ejemplo: Pez_Naranja)
+
+| Campo | Defecto | En Pez_Naranja | Qué hace |
 |---|---|---|---|
-| **Disable Preplaced Actors** | ✔ | ✔ | Desactiva los pájaros y peces puestos a mano en la escena (los reemplaza el director) |
+| **Name** | "Pez" | Pez naranja | Nombre (para los objetos creados) |
+| **Model** | — | PezNormal.fbx | Tu modelo. Sin modelo se usa una cápsula de prueba |
+| **Model Rotation** | (90, 0, 0) | (90, 0, 0) | Rotación para que la cabeza mire hacia adelante (+Z). (90,0,0): cara hacia abajo; (-90,180,0): cara hacia arriba |
+| **Model Offset** | (0, 0, 0) | (0, 0, -0.18) | Desplaza el modelo para centrarlo en la esfera del pez |
+| **Model Scale** | 28 | 28 | Escala del modelo |
+| **Material Override** | — | PezNormal | Material que reemplaza a todos los del modelo (así cambias el color por especie) |
+| **Animator Controller** | — | PezNado | Animación de nado. Si lo pones, se apaga el coleteo por código y la animación se acelera cuando huye |
+| **Procedural Wiggle** | ✔ | ✔ | Coleteo por código (solo si no hay Animator Controller) |
+| **Wiggle Amount** | 14 | 14 | Grados del coleteo por código |
+| **Collider Radius** | 0.7 | 0.7 | Radio de la esfera del pez (para atraparlo, rescatarlo, etc.) |
+| **Speed Multiplier** | 1 | 1 | Multiplica la velocidad de nado y de huida |
+| **Stamina Multiplier** | 1 | 1 | Multiplica cuánto aguanta escondido en lo profundo |
+
+**Valores de un Ave** (campo **Bird**; ejemplo: Ave_Arcilla)
+
+| Campo | Defecto | En Ave_Arcilla | Qué hace |
+|---|---|---|---|
+| **Name** | "Ave" | Ave de arcilla | Nombre |
+| **Model** | — | Bird Clay Dedidara.fbx | Tu modelo. Sin modelo se usa una cápsula de prueba |
+| **Model Rotation** | (0, 0, 0) | (0, 0, 0) | Rotación para que el pico mire hacia +Z |
+| **Model Offset** | (0, 0, 0) | (0, 0, 0) | Desplazamiento del modelo |
+| **Model Scale** | 1 | 1 | Escala |
+| **Material Override** | — | vacío | Material que reemplaza al del modelo |
+| **Animator Controller** | — | vacío | Animación de vuelo. Si lo pones, se apaga el aleteo por código |
+| **Procedural Wing Flap** | ✔ | ✔ | Aleteo por código rotando los huesos de las alas |
+| **Wing Bones** | LeftArm,RightArm,L_wing,R_wing | igual | Nombres de los huesos de las alas, separados por coma |
+| **Talon Bones** | LeftFoot,RightFoot | igual | Huesos de las garras: el pez atrapado cuelga entre ellos |
+| **Catch Point Offset** | (0, -1.1, 0) | igual | Dónde cuelga el pez si no encuentra las garras |
+| **Collider Radius** | 1.3 | 1.3 | Radio de la esfera del ave (para que la golpeen tus balas) |
+| **Collider Center** | (0, 0.3, 0) | igual | Centro de esa esfera |
+| **Health** | 40 | 40 | Vida (se multiplica por el `Health Multiplier` de la oleada) |
+| **Speed Multiplier** | 1 | 1 | Multiplica todas sus velocidades (llegada, patrulla, persecución, picada, huida con presa) |
+| **Damage** | 15 | 15 | Armadura que te quita al embestirte |
+| **Detect Range** | 26 | 26 | Distancia a la que te ve y te ataca |
+| **Carry Time** | 3.5 | 3.5 | Segundos que tarda en comerse un pez atrapado (el tiempo que tienes para rescatarlo) |
+
+**Campos de un Cómic:** **Title** (sale arriba del visor) y **Panels**, la lista de viñetas. Cada viñeta tiene **Image** (el dibujo; vacío = viñeta en blanco) y **Caption** (texto del recuadro amarillo; vacío = sin recuadro). Para poner tus dibujos: importa la imagen, cambia su *Texture Type* a **Sprite (2D and UI)** y arrástrala a **Image**.
 
 ---
 
@@ -349,7 +392,7 @@ Todo lo que cruza la superficie con `WaterInteractor` (jugador, peces, pájaros 
 
 ## 7. Inspector: PlayerController_Base
 
-En **PlayerBase**. "SIN USO" = el campo existe, pero ningún script lo lee.
+En **PlayerBase**.
 
 **Controles**:
 - **W/S**: avanzar o retroceder. **A/D**: girar.
@@ -407,7 +450,6 @@ En **PlayerBase**. "SIN USO" = el campo existe, pero ningún script lo lee.
 |---|---|---|---|
 | **Tilt Speed** | 5 | 5 | Rapidez con la que el modelo se inclina |
 | **Horizontal Tilt X** | 90 | 90 | Rotación X que deja al modelo acostado |
-| **Vertical Tilt X** | 0 | 0 | SIN USO |
 | **Max Rise Pitch** | 30 | 30 | Máxima inclinación de la nariz hacia arriba al subir |
 | **Max Fall Pitch** | 22 | 22 | Máxima inclinación hacia abajo al caer |
 | **Turn Bank** | 18 | 18 | Inclinación lateral al girar |
@@ -445,11 +487,6 @@ En **PlayerBase**. "SIN USO" = el campo existe, pero ningún script lo lee.
 ### Física en agua
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
-| **Water Entry Threshold** | 5 | 15 | SIN USO |
-| **Water Drag** | 3 | 1 | SIN USO |
-| **Water Buoyancy** | 5 | 5 | SIN USO |
-| **Water Sink Speed** | 2 | 2 | SIN USO |
-| **Water Normal Speed** | 1 | 1 | SIN USO |
 | **Water Surface Offset** | 0 | 0 | Ajuste fino de la altura de la superficie para el jugador |
 
 ### Nado
@@ -491,7 +528,6 @@ En **PlayerBase**. "SIN USO" = el campo existe, pero ningún script lo lee.
 | **Min Damage** / **Max Damage** | 13 / 17 | 13 / 17 | Daño al chocar con objetos con `Enemy Tag` que no son pájaros con IA (los pájaros usan su propio `Damage`) |
 | **Enemy Tag** | Enemy | Enemy | Tag de los enemigos |
 | **Jetpack Water Effect** | — | partículas | Partículas del propulsor (SuitFX las usa si su propio *Jetpack Effect* está vacío) |
-| **Splash Effect** | — | prefab | SIN USO (las salpicaduras las hace LakeWater) |
 
 ### Referencias UI y efectos de impacto
 | Campo | Defecto | En escena | Qué hace |
@@ -531,7 +567,7 @@ La munición **no se recarga con el agua** (salvo que actives `Recharge Ammo In 
 | **Charged Damage Multiplier** | 3 | 3 | Multiplica el daño |
 | **Charged Scale** | 2.2 | 2.2 | Tamaño de la bala cargada |
 | **Charged Speed Multiplier** | 1.25 | 1.25 | Velocidad de la bala cargada |
-| **Muzzle Flash / Impact Effect / Charged Impact / Water Splash Prefab** | — | prefabs | Efectos de disparo e impacto |
+| **Muzzle Flash / Impact Effect / Charged Impact** | — | prefabs | Efectos de disparo e impacto (las salpicaduras en el agua las hace LakeWater) |
 | **Fx Material Template** | — | material de partículas | Base de las partículas del disparo |
 | **Shot Color** | celeste | celeste | Color de los efectos del disparo |
 | **Recoil Kick** / **Charged Recoil Kick** | 1.2 / 4 | 1.2 / 4 | Retroceso de cámara normal y cargado |
@@ -568,7 +604,6 @@ Efectos del traje: burbujas al nadar, partículas de velocidad bajo el agua, das
 | **Ui Panel** | panel del HUD | Panel principal |
 | **Jetpack Slider / Text / Icon / Back Ground / Slider Image** | elementos UI | Barra de combustible |
 | **Ammo Text / Ammo Icon** | elementos UI | Contador de balas |
-| **Ammo Normal Color** | celeste | SIN USO (toma el color que ya tiene el texto) |
 | **Ammo Empty Color** | rojo | Color al quedarte sin balas |
 | **Blink Speed** | 2.5 | Velocidad del parpadeo de aviso |
 | **Low Ammo Threshold** | 5 | Parpadea con estas balas o menos |
@@ -576,7 +611,6 @@ Efectos del traje: burbujas al nadar, partículas de velocidad bajo el agua, das
 | **Armor Slider / Fill Image / Icon / Text** | elementos UI | Barra de armadura |
 | **Crack Overlay** | imagen | Grietas en pantalla con poca armadura |
 | **Red Filter** | imagen | Filtro rojo al recibir daño o morir |
-| **Armor Normal Color** | verde | SIN USO (toma el color de la barra) |
 | **Armor Low Color** | rojo | Color con poca armadura |
 | **Armor Low Threshold** | 25 | Armadura baja por debajo de este valor |
 | **Red Filter Intensity** | 0.3 | Intensidad del filtro rojo |
@@ -608,9 +642,10 @@ Construye el marco, el cristal, la retícula y los textos por código. **Durante
 | **Boot Duration** | 1.4 | 1.4 | Duración de la animación de encendido del casco |
 
 ### PauseMenu (en UiManager)
+Construye por código la pausa, la pantalla de "TRAJE DESTRUIDO" y la de resultado (ver [Menú, mapa de niveles, cómics y progreso](#menú-mapa-de-niveles-cómics-y-progreso)). Los nombres de las escenas están en `GameSession` (`MainMenu` y `SampleScene`).
+
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
-| **Main Menu Scene** | MainMenu | MainMenu | Escena del menú principal |
 | **Player** | — | PlayerBase | Para detectar la muerte |
 | **Pause Key** | Escape | Escape | Tecla de pausa |
 | **Death Screen Delay** | 1.5 | 1.5 | Segundos antes de mostrar "TRAJE DESTRUIDO" |
@@ -623,17 +658,27 @@ Muestra los objetivos (oleada, depredadores, peces a salvo), los mensajes, las f
 | **Low Ammo For Arrow** | 8 | Con estas balas o menos, muestra la flecha a la cápsula más cercana |
 
 ### MainMenu (escena MainMenu)
-| Campo | Defecto | Qué hace |
-|---|---|---|
-| **Game Scene Name** | SampleScene | Escena que carga "Jugar" (debe estar en Build Settings) |
-| **Title** / **Subtitle** | FISH OUT OF WATER / UN PEZ. UN TRAJE. NADA DE AGUA. | Textos del menú |
+Construye todo por código: el fondo del lago (degradado, rayos de luz, algas, rocas y burbujas), el pez flotando y las pantallas Título, Modos, Mapa y Controles. Los niveles los lee de `Resources/LevelCatalog`.
+
+| Campo | Defecto | En escena | Qué hace |
+|---|---|---|---|
+| **Hero Model** | — | PESCAO.fbx | Modelo que flota junto al título (vacío = sin modelo) |
+| **Hero Animator** | — | Fish.controller | Animación del modelo |
+| **Hero Height** | 3.2 | 3.2 | Tamaño del modelo en pantalla |
+| **Title Line 1** / **Title Line 2** | FISH OUT / OF WATER | igual | Las dos líneas del título |
+| **Subtitle** | UN PEZ. UN TRAJE. NADA DE AGUA. | igual | Texto bajo el título |
+
+Estilo: fuentes **Bangers** (títulos) y **Lilita One** (textos), en `Resources/Fonts` (licencia OFL en `LICENCIAS.txt`); paneles de cómic con contorno grueso y sombra, y colores del lago (naranja del pez, azules del agua, amarillo de las viñetas). Todo eso está en `MenuUI`, que también usan la pausa, el resultado y el visor de cómics.
+
+### ComicViewer (se crea solo)
+No tiene campos: lo abren el mapa (cómic de antes) y el resultado (cómic de después). Los cómics se editan en `Data/Comics` (ver [Campos de un Cómic](#archivos-de-datos-niveles-aves-peces-y-cómics)).
 
 ---
 
 ## 10. Componentes creados por código
 
 Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector durante el juego se pierde.** Para ajustarlos de forma permanente:
-- Usa los **Tipos de peces / aves** del GameDirector (lo marcado como "por tipo").
+- Cambia el archivo **Pez** o **Ave** en `Assets/Data` (lo marcado como "por tipo").
 - O cambia el valor por defecto en el script.
 
 ### FishAI (cada pez)
@@ -676,7 +721,7 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
 | Player Hidden Depth | 1.5 | Más hondo que esto bajo el agua, no te ve |
 | Visual / Procedural Flap / Wing y Talon Bone Names / Catch Point Offset | **por tipo** | Modelo, aleteo y garras |
 | Flap Speed / Flap Angle | 7 / 28 | Aleteo por código |
-| Splash / Hit / Death Prefab | del GameDirector | Efectos |
+| Hit / Death Prefab | del GameDirector | Efectos |
 
 ### Otros
 - **Damageable** (cada pájaro): `Max Health` = Health del tipo × multiplicador de la oleada. `Destroy On Death` = ✘ (la muerte la maneja BirdAI).
@@ -693,7 +738,6 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
   - `Damage` 10 (lo ajusta el disparo).
   - `Life Time` 3 s.
   - `Impact Effect Prefab`.
-  - `Water Splash Prefab`: SIN USO.
   - `Water Slowdown` 0.55: freno al entrar al agua.
 
 ---
@@ -702,9 +746,8 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
 
 1. **PlayerController_Base > Ground Layer**: en la escena está en "Water", pero ya no importa: al empezar, el código agrega solo la capa del terreno y avisa en la consola. Si quieres quitar el aviso, ponlo en **Default**.
 2. **"Main Camera " duplicada**: quedó desactivada. Bórrala. Solo debe haber una cámara activa (`PlayerCamera`) y un AudioListener.
-3. Campos **SIN USO** (puedes ignorarlos):
-   - Vertical Tilt X, Water Entry Threshold, Water Drag, Water Buoyancy, Water Sink Speed, Water Normal Speed y Splash Effect (jugador).
-   - Ammo Normal Color y Armor Normal Color (UI_PlayerStatus).
-   - Splash Prefab (pájaros) y Water Splash Prefab (bala).
-4. Si al darle Play **no aparecen peces ni pájaros**, mira la consola. Lo más común es "GameDirector: no hay agua...": revisa que Lago_Agua esté dentro del hueco y pulsa *Reconstruir agua*.
-5. Si un modelo de pez sale diminuto o de lado: revisa que `Fish_Swim.fbx` tenga **Preserve Hierarchy** activado (pestaña Model).
+3. **Build Settings**: tienen que estar `MainMenu` (primera) y `SampleScene`. Si falta una, los botones JUGAR, MAPA o MENÚ PRINCIPAL no podrán cargarla.
+4. Se borraron los campos que ningún script usaba (inclinación vertical, física vieja del agua y salpicaduras del jugador, colores "normales" de la UI, salpicadura de pájaros y balas) y los scripts viejos `EnemyBird` y `EnemyCollision`. Si la consola avisa de un *missing script* en algún objeto o prefab, quítale ese componente vacío.
+5. `Assets/Niveles/Nivel_1` (tu archivo anterior) no se usa: los niveles del juego son los de `Assets/Data/Niveles`. Puedes borrarlo cuando quieras.
+6. Si al darle Play **no aparecen peces ni pájaros**, mira la consola. Lo más común es "GameDirector: no hay agua...": revisa que Lago_Agua esté dentro del hueco y pulsa *Reconstruir agua*.
+7. Si un modelo de pez sale diminuto o de lado: revisa que `Fish_Swim.fbx` tenga **Preserve Hierarchy** activado (pestaña Model).

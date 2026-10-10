@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Un nivel del modo Historia guardado como archivo de datos.
-// Crear: clic derecho en la carpeta > Create > Fish Out Of Water > Nivel.
-// Para jugarlo, arrástralo al campo "Level" del GameDirector.
+// Crear: clic derecho en la carpeta > Create > Fish Out Of Water > Nivel,
+// y agregarlo a Assets/Resources/LevelCatalog (la lista ordenada del mapa de niveles).
 [CreateAssetMenu(menuName = "Fish Out Of Water/Nivel", fileName = "Nivel_00", order = 0)]
 public class LevelDefinition : ScriptableObject
 {
@@ -22,6 +22,18 @@ public class LevelDefinition : ScriptableObject
     [Header("Oleadas (en orden)")]
     public List<WaveDefinition> waves = new List<WaveDefinition>();
 
+    [Header("Mapa de niveles")]
+    [Tooltip("Marca el nivel como nivel de jefe en el mapa (calavera)")]
+    public bool isBossLevel;
+    [Tooltip("Después de ganarlo se visita el Taller para mejorar el traje (llave en el mapa)")]
+    public bool workshopAfter;
+
+    [Header("Historia (viñetas de cómic)")]
+    [Tooltip("Se ve antes de jugar el nivel la primera vez (se puede repetir desde el mapa)")]
+    public ComicDefinition comicBefore;
+    [Tooltip("Se ve al ganar el nivel la primera vez")]
+    public ComicDefinition comicAfter;
+
     [Header("Estrellas (porcentaje de peces salvados)")]
     [Range(0f, 1f)] public float twoStars = 0.6f;
     [Range(0f, 1f)] public float threeStars = 0.9f;
@@ -39,8 +51,8 @@ public class LevelDefinition : ScriptableObject
 public class FishSpawn
 {
     public FishDefinition type;
-    [Tooltip("Cuántos peces de este tipo. 0 = usar el 'Count' del tipo")]
-    [Min(0)] public int count = 0;
+    [Tooltip("Cuántos peces de este tipo")]
+    [Min(1)] public int count = 5;
 }
 
 [System.Serializable]

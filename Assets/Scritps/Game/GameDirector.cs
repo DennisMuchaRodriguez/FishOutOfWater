@@ -1,16 +1,18 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
-// Mecánica principal:
+// Mecánica principal de un nivel:
 //  - Peces nadando en cardúmenes por el lago.
 //  - Oleadas de pájaros que llegan desde el cielo (con cinemática) a cazarlos.
 //  - Cápsulas de munición repartidas por el lago.
-//  - GANAS si eliminas a todos los pájaros de todas las oleadas.
-//  - PIERDES si mueres o si cazan el 70% de los peces (configurable).
+//  - GANAS si eliminas a todos los pájaros de todas las oleadas (1 a 3 estrellas).
+//  - PIERDES si mueres o si cazan demasiados peces.
 //
-// Los modelos de peces y aves se configuran en "Tipos de peces" y
-// "Tipos de aves enemigas" (ver ActorTypes.cs).
+// TODO el contenido del nivel (peces, aves, oleadas, % de pérdida, cómics) sale del
+// archivo de datos del Nivel (LevelDefinition). Desde el menú se juega el nivel elegido
+// en el mapa; si das Play directo en esta escena se usa "Test Level".
 public class GameDirector : MonoBehaviour
 {
     public static GameDirector Instance { get; private set; }
@@ -18,43 +20,16 @@ public class GameDirector : MonoBehaviour
 
     public enum GameState { Calm, WaveIncoming, WaveActive, Intermission, Victory, Defeat }
 
-    [System.Serializable]
-    public class Wave
-    {
-        public int birds = 2;
-        [Tooltip("Segundos de calma antes de esta oleada")]
-        public float delayBefore = 12f;
-        [Tooltip("Índices de 'Tipos de aves enemigas' que pueden salir en esta oleada. Vacío = cualquiera")]
-        public int[] birdTypes = new int[0];
-        [Tooltip("Multiplica la vida de las aves de esta oleada")]
-        public float healthMultiplier = 1f;
-    }
-
     [Header("Referencias")]
     public PlayerController_Base player;
     public LakeVolume lake;
 
-    [Header("Nivel (archivo de datos)")]
-    [Tooltip("Si asignas un Nivel (Create > Fish Out Of Water > Nivel), sus peces y oleadas " +
-             "reemplazan a las listas 'Tipos de peces', 'Tipos de aves' y 'Oleadas' de abajo")]
-    public LevelDefinition level;
+    [Header("Nivel de prueba")]
+    [Tooltip("Nivel que se juega al dar Play directo en esta escena. " +
+             "Si entras desde el menú se usa el nivel elegido en el mapa")]
+    [FormerlySerializedAs("level")]
+    public LevelDefinition testLevel;
 
-    [Header("Tipos de peces (solo si no hay Nivel)")]
-    public List<FishType> fishTypes = new List<FishType> { new FishType { name = "Pez común" } };
-    public int schools = 3;
-    [Tooltip("Pierdes si cazan este porcentaje de peces")]
-    [Range(0.1f, 1f)] public float maxFishLossFraction = 0.7f;
-
-    [Header("Tipos de aves enemigas (solo si no hay Nivel)")]
-    public List<BirdType> birdTypes = new List<BirdType> { new BirdType { name = "Ave depredadora" } };
-
-    [Header("Oleadas (solo si no hay Nivel)")]
-    public List<Wave> waves = new List<Wave>
-    {
-        new Wave { birds = 2, delayBefore = 15f },
-        new Wave { birds = 3, delayBefore = 12f },
-        new Wave { birds = 4, delayBefore = 12f, healthMultiplier = 1.25f },
-    };
     [Header("Llegada de las aves")]
     public float arrivalDistance = 120f;
     public float arrivalHeight = 45f;
@@ -75,29 +50,26 @@ public class GameDirector : MonoBehaviour
 
     [Header("Efectos")]
     public Material fxMaterialTemplate;
-    public GameObject splashPrefab;
     public GameObject birdHitPrefab;
     public GameObject birdDeathPrefab;
     public GameObject pickupCollectPrefab;
 
-    [Header("Opciones")]
-    [Tooltip("Desactiva los pájaros/peces colocados a mano en la escena (los reemplaza el director)")]
-    public bool disablePreplacedActors = true;
-
     // ---- Estado ----
     public GameState State { get; private set; }
     public int CurrentWave { get; private set; }
-    public int TotalWaves { get { return plan != null ? plan.Count : waves.Count; } }
+    public int TotalWaves { get { return plan != null ? plan.Count : 0; } }
     public int TotalFish { get; private set; }
     public int FishLost { get; private set; }
     public int FishAlive { get { return TotalFish - FishLost; } }
     public int MaxFishLoss { get { return Mathf.Max(1, Mathf.CeilToInt(TotalFish * FishLossFraction)); } }
-    // Nivel que se está jugando (null si se usan las listas del Inspector)
-    public LevelDefinition ActiveLevel { get { return usingLevel ? level : null; } }
+    // Nivel que se está jugando y su número (1, 2, 3...)
+    public LevelDefinition Level { get; private set; }
+    public int LevelNumber { get { return GameSession.LevelIndex >= 0 ? GameSession.LevelIndex + 1 : (Level != null ? Level.number : 1); } }
     // Estrellas al ganar (1–3)
     public int Stars { get; private set; }
-    // Porcentaje de peces cazados con el que se pierde (del Nivel o del Inspector)
-    public float FishLossFraction { get { return usingLevel ? level.maxFishLossFraction : maxFishLossFraction; } }
+    // Porcentaje de peces cazados con el que se pierde
+    public float FishLossFraction { get { return Level != null ? Level.maxFishLossFraction : 0.7f; } }
+    public int FishRescued { get; private set; }
     public int BirdsKilled { get; private set; }
     public float Countdown { get; private set; }
     public IReadOnlyList<AmmoPickup> Pickups { get { return pickups; } }
@@ -118,7 +90,7 @@ public class GameDirector : MonoBehaviour
     // Cinemática en curso
     WaveCinematic cinematic;
 
-    // ---- Plan de la partida (sale del Nivel o de las listas del Inspector) ----
+    // ---- Plan de la partida (sale del Nivel) ----
     class RuntimeWave
     {
         public float delay;
@@ -135,7 +107,6 @@ public class GameDirector : MonoBehaviour
     List<RuntimeWave> plan;
     readonly List<FishPlan> fishPlan = new List<FishPlan>();
     int schoolCount = 3;
-    bool usingLevel;
 
     void Awake()
     {
@@ -157,9 +128,11 @@ public class GameDirector : MonoBehaviour
             return;
         }
 
-        if (disablePreplacedActors) DisablePreplaced();
-
-        BuildPlan();
+        if (!ResolveLevel() || !BuildPlan())
+        {
+            enabled = false;
+            return;
+        }
 
         if (GetComponent<GameHUD>() == null) gameObject.AddComponent<GameHUD>();
 
@@ -192,7 +165,7 @@ public class GameDirector : MonoBehaviour
     {
         State = GameState.Calm;
         yield return null;
-        string calmTitle = usingLevel && !string.IsNullOrEmpty(level.displayName) ? level.displayName.ToUpper() : "EL LAGO ESTÁ EN CALMA";
+        string calmTitle = "NIVEL " + LevelNumber + (string.IsNullOrEmpty(Level.displayName) ? "" : "  ·  " + Level.displayName.ToUpper());
         Banner?.Invoke(calmTitle, "Protege a los peces  //  Recoge cápsulas de munición en el agua", Cyan);
 
         for (int i = 0; i < plan.Count; i++)
@@ -271,18 +244,20 @@ public class GameDirector : MonoBehaviour
         State = victory ? GameState.Victory : GameState.Defeat;
 
         float saved = TotalFish > 0 ? (float)FishAlive / TotalFish : 0f;
-        Stars = !victory ? 0 : usingLevel ? level.StarsFor(saved) : (saved >= 0.9f ? 3 : saved >= 0.6f ? 2 : 1);
-        // (texto en vez de símbolos de estrella: la fuente del HUD podría no tenerlos)
-        string stars = "ESTRELLAS " + Stars + "/3";
+        Stars = victory ? Level.StarsFor(saved) : 0;
+
+        // Progreso del modo Historia: guarda estrellas y desbloquea el siguiente nivel
+        if (victory && GameSession.CurrentMode == GameSession.Mode.Historia && GameSession.LevelIndex >= 0)
+            SaveSystem.RecordVictory(GameSession.LevelIndex, Stars);
 
         string title = victory ? "¡LAGO A SALVO!" : "LOS PECES FUERON CAZADOS";
         string sub = victory
-            ? stars + "   Salvaste " + FishAlive + " de " + TotalFish + " peces  //  Depredadores abatidos: " + BirdsKilled
+            ? "Salvaste " + FishAlive + " de " + TotalFish + " peces  //  Depredadores abatidos: " + BirdsKilled
             : "Cazaron " + FishLost + " de " + TotalFish + " peces";
         Banner?.Invoke(title, sub, victory ? Cyan : Danger);
 
         PauseMenu menu = FindFirstObjectByType<PauseMenu>();
-        if (menu != null) menu.ShowEndScreen(victory, title, sub);
+        if (menu != null) menu.ShowEndScreen(victory);
     }
 
     public int AliveBirds()
@@ -299,67 +274,57 @@ public class GameDirector : MonoBehaviour
 
     // ======================= PLAN =======================
 
-    // Convierte el Nivel (o las listas del Inspector) en la lista de peces y oleadas de esta partida
-    void BuildPlan()
+    // Elige el nivel: el del mapa (menú) o, si se dio Play directo en la escena, el de prueba
+    bool ResolveLevel()
     {
-        usingLevel = false;
-        if (level != null)
+        LevelCatalog catalog = GameSession.Catalog;
+        Level = GameSession.CurrentLevel;
+        if (Level == null)
         {
-            usingLevel = true;
-            BuildFromLevel();
-            if (fishPlan.Count == 0 || plan.Count == 0)
-            {
-                Debug.LogWarning("GameDirector: el nivel '" + level.name + "' no tiene peces u oleadas válidos " +
-                                 "(¿faltan tipos o cantidades?). Se usan las listas del Inspector.");
-                usingLevel = false;
-            }
+            Level = testLevel;
+            if (Level == null && catalog != null) Level = catalog.Get(0);
+            GameSession.CurrentMode = GameSession.Mode.Historia;
+            GameSession.LevelIndex = catalog != null ? catalog.IndexOf(Level) : -1;
         }
-        if (!usingLevel) BuildFromInspector();
-
-        if (plan.Count == 0) Debug.LogError("GameDirector: no hay oleadas configuradas.");
+        if (Level == null)
+        {
+            Debug.LogError("GameDirector: no hay nivel para jugar. Asigna 'Test Level' o revisa Assets/Resources/LevelCatalog.");
+            return false;
+        }
+        return true;
     }
 
-    void BuildFromLevel()
+    // Convierte el Nivel en la lista de peces y oleadas de esta partida
+    bool BuildPlan()
     {
         fishPlan.Clear();
-        foreach (FishSpawn f in level.fish)
+        foreach (FishSpawn f in Level.fish)
         {
-            if (f == null || f.type == null || f.type.fish == null) continue;
-            int count = f.count > 0 ? f.count : f.type.fish.count;
-            if (count > 0) fishPlan.Add(new FishPlan { type = f.type.fish, count = count });
+            if (f == null || f.type == null || f.type.fish == null || f.count <= 0) continue;
+            fishPlan.Add(new FishPlan { type = f.type.fish, count = f.count });
         }
-        schoolCount = Mathf.Max(1, level.schools);
+        schoolCount = Mathf.Max(1, Level.schools);
 
         plan = new List<RuntimeWave>();
-        foreach (WaveDefinition w in level.waves)
+        foreach (WaveDefinition w in Level.waves)
         {
             if (w == null) continue;
             RuntimeWave rw = new RuntimeWave { delay = w.delayBefore, healthMultiplier = w.healthMultiplier };
-            foreach (BirdSpawn b in w.birds)
+            foreach (BirdSpawn bs in w.birds)
             {
-                if (b == null || b.type == null || b.type.bird == null) continue;
-                for (int i = 0; i < b.count; i++) rw.birds.Add(b.type.bird);
+                if (bs == null || bs.type == null || bs.type.bird == null) continue;
+                for (int i = 0; i < bs.count; i++) rw.birds.Add(bs.type.bird);
             }
             if (rw.birds.Count > 0) plan.Add(rw);
         }
-    }
 
-    void BuildFromInspector()
-    {
-        fishPlan.Clear();
-        foreach (FishType t in UsableTypes(fishTypes, x => x.model != null))
-            if (t.count > 0) fishPlan.Add(new FishPlan { type = t, count = t.count });
-        if (fishPlan.Count == 0) fishPlan.Add(new FishPlan { type = new FishType(), count = 16 });
-        schoolCount = Mathf.Max(1, schools);
-
-        plan = new List<RuntimeWave>();
-        foreach (Wave w in waves)
+        if (fishPlan.Count == 0 || plan.Count == 0)
         {
-            if (w == null) continue;
-            RuntimeWave rw = new RuntimeWave { delay = w.delayBefore, healthMultiplier = w.healthMultiplier };
-            for (int i = 0; i < w.birds; i++) rw.birds.Add(PickBirdType(w));
-            if (rw.birds.Count > 0) plan.Add(rw);
+            Debug.LogError("GameDirector: el nivel '" + Level.name + "' no tiene peces u oleadas con aves. " +
+                           "Revisa sus listas Fish y Waves (cada entrada necesita Type y Count).");
+            return false;
         }
+        return true;
     }
 
     // ======================= PECES =======================
@@ -409,17 +374,6 @@ public class GameDirector : MonoBehaviour
         }
     }
 
-    // Devuelve los tipos que tienen modelo; si ninguno tiene, devuelve todos (se usan cápsulas de prueba)
-    static List<T> UsableTypes<T>(List<T> all, System.Predicate<T> hasModel)
-    {
-        List<T> result = new List<T>();
-        if (all == null) return result;
-        foreach (T t in all) if (t != null && hasModel(t)) result.Add(t);
-        if (result.Count == 0)
-            foreach (T t in all) if (t != null) result.Add(t);
-        return result;
-    }
-
     void UpdateSchoolAnchors()
     {
         // Los cardúmenes se desplazan lentamente por el lago
@@ -442,6 +396,7 @@ public class GameDirector : MonoBehaviour
 
     void OnFishRescued(FishAI fish)
     {
+        FishRescued++;
         Toast?.Invoke("¡PEZ RESCATADO!", Cyan);
     }
 
@@ -474,26 +429,6 @@ public class GameDirector : MonoBehaviour
         return list;
     }
 
-    BirdType PickBirdType(Wave wave)
-    {
-        List<BirdType> usable = UsableTypes(birdTypes, t => t.model != null);
-        if (usable.Count == 0) return new BirdType();
-
-        // Filtra por los índices permitidos en esta oleada
-        if (wave.birdTypes != null && wave.birdTypes.Length > 0)
-        {
-            List<BirdType> allowed = new List<BirdType>();
-            foreach (int idx in wave.birdTypes)
-            {
-                if (idx < 0 || idx >= birdTypes.Count) continue;
-                BirdType t = birdTypes[idx];
-                if (t != null && usable.Contains(t)) allowed.Add(t);
-            }
-            if (allowed.Count > 0) usable = allowed;
-        }
-        return usable[Random.Range(0, usable.Count)];
-    }
-
     BirdAI CreateBird(string name, Vector3 position, BirdType type, int healthValue)
     {
         GameObject go = new GameObject(name);
@@ -517,7 +452,6 @@ public class GameDirector : MonoBehaviour
         WaterInteractor bw = go.AddComponent<WaterInteractor>();
         bw.size = 1.5f;
         bw.wakeMinSpeed = 4f;
-        bird.splashPrefab = splashPrefab;
         bird.hitPrefab = birdHitPrefab;
         bird.deathPrefab = birdDeathPrefab;
         bird.Died += OnBirdDied;
@@ -618,20 +552,5 @@ public class GameDirector : MonoBehaviour
     {
         yield return new WaitForSeconds(pickupRespawnTime);
         if (!ended) SpawnPickup();
-    }
-
-    // ======================= ESCENA =======================
-
-    void DisablePreplaced()
-    {
-        foreach (EnemyBird old in FindObjectsByType<EnemyBird>(FindObjectsSortMode.None))
-            old.gameObject.SetActive(false);
-
-        foreach (GameObject go in GameObject.FindGameObjectsWithTag("Fish"))
-        {
-            if (go.GetComponentInParent<FishAI>() != null) continue;
-            if (go.GetComponentInParent<PlayerController_Base>() != null) continue;
-            go.SetActive(false);
-        }
     }
 }

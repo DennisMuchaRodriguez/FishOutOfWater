@@ -72,8 +72,6 @@ public class BirdAI : MonoBehaviour
     public Vector3 catchPointOffset = new Vector3(0f, -1.1f, 0f);
 
     [Header("Efectos")]
-    [Tooltip("(Opcional) Ya no se usa: las salpicaduras las hace el agua (LakeWater)")]
-    public GameObject splashPrefab;
     public GameObject hitPrefab;
     public GameObject deathPrefab;
 

@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Nivel_01
   m_EditorClassIdentifier: Assembly-CSharp::LevelDefinition
   number: 1
-  displayName: Nivel 1
-  description: Las primeras aves llegan al lago. Igual que la partida actual de la escena.
+  displayName: "Sombras en el cielo"
+  description: "Las primeras aves llegan al lago. Aprende a proteger al cardumen."
   fish:
   - type: {fileID: 11400000, guid: ec036fa557a443eaa27e1a65665f1eea, type: 2}
     count: 6
@@ -29,16 +29,20 @@ MonoBehaviour:
     birds:
     - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
       count: 2
-    healthMultiplier: 1
+    healthMultiplier: 1.0
   - delayBefore: 12
     birds:
     - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
       count: 3
-    healthMultiplier: 1
+    healthMultiplier: 1.0
   - delayBefore: 12
     birds:
     - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
       count: 4
-    healthMultiplier: 1.25
+    healthMultiplier: 1.15
+  isBossLevel: 0
+  workshopAfter: 0
+  comicBefore: {fileID: 11400000, guid: c3c1b92a811c4cd6aac2f2cc8c4a3a1f, type: 2}
+  comicAfter: {fileID: 0}
   twoStars: 0.6
   threeStars: 0.9

@@ -255,8 +255,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e506b66b81ed4a5b8b744c36ce2085f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MainMenu
-  gameSceneName: SampleScene
-  title: FISH OUT OF WATER
+  heroModel: {fileID: 919132149155446097, guid: 38e677a9009a90e48af36e492d9cec7f, type: 3}
+  heroAnimator: {fileID: 9100000, guid: 1ed1666f52eead844ae172156d5a9e2d, type: 2}
+  heroHeight: 3.2
+  titleLine1: FISH OUT
+  titleLine2: OF WATER
   subtitle: UN PEZ. UN TRAJE. NADA DE AGUA.
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

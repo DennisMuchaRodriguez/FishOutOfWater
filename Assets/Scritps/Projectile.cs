@@ -7,8 +7,6 @@ public class Projectile : MonoBehaviour
 
     [Header("Efectos - NUEVO")]
     public GameObject impactEffectPrefab;
-    [Tooltip("(Ya no se usa: las salpicaduras las hace LakeWater)")]
-    public GameObject waterSplashPrefab;
     [Tooltip("Al entrar al agua el proyectil se frena a este factor")]
     public float waterSlowdown = 0.55f;
 
@@ -21,13 +19,12 @@ public class Projectile : MonoBehaviour
     private Vector3 baseScale;
 
     // Lo llama PlayerShooting justo después de instanciar
-    public void Setup(PlayerShooting shooter, int dmg, GameObject impactPrefab, GameObject splashPrefab,
+    public void Setup(PlayerShooting shooter, int dmg, GameObject impactPrefab,
                       Color shotColor, Material trailMaterial, bool charged)
     {
         owner = shooter;
         damage = dmg;
         if (impactPrefab != null) impactEffectPrefab = impactPrefab;
-        if (splashPrefab != null) waterSplashPrefab = splashPrefab;
         color = shotColor;
         isCharged = charged;
 

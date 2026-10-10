@@ -41,7 +41,6 @@ public class PlayerShooting : MonoBehaviour
     public GameObject muzzleFlashPrefab;
     public GameObject impactEffectPrefab;
     public GameObject chargedImpactPrefab;
-    public GameObject waterSplashPrefab;
     [Tooltip("Material de partículas usado como plantilla (ej. WaterJek)")]
     public Material fxMaterialTemplate;
     public Color shotColor = new Color(0.35f, 0.9f, 1f, 1f);
@@ -257,7 +256,7 @@ public class PlayerShooting : MonoBehaviour
         if (proj != null)
         {
             int dmg = charged ? Mathf.RoundToInt(proj.damage * chargedDamageMultiplier) : proj.damage;
-            proj.Setup(this, dmg, charged ? chargedImpactPrefab : impactEffectPrefab, waterSplashPrefab,
+            proj.Setup(this, dmg, charged ? chargedImpactPrefab : impactEffectPrefab,
                        shotColor, trailMaterial, charged);
         }
 

@@ -38,8 +38,6 @@ public class PlayerController_Base : MonoBehaviour
     public float tiltSpeed = 5f;
     [Tooltip("Rotación X que deja al modelo acostado (horizontal)")]
     public float horizontalTiltX = 90f;
-    [Tooltip("(Sin uso) antes ponía al pez vertical al subir")]
-    public float verticalTiltX = 0f;
     [Tooltip("Máxima inclinación de la nariz hacia arriba al subir")]
     public float maxRisePitch = 30f;
     [Tooltip("Máxima inclinación de la nariz hacia abajo al caer")]
@@ -85,12 +83,7 @@ public class PlayerController_Base : MonoBehaviour
     public float turboFovKick = 14f;
 
     [Header("Física en Agua - NUEVO")]
-    public float waterEntryThreshold = 5f;
-    public float waterDrag = 3f;
-    public float waterBuoyancy = 5f;
-    public float waterSinkSpeed = 2f;
-    public float waterNormalSpeed = 1f;
-    [Tooltip("Ajuste fino de la altura de la superficie (se calcula con el trigger de agua)")]
+    [Tooltip("Ajuste fino de la altura de la superficie del agua para el jugador")]
     public float waterSurfaceOffset = 0f;
 
     [Header("Nado - NUEVO")]
@@ -141,8 +134,6 @@ public class PlayerController_Base : MonoBehaviour
     private bool isGrounded;
     private Quaternion initialModelRotation;
     public ParticleSystem jetpackWaterEffect;
-    [Tooltip("(Ya no se usa: las salpicaduras las hace LakeWater)")]
-    public ParticleSystem splashEffect;
     private Vector3 cameraOffset;
 
     [Header("Referencias UI")]
