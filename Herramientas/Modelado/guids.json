@@ -1,0 +1,294 @@
+{
+ "birds": {
+  "Ave_Gaviota": {
+   "display": "Gaviota",
+   "folder": "Assets/Models/Aves/Ave_Gaviota",
+   "fbx": "cb4da0501f5644399362b04669bfcbaa",
+   "png": "2665f30373ab47a291224777f37d5616",
+   "mat": "4b1ec5fc1db1493bbdbeaba59b7c37ca",
+   "folder_meta": "86d0639eea7045d69ab4a4b2fb81e33f"
+  },
+  "Ave_MartinPescador": {
+   "display": "Martín pescador",
+   "folder": "Assets/Models/Aves/Ave_MartinPescador",
+   "fbx": "92751d68f8a64786afc336e2f0fddab1",
+   "png": "bdfe46be4b804782a393007d21fab83b",
+   "mat": "b77cfcf32fbc4c368dc428165aa90158",
+   "folder_meta": "6e8a713bcac2403daa001972765a2c2c"
+  },
+  "Ave_Charran": {
+   "display": "Charrán",
+   "folder": "Assets/Models/Aves/Ave_Charran",
+   "fbx": "9aa9017b10534c61bf4466191f27f23e",
+   "png": "a70bc5da3e874c96b46a84eaf9d3e0f7",
+   "mat": "9292e120e9934ff6956e26f33bff9427",
+   "folder_meta": "e1f0fdc997b04ab5abd9402d340356bc"
+  },
+  "Ave_Garza": {
+   "display": "Garza real",
+   "folder": "Assets/Models/Aves/Ave_Garza",
+   "fbx": "43b5648668724a758472d87bb9d01ed5",
+   "png": "5a1da16142c04d91822eec3ccb653980",
+   "mat": "1129bf788541401dae69c44a0c03d29d",
+   "folder_meta": "4f108218938a4d59928197047cbaa68d"
+  },
+  "Ave_Cormoran": {
+   "display": "Cormorán",
+   "folder": "Assets/Models/Aves/Ave_Cormoran",
+   "fbx": "23b5dafeb57c4c3da522ffdd3e94143b",
+   "png": "31d24a32407c4b4daf771db67572423a",
+   "mat": "a0ddf9c0d37c457abef1a5b21f4120a3",
+   "folder_meta": "d6e5ced707dc4bea83297932d2f06e98"
+  },
+  "Ave_Serreta": {
+   "display": "Serreta",
+   "folder": "Assets/Models/Aves/Ave_Serreta",
+   "fbx": "92ee4a602c674718b4b0fde5670efa31",
+   "png": "d4189a78f38840cba41403b8706bd5e7",
+   "mat": "89f8ade5c52d4b38961b0e9aa9631ea1",
+   "folder_meta": "1764f842e284428ca8eef79672a49b31"
+  },
+  "Ave_Pelicano": {
+   "display": "Pelícano",
+   "folder": "Assets/Models/Aves/Ave_Pelicano",
+   "fbx": "45f89b30ad6645eb96439a5df94a3c4a",
+   "png": "c898eb96e4414f9fa04b30e91a4c3fab",
+   "mat": "f0ce45bbc8174b7894b3f6eb8115d9cc",
+   "folder_meta": "d65b5003fcc94a3695dc9300aea9ca6c"
+  },
+  "Ave_AguilaPescadora": {
+   "display": "Águila pescadora",
+   "folder": "Assets/Models/Aves/Ave_AguilaPescadora",
+   "fbx": "31b678d6bee243ea8e8c68e8f7a90710",
+   "png": "6ded0d066e1e4a7da92c15f95e297fa7",
+   "mat": "33a84162fd1a4d6eabdc2f82f40b8984",
+   "folder_meta": "c5b5fdb0854f4ae5b730f5980811dd8f"
+  },
+  "Jefe_GarzaGris": {
+   "display": "La Garza Gris Gigante",
+   "folder": "Assets/Models/Aves/Jefe_GarzaGris",
+   "fbx": "8a66b45d78734d3db5f8e9bfef9c48ed",
+   "png": "6117f7ce1771488787d0b9de37ca5a26",
+   "mat": "46390616413e41809a02afb7ce0c921e",
+   "folder_meta": "4d0c3fa2539d4518b33a69c3f8f079bf"
+  },
+  "Jefe_PelicanoSaco": {
+   "display": "El Pelícano Saco Sin Fondo",
+   "folder": "Assets/Models/Aves/Jefe_PelicanoSaco",
+   "fbx": "3622085bccd34a5db0268711a276abea",
+   "png": "57d63982db064ad1aacf0908113eb7d9",
+   "mat": "309b083fd2fa49e8af41a891a66785be",
+   "folder_meta": "6c8bfa016fcf48b5a2c201bfddc1562b"
+  },
+  "Jefe_CormoranRey": {
+   "display": "El Cormorán Rey",
+   "folder": "Assets/Models/Aves/Jefe_CormoranRey",
+   "fbx": "d823fb58202f4de29ae928f9380a9ab1",
+   "png": "91f0b8c18d4d403d80dd43e178c578cc",
+   "mat": "57829722430544a9bbc76861d39e9e0d",
+   "folder_meta": "6af1521e75de4877a03ec21ec1252f85"
+  },
+  "Jefe_ReinaAguila": {
+   "display": "La Reina Águila Marina",
+   "folder": "Assets/Models/Aves/Jefe_ReinaAguila",
+   "fbx": "8ae83fe5dcdf4537ab1443956c0ae725",
+   "png": "e8667452e79346638df34a5e5b2a7773",
+   "mat": "554cdafa738247a0899aee9684a2c273",
+   "folder_meta": "2474561cb3914bcb9eba36a296405556"
+  }
+ },
+ "characters": {
+  "Mecanico_Bagre": {
+   "display": "Mecánico (bagre con lentes)",
+   "folder": "Assets/Models/Taller/Mecanico_Bagre",
+   "fbx": "f65c4085a69940a3ae2047e9942c4e57",
+   "png": "69cec701b97040d982b1c10616561224",
+   "mat": "8af552b8cee34341a94ae9f8f1387a86",
+   "folder_meta": "c30cd6fd71484ca0bb0abbc5e52da182"
+  }
+ },
+ "environment": {
+  "Pino_A": {
+   "folder": "Assets/Models/Entorno/Pino_A",
+   "fbx": "f5fe476a35bf42da8bfc510b28313aaf",
+   "png": "a9216c41b6994da880c9be54b8892c88",
+   "mat": "e328c8b770d84dc2a7f26b6a2fb32e39",
+   "folder_meta": "f28811bc23f840889ccbbee0f5ae010f"
+  },
+  "Pino_B": {
+   "folder": "Assets/Models/Entorno/Pino_B",
+   "fbx": "ef3587e91ad4430daee8f4ec8fa313fd",
+   "png": "7739233bcb5b4bba9b95327701074222",
+   "mat": "2014a5fdae66493b894d0f1058f67237",
+   "folder_meta": "4167f05a80634bea9185c20f70f173a2"
+  },
+  "Abeto": {
+   "folder": "Assets/Models/Entorno/Abeto",
+   "fbx": "28377273edad49a0b851f212a571942d",
+   "png": "ace6c044793e4375a5aa572f26213a18",
+   "mat": "1fbfa10b03ec4b1c819457d7cb4b7f6d",
+   "folder_meta": "3828764a2a1342b8bdc15469a6045232"
+  },
+  "Arbol_Hoja": {
+   "folder": "Assets/Models/Entorno/Arbol_Hoja",
+   "fbx": "2f18567342a24ea5b2ca073818da92e1",
+   "png": "cca42d1fa6b14296b7ba8046aa5e4990",
+   "mat": "115fbcb55a6c43bb9461ff229fcf3578",
+   "folder_meta": "ae9bd84be0584c689f4c0ddd50d57a3e"
+  },
+  "Arbusto": {
+   "folder": "Assets/Models/Entorno/Arbusto",
+   "fbx": "373673fad04946f5aff4e4cb9d1fb1b1",
+   "png": "4d1fb01b82264d3ab5d19353544a1167",
+   "mat": "cd4f3969ac4141cda4c423fa55e42774",
+   "folder_meta": "80f3f5661687460caf08fafcf0b7d03c"
+  },
+  "Hierba": {
+   "folder": "Assets/Models/Entorno/Hierba",
+   "fbx": "10987d8d8a234d3d9f052c6162f2edf7",
+   "png": "de4f56fb949943148fd8f5e56dcba8b4",
+   "mat": "1d218d910f5745b29fbde97efedd3a58",
+   "folder_meta": "6ef9a3c6c6ff49af9305a5c51ad4453b"
+  },
+  "Flores": {
+   "folder": "Assets/Models/Entorno/Flores",
+   "fbx": "678d0d34d91b4851a84b49cdb0561629",
+   "png": "675b5b1d65144e5a80fe5e72c0ba6592",
+   "mat": "f704cef540094dd285ee8af3ea4d5777",
+   "folder_meta": "79386ae2f9a141db85622800cbfe7230"
+  },
+  "Juncos": {
+   "folder": "Assets/Models/Entorno/Juncos",
+   "fbx": "d37f66f7a4fb48ad8b5510991aa304b7",
+   "png": "3371e54e7c894ab59aa2bdf763f364b6",
+   "mat": "9e845fed0ec94232bc1c4bdb6e7e0852",
+   "folder_meta": "ab6952e2553643378291fbbc349c9677"
+  },
+  "Totora": {
+   "folder": "Assets/Models/Entorno/Totora",
+   "fbx": "c631c7c09c864b3d91b8af3e5f4d150e",
+   "png": "9617598472e5425f81024f1b889f10ee",
+   "mat": "513c87b348fa4e398717f3cbb10d4d4a",
+   "folder_meta": "2e95924fb8c74ca69e7cb64f879d1e7b"
+  },
+  "Nenufar": {
+   "folder": "Assets/Models/Entorno/Nenufar",
+   "fbx": "e6007e3dfe7b4f468503a87065bcb69e",
+   "png": "5ee5ce6765d24af68979c5207adcfc1e",
+   "mat": "2f3ea23720204ada85bbe02f891ae70a",
+   "folder_meta": "cabd6a67c83c4f60885b24299ed660e7"
+  },
+  "Roca_A": {
+   "folder": "Assets/Models/Entorno/Roca_A",
+   "fbx": "1804b8dfb2bb4eed8f222da20e489a64",
+   "png": "239814ab61a44dc0875dc2d7868a649b",
+   "mat": "01f06081d5ff4bbfb940e7dc0f992b93",
+   "folder_meta": "df8a38b4f30b4854acc2d9f6bd9d7f16"
+  },
+  "Roca_B": {
+   "folder": "Assets/Models/Entorno/Roca_B",
+   "fbx": "818f22dfeb264ad4b59c2411ed9ce422",
+   "png": "01ef0dfd832d4e80b01f2e7645fef0f3",
+   "mat": "af5d9854ac9e4d9fb57fbe50dc734813",
+   "folder_meta": "775f4070d54d48909ba55c9eb12c85fa"
+  },
+  "Roca_C": {
+   "folder": "Assets/Models/Entorno/Roca_C",
+   "fbx": "9c94cc61b628485889155009d6337c4b",
+   "png": "566e217866b2438da138630a63e93fff",
+   "mat": "b8ccf719184f415fabd3e1708499e506",
+   "folder_meta": "634865c88b0d47fc855905c8c028dd1c"
+  },
+  "Piedras_Fondo": {
+   "folder": "Assets/Models/Entorno/Piedras_Fondo",
+   "fbx": "2e38230fd4ec452f84d64feeec3592b1",
+   "png": "aa1a1ff6251a4269b432f7d47729718d",
+   "mat": "ffc7a31a473d483d877ef3e9ca7a8c02",
+   "folder_meta": "9d9de9261d104118b00e20d6ba19b16a"
+  },
+  "Tronco": {
+   "folder": "Assets/Models/Entorno/Tronco",
+   "fbx": "4cc6c6c1e5404c1f8d24b754d6c64504",
+   "png": "6c9e9ae326c44c5ab1b450d5503e50dc",
+   "mat": "3b869bb59c574c0e89167ae5b55b4036",
+   "folder_meta": "9ecdd32659b7442f95ee8727fb8a46bf"
+  },
+  "Tronco_Hundido": {
+   "folder": "Assets/Models/Entorno/Tronco_Hundido",
+   "fbx": "46b2caee3d84409591cb928f91514960",
+   "png": "8459e1659614447697f78dbd66abd9a5",
+   "mat": "850bcddfe2d6407eb7296801963cc6de",
+   "folder_meta": "bf7a76047ff0445da721130288829c18"
+  },
+  "Alga_A": {
+   "folder": "Assets/Models/Entorno/Alga_A",
+   "fbx": "a1fa5acc9f11469c833dbbe760d0a489",
+   "png": "c307765f620c4387b146daf9caca5325",
+   "mat": "e4452d29762f4c0e868ea7c7489765ac",
+   "folder_meta": "5cb6a61f9ae2414cbefce379099ae09a"
+  },
+  "Alga_B": {
+   "folder": "Assets/Models/Entorno/Alga_B",
+   "fbx": "7093acf29cde4e0fa2dec42c6d9ead79",
+   "png": "e609fc4658b04544ae2074151050f62e",
+   "mat": "f32bc69ab10949c28b37e5a056083e64",
+   "folder_meta": "7b2be7500f204fee8a7c46e5e278dc04"
+  },
+  "Alga_Brillante": {
+   "folder": "Assets/Models/Entorno/Alga_Brillante",
+   "fbx": "dc83eb6603584e50abcfa2fad2f190c1",
+   "png": "05d7c6fc39f24a3fb0dbda5e5ef45a2f",
+   "mat": "a67fd4bc7f244b25b18518d26830c712",
+   "folder_meta": "f7fbd378774249c88b1d5daa4df14997"
+  },
+  "Lata": {
+   "folder": "Assets/Models/Entorno/Lata",
+   "fbx": "608686b3fc694a8bac1b78ca7cd9a194",
+   "png": "e8e6e1a104974382aba2d6b267484518",
+   "mat": "aef310d0539d4a739c81adc4e8d21059",
+   "folder_meta": "87930b7374974cf884525c9fb197c706"
+  },
+  "Rueda_Bici": {
+   "folder": "Assets/Models/Entorno/Rueda_Bici",
+   "fbx": "20f0239d7ad6466487d1aaba36cfd936",
+   "png": "cf048b6caf4349ba825fbc60a0930590",
+   "mat": "52b2a31b2e0946058a446fc2e7d99193",
+   "folder_meta": "4b67dbb5222a4a9cb9a0fdee11ca25d3"
+  },
+  "Bicicleta": {
+   "folder": "Assets/Models/Entorno/Bicicleta",
+   "fbx": "acc848e0e52d450d8766e5abd9f8a1c1",
+   "png": "62faea55b5cd4bb086d361ea0b1a5171",
+   "mat": "03a09fe73f4646dc8c17884dad54a301",
+   "folder_meta": "971dfc470d5f4a1299e9e4cb019c4b21"
+  },
+  "Dron": {
+   "folder": "Assets/Models/Entorno/Dron",
+   "fbx": "a0ccf0a7245f4a6e8ed101c3f84726ba",
+   "png": "1e580d416e964cf781359feefbe12aea",
+   "mat": "1f5aed0ec5de48918744c88efe2a68bc",
+   "folder_meta": "c2c66d673efc4af18db0e0cfa3d7c15a"
+  },
+  "Bateria": {
+   "folder": "Assets/Models/Entorno/Bateria",
+   "fbx": "0b54d18445f34ea788571ce5df8bf563",
+   "png": "4782c8606ff74ae0ad7c7332436a798e",
+   "mat": "f902d562846d476fbfb203d74c3146d7",
+   "folder_meta": "ccae7630a2c046f1823fcf30abb34986"
+  },
+  "Mesa_Chatarra": {
+   "folder": "Assets/Models/Entorno/Mesa_Chatarra",
+   "fbx": "7ef42bca616a4b86a6ce29f21ef44daf",
+   "png": "786027503c4f47d686f740ec4fc47c7f",
+   "mat": "4f4310c8ae0b4513935a97c7a3b514cc",
+   "folder_meta": "9d8292289cd642e69498fa5118d65ba0"
+  }
+ },
+ "scripts": {},
+ "data": {},
+ "folders": {
+  "Assets/Models/Aves": "64a17397308a436289a33c2129f2fff7",
+  "Assets/Models/Taller": "6cf1454ad2a94049af89799caf58691b",
+  "Assets/Models/Entorno": "2d15a1d373b64550be00aeced8739bfc"
+ }
+}
