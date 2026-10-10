@@ -5419,6 +5419,83 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 8602b53c7fe82bb47a9038d63bffb61f, type: 3}
+--- !u!1 &900000401
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 900000402}
+  - component: {fileID: 900000403}
+  m_Layer: 0
+  m_Name: PintorDelTerreno
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &900000402
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 900000401}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &900000403
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 900000401}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c48c3c5633c405483381abbf2fe1996, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TerrainStylizer
+  layers:
+  - {fileID: 8574412962073106934, guid: e19e8d37912240f5a98a00d87b427e48, type: 2}
+  - {fileID: 8574412962073106934, guid: bae5a54f293c40c787666e33da608ae7, type: 2}
+  - {fileID: 8574412962073106934, guid: 5ca43e13140845d6b83c11aa87b2e161, type: 2}
+  - {fileID: 8574412962073106934, guid: 8c3e63abce5442b8a72c50241bf625f2, type: 2}
+  - {fileID: 8574412962073106934, guid: e0ac5215a48a405f86d0e671aeec0e66, type: 2}
+  - {fileID: 8574412962073106934, guid: 57759c65cd7c4984b2356bb9467c3146, type: 2}
+  water: {fileID: 900000302}
+  paintOnPlay: 1
+  shoreBelow: 0.4
+  shoreAbove: 1.3
+  shoreMaxDist: 30
+  dirtBand: 1.2
+  dirtShoreAmount: 0.55
+  bankHeight: 6
+  bankRockSlope: 66
+  rockSlopeMin: 30
+  rockSlopeMax: 40
+  dirtSlopeMin: 20
+  dirtSlopeMax: 30
+  dirtSlopeAmount: 0.65
+  seed: 7
+  varScale: 60
+  varMin: 0.4
+  varMax: 0.62
+  varAmount: 0.9
+  edgeScale: 9
+  pathScale: 120
+  pathWidth: 0.022
+  pathAmount: 0.75
+  pathMaxSlope: 14
+  lakeExtent: 450
+  lakeCell: 1.5
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -5451,3 +5528,4 @@ SceneRoots:
   - {fileID: 2074481770}
   - {fileID: 1345000901}
   - {fileID: 900000302}
+  - {fileID: 900000402}
