@@ -69,7 +69,8 @@ def pintar_pata(T):
 
 
 def construir():
-    b = kit.Bird(ASSET, wing_pivot=(0.15, -0.04, 0.10), feet=(0.075, 0.43, -0.13), clay=0.012, seed=11)
+    # feet = punto de captura: la gaviota lleva el pez en el pico (LeftFoot/RightFoot en la punta)
+    b = kit.Bird(ASSET, wing_pivot=(0.15, -0.04, 0.10), feet=(0.014, -0.99, 0.095), clay=0.012, seed=11)
 
     # Cuerpo: cabeza grande y redonda, cuello corto, pecho lleno y cola fina (una sola pieza suave)
     cuerpo = kit.loft('cuerpo', [
@@ -114,27 +115,7 @@ def construir():
     return b
 
 
-def main(previas=True):
-    out_dir = os.path.join(kit.REPO, 'Assets', 'Models', 'Aves', ASSET)
-    os.makedirs(out_dir, exist_ok=True)
-    kit.reset_scene()
-    b = construir()
-    b.build()
-    b.texture(os.path.join(out_dir, ASSET + '_BaseColor.png'))
-    b.assemble()
-    fbx = b.export(out_dir)
-    kit.write_unity_files(ASSET, out_dir)
-    info = kit.fbx_summary(fbx)
-    print('TRIANGULOS', b.stats)
-    print('EJES', info['axes'])
-    print('TAMANO_UNITY', info.get('size_unity'), 'PICO', info.get('beak_tip_unity'))
-    for k, n in info['nodes'].items():
-        print('NODO', n['path'], 't=', [round(x, 3) for x in n['world_t']], 'r=', n['r'], 's=', n['s'], 'pre=', n['pre'])
-    if previas:
-        prev = os.path.join(os.environ.get('KIT_PREVIEWS', os.path.join(kit.REPO, '..', 'previas')), ASSET)
-        kit.render_previews(fbx, prev, res=420, samples=24, turntable=0)
-        print('PREVIAS', prev)
-
+REFS = [os.path.join(os.environ.get('KIT_REFS', ''), f) for f in ('gaviota_patiamarilla/12831.jpg', 'gaviota_argentea/22063.jpg')]
 
 if __name__ == '__main__':
-    main(previas='--sin-previas' not in sys.argv)
+    kit.run_bird(ASSET, construir, previas='--sin-previas' not in sys.argv, refs=REFS)

@@ -1103,6 +1103,8 @@ class Bird:
         pivr = piv * V((-1, 1, 1))
         specs = [('Cuerpo', body, None, (0, 0, 0)), ('Ala_I', wl, 'L_wing', piv), ('Ala_D', wr, 'R_wing', pivr)]
         for oname, parts, pname, off in specs:
+            if not parts:
+                continue
             ob = mesh_from_parts(oname, parts, offset=off)
             nl = len(ob.data.loops)
             uv = ob.data.uv_layers.new(name='UVMap')
@@ -1146,6 +1148,43 @@ class Bird:
                                  path_mode='STRIP')
         self.fbx = path
         return path
+
+
+    def mirror_foot_points(self):
+        return None if self.feet is None else (self.feet, self.feet * V((-1, 1, 1)))
+
+
+def run_bird(asset, construir, folder=('Assets', 'Models', 'Aves'), previas=True, refs=(), res=1024, **paint_kw):
+    """Construye, pinta, exporta y verifica un modelo; deja vistas previas y una hoja de comparación.
+    construir() devuelve un Bird. refs: fotos de referencia para la hoja."""
+    out_dir = os.path.join(REPO, *folder, asset)
+    os.makedirs(out_dir, exist_ok=True)
+    reset_scene()
+    b = construir()
+    b.build()
+    b.texture(os.path.join(out_dir, asset + '_BaseColor.png'), res=res, **paint_kw)
+    b.assemble()
+    fbx = b.export(out_dir)
+    write_unity_files(asset, out_dir)
+    info = fbx_summary(fbx)
+    print('TRIANGULOS', b.stats)
+    print('TAMANO_UNITY', info.get('size_unity'), 'PICO', info.get('beak_tip_unity'))
+    for k, n in info['nodes'].items():
+        print('NODO', n['path'], 't=', [round(x, 3) for x in n['world_t']])
+    if previas:
+        prev = os.path.join(os.environ.get('KIT_PREVIEWS', os.path.join(REPO, '..', 'previas')), asset)
+        out = render_previews(fbx, prev, res=420, samples=24, turntable=0)
+        filas = [[(out['frente'], 'frente'), (out['tres_cuartos'], '3/4'), (out['lado'], 'lado'),
+                  (out['arriba'], 'arriba')],
+                 [(out.get('aleteo_+30_tres_cuartos', out['detras']), 'aleteo +30'),
+                  (out.get('aleteo_-30_frente', out['desde_abajo']), 'aleteo -30'),
+                  (out['desde_abajo'], 'desde abajo'), (out['detras'], 'detras')]]
+        refs = [r for r in refs if os.path.exists(r)]
+        if refs:
+            filas.append([(r, 'referencia') for r in refs[:4]])
+        make_sheet(filas, os.path.join(prev, 'hoja.png'), size=300, title=asset)
+        print('HOJA', os.path.join(prev, 'hoja.png'))
+    return info
 
 
 # ------------------------------------------------------------------ metas de Unity
