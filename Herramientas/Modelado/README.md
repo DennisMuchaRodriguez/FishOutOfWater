@@ -55,3 +55,18 @@ Cada pieza lleva una función `paint(T)` que recibe los texeles de la pieza: pos
 1. Copia `aves/Ave_Gaviota.py` con el nombre del registro (`guids.json`, sección `birds` o `characters`).
 2. Cambia las estaciones del cuerpo, el pico, la cola, las alas y las funciones de pintura.
 3. Ejecuta y mira las vistas previas; repite hasta que se reconozca la especie.
+
+## Entorno (árboles, plantas, rocas, algas y chatarra)
+`entorno/entorno_kit.py` usa este mismo kit para la decoración del lago: formas de revolución (copas de pino,
+latas), bultos (copas, rocas, algas), hojas planas (hierba, totora, cintas de alga), discos (flores, nenúfares) y
+cajas redondeadas. Cada modelo es un script en `entorno/` y sale en `Assets/Models/Entorno/<Nombre>/` con los GUID
+de la sección `environment` de `guids.json` (pivote en la base, +Y arriba, un solo material con GPU instancing).
+
+```
+python Herramientas/Modelado/entorno/build_all.py                 # todos
+python Herramientas/Modelado/entorno/build_all.py Alga_A Lata     # solo esos
+```
+- `Alga_Brillante` lleva además un mapa de emisión (`<Nombre>_Emission.png`, GUID `png_emission`): las piezas con
+  `emit(T)` brillan.
+- `Roca_A` tiene Read/Write activo para poder usar MeshCollider.
+- Dónde se coloca cada modelo lo decide `Assets/Resources/Decoracion/Decoracion_Lago` (ver `LakeDecorator`).

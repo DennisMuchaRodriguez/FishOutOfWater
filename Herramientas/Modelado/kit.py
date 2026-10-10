@@ -16,6 +16,8 @@ from mathutils import Vector, Matrix
 KIT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(KIT_DIR, '..', '..'))
 GUIDS_JSON = os.path.join(KIT_DIR, 'guids.json')
+# Las posiciones se hornean en [-BAKE_RANGE, BAKE_RANGE] m (los árboles necesitan más que las aves)
+BAKE_RANGE = 4.0
 
 
 # =====================================================================================
@@ -170,6 +172,7 @@ class Part:
         self.clay = clay
         self.paint = paint
         self.uv_weight = uv_weight
+        self.emit = None    # emit(T) -> color de emisión (n,3); None = no brilla
         self.pid = 0
         self.group = 'body'
 
@@ -177,6 +180,7 @@ class Part:
         p = Part(name or self.name, self.verts.copy(), list(self.faces), list(self.ca), list(self.cb),
                  None if self.ddir is None else self.ddir.copy(), self.clay, self.paint, self.uv_weight)
         p.group = self.group
+        p.emit = self.emit
         return p
 
     def mirrored(self, name=None):
@@ -894,7 +898,8 @@ def _emit_source(mat, em, kind):
         vm.operation = 'MULTIPLY_ADD'
         if kind == 'pos':
             nt.links.new(g.outputs['Position'], vm.inputs[0])
-            vm.inputs[1].default_value = (0.125, 0.125, 0.125)
+            k = 0.5 / BAKE_RANGE
+            vm.inputs[1].default_value = (k, k, k)
             vm.inputs[2].default_value = (0.5, 0.5, 0.5)
         else:
             nt.links.new(g.outputs['Normal'], vm.inputs[0])
@@ -957,7 +962,7 @@ def bake_maps(ob, res=1024, ao_samples=96, ao_distance=0.35, margin=6):
 
 def paint_atlas(maps, parts, grain_amt=0.05, blotch_amt=0.07, ao_min=0.58, ao_power=1.0):
     """Pinta el atlas: cada pieza con su función paint(T) + grano + manchas + AO suave."""
-    pos = (maps['pos'][..., :3] - 0.5) * 8.0
+    pos = (maps['pos'][..., :3] - 0.5) * 2.0 * BAKE_RANGE
     nrm = unit(maps['nrm'][..., :3] * 2 - 1)
     ka = maps['kit_a'][..., :3]
     kb = maps['kit_b'][..., :3]
@@ -980,6 +985,29 @@ def paint_atlas(maps, parts, grain_amt=0.05, blotch_amt=0.07, ao_min=0.58, ao_po
     a = np.clip(ao[covered], 0, 1) ** ao_power
     a = ao_min + (1 - ao_min) * a
     out[covered] = np.clip(out[covered] * (f * a)[:, None], 0, 1)
+    return dilate(out, covered)
+
+
+def paint_emission(maps, parts):
+    """Mapa de emisión: las piezas con emit(T) brillan (el resto queda negro). None si ninguna brilla."""
+    if not any(p.emit is not None for p in parts):
+        return None
+    pos = (maps['pos'][..., :3] - 0.5) * 2.0 * BAKE_RANGE
+    nrm = unit(maps['nrm'][..., :3] * 2 - 1)
+    ka = maps['kit_a'][..., :3]
+    kb = maps['kit_b'][..., :3]
+    u, v, side = (ka[..., 0] - 0.25) * 2, (ka[..., 1] - 0.25) * 2, (ka[..., 2] - 0.5) * 4
+    pid = np.round(kb[..., 0] * 512).astype(int)
+    fc, fseg = (kb[..., 1] - 0.25) * 128, kb[..., 2] * 32
+    ao = maps['ao'][..., 0]
+    covered = maps['pos'][..., 3] > 0.5
+    out = np.zeros(covered.shape + (3,))
+    for p in parts:
+        m = covered & (pid == p.pid)
+        if not m.any() or p.emit is None:
+            continue
+        T = Texels(pos=pos[m], nrm=nrm[m], u=u[m], v=v[m], side=side[m], fc=fc[m], fseg=fseg[m], ao=ao[m])
+        out[m] = np.clip(p.emit(T), 0, 1)
     return dilate(out, covered)
 
 
@@ -1037,8 +1065,9 @@ def final_material(name, png_path):
 class Bird:
     """Constructor de un ave. Grupos: 'body' (Cuerpo) y 'wing' (ala izquierda; la derecha se refleja)."""
 
-    def __init__(self, name, wing_pivot=(0.14, 0.0, 0.06), feet=None, clay=0.012, seed=1):
+    def __init__(self, name, wing_pivot=(0.14, 0.0, 0.06), feet=None, clay=0.012, seed=1, body_name='Cuerpo'):
         self.name = name
+        self.body_name = body_name
         self.parts = []
         self.wing_pivot = V(wing_pivot)
         self.feet = V(feet) if feet is not None else None   # pie izquierdo; el derecho se refleja
@@ -1082,12 +1111,18 @@ class Bird:
         self._uvs = uvs
         return tmp
 
-    def texture(self, out_png, res=1024, **paint_kw):
-        maps = bake_maps(self._tmp, res=res)
+    def texture(self, out_png, res=1024, ao_distance=0.35, ao_samples=96, emission_png=None, **paint_kw):
+        maps = bake_maps(self._tmp, res=res, ao_samples=ao_samples, ao_distance=ao_distance)
         self.maps = maps
         rgb = paint_atlas(maps, self._all, **paint_kw)
         save_png(rgb, out_png)
         self.png = out_png
+        self.emission_png = None
+        if emission_png:
+            em = paint_emission(maps, self._all)
+            if em is not None:
+                save_png(em, emission_png)
+                self.emission_png = emission_png
         return out_png
 
     def assemble(self):
@@ -1104,7 +1139,7 @@ class Bird:
         # Las alas son mallas hijas directas de la raíz con el origen en el hombro (L_wing / R_wing):
         # BirdAI gira esos transforms. Una malla dentro de un vacío sale girada 90° del exportador FBX
         # con bake_space_transform, por eso no se usan vacíos intermedios.
-        specs = [('Cuerpo', body, (0, 0, 0)), ('L_wing', wl, piv), ('R_wing', wr, pivr)]
+        specs = [(self.body_name, body, (0, 0, 0)), ('L_wing', wl, piv), ('R_wing', wr, pivr)]
         for oname, parts, off in specs:
             if not parts:
                 continue
@@ -1129,7 +1164,7 @@ class Bird:
         bpy.data.objects.remove(self._tmp, do_unlink=True)
         self.root = root
         self.stats['triangles'] = sum(p.tri_count() for p in body + wl + wr)
-        self.stats['triangles_by_object'] = {'Cuerpo': sum(p.tri_count() for p in body),
+        self.stats['triangles_by_object'] = {self.body_name: sum(p.tri_count() for p in body),
                                              'L_wing': sum(p.tri_count() for p in wl),
                                              'R_wing': sum(p.tri_count() for p in wr)}
         return root
@@ -1188,7 +1223,7 @@ def run_bird(asset, construir, folder=('Assets', 'Models', 'Aves'), previas=True
 def load_guids(asset):
     with open(GUIDS_JSON, encoding='utf-8') as f:
         g = json.load(f)
-    for k in ('birds', 'characters'):
+    for k in ('birds', 'characters', 'environment'):
         if asset in g.get(k, {}):
             return g[k][asset], g.get('folders', {})
     raise KeyError(asset)
@@ -1204,8 +1239,10 @@ def _write(p, s):
         f.write(s)
 
 
-def write_unity_files(asset, out_dir, smoothness=0.2):
-    """Escribe .meta del FBX/PNG/carpeta y el material .mat (+meta) con los GUID del registro."""
+def write_unity_files(asset, out_dir, smoothness=0.2, instancing=False, readable=False, emission=None, max_size=1024):
+    """Escribe .meta del FBX/PNG/carpeta y el material .mat (+meta) con los GUID del registro.
+    instancing: GPU instancing en el material (decoración repetida). readable: Read/Write en la malla
+    (para MeshCollider). emission: color HDR (r, g, b) si hay <asset>_Emission.png (GUID 'png_emission')."""
     g, folders = load_guids(asset)
     src = os.path.join(REPO, 'Assets', 'Models', 'PezNormal')
     # FBX
@@ -1217,19 +1254,36 @@ def write_unity_files(asset, out_dir, smoothness=0.2):
     m = m.replace('  animationType: 2\n', '  animationType: 0\n')
     m = m.replace('  importAnimation: 1\n', '  importAnimation: 0\n')
     m = m.replace('    importCameras: 1\n', '    importCameras: 0\n').replace('    importLights: 1\n', '    importLights: 0\n')
+    if readable:
+        m = m.replace('    isReadable: 0\n', '    isReadable: 1\n', 1)
+        assert '    isReadable: 1\n' in m
     assert 'name: M_%s' % asset in m and 'animationType: 0' in m and 'importAnimation: 0' in m
     _write(os.path.join(out_dir, asset + '.fbx.meta'), m)
     # PNG
     t = _read(os.path.join(src, 'PezNormal_BaseColor.png.meta'))
     t = re.sub(r'^guid: \w+', 'guid: ' + g['png'], t, count=1, flags=re.M)
-    t = t.replace('maxTextureSize: 2048', 'maxTextureSize: 1024')
+    t = t.replace('maxTextureSize: 2048', 'maxTextureSize: %d' % max_size)
     _write(os.path.join(out_dir, asset + '_BaseColor.png.meta'), t)
+    if emission is not None:
+        _write(os.path.join(out_dir, asset + '_Emission.png.meta'),
+               re.sub(r'^guid: \w+', 'guid: ' + g['png_emission'], t, count=1, flags=re.M))
     # Material
     mt = _read(os.path.join(src, 'PezNormal.mat'))
     mt = mt.replace('m_Name: PezNormal', 'm_Name: ' + asset)
     mt = re.sub(r'guid: 7df6445764d345f281d9252b7c638b01', 'guid: ' + g['png'], mt)
     mt = re.sub(r'- _Smoothness: [\d.]+', '- _Smoothness: %g' % smoothness, mt)
     mt = re.sub(r'- _Metallic: [\d.]+', '- _Metallic: 0', mt)
+    if instancing:
+        mt = mt.replace('  m_EnableInstancingVariants: 0\n', '  m_EnableInstancingVariants: 1\n')
+        assert '  m_EnableInstancingVariants: 1\n' in mt
+    if emission is not None:
+        mt = mt.replace('  m_ValidKeywords: []\n', '  m_ValidKeywords:\n  - _EMISSION\n')
+        mt = mt.replace('  m_LightmapFlags: 4\n', '  m_LightmapFlags: 2\n')
+        mt = re.sub(r'(    - _EmissionMap:\n        m_Texture: )\{fileID: 0\}',
+                    r'\g<1>{fileID: 2800000, guid: %s, type: 3}' % g['png_emission'], mt)
+        mt = re.sub(r'    - _EmissionColor: \{[^}]*\}',
+                    '    - _EmissionColor: {r: %g, g: %g, b: %g, a: 1}' % tuple(emission), mt)
+        assert '- _EMISSION' in mt and g['png_emission'] in mt
     _write(os.path.join(out_dir, asset + '.mat'), mt)
     mm = _read(os.path.join(src, 'PezNormal.mat.meta'))
     mm = re.sub(r'^guid: \w+', 'guid: ' + g['mat'], mm, count=1, flags=re.M)
