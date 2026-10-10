@@ -18,14 +18,16 @@ public class UI_PlayerStatus : MonoBehaviour
     public Image jetpackIcon;
     public Image jetpackBackGround;
     public Image jetpackSliderImage;
-    [Header("MuniciÛn")]
+    [Header("Munici√≥n")]
     public TextMeshProUGUI ammoText;
     public Image ammoIcon;
     public Color ammoEmptyColor = Color.red;
 
-    [Header("ConfiguraciÛn de Parpadeo - NUEVO")]
+    [Header("Configuraci√≥n de Parpadeo - NUEVO")]
     public float blinkSpeed = 5f;
     public float lowAmmoThreshold = 5;
+    [Tooltip("La munici√≥n ahora se ve en el visor del casco (VisorAmmoHUD). Activa esto solo para volver al contador viejo")]
+    public bool useOldAmmoCounter = false;
     public float lowEnergyThreshold = 25f;
 
     [Header("Armadura - NUEVO")]
@@ -78,6 +80,11 @@ public class UI_PlayerStatus : MonoBehaviour
 
         if (ammoIcon != null) originalAmmoColor = ammoIcon.color;
         if (ammoText != null) originalAmmoTextColor = ammoText.color;
+        if (!useOldAmmoCounter)
+        {
+            if (ammoIcon != null) ammoIcon.gameObject.SetActive(false);
+            if (ammoText != null) ammoText.gameObject.SetActive(false);
+        }
 
         if (jetpackIcon != null) originalEnergyColor = jetpackIcon.color;
         if (jetpackBackGround != null) originalEnergyColor = jetpackBackGround.color;
@@ -119,7 +126,7 @@ public class UI_PlayerStatus : MonoBehaviour
         if (!playerController.isThirdPerson)
         {
             UpdateJetpackUI();
-            UpdateAmmoUI();
+            if (useOldAmmoCounter) UpdateAmmoUI();
             UpdateArmorUI();
         }
     }
