@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83f60ad13e9849669e8e17296921356b, type: 3}
+  m_Name: Jefe_GarzaGris
+  m_EditorClassIdentifier: Assembly-CSharp::BirdDefinition
+  bird:
+    name: "La Garza Gris Gigante"
+    model: {fileID: 919132149155446097, guid: 8a66b45d78734d3db5f8e9bfef9c48ed, type: 3}
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelOffset: {x: 0, y: 0, z: 0}
+    modelScale: 2.2
+    materialOverride: {fileID: 2100000, guid: 46390616413e41809a02afb7ce0c921e, type: 2}
+    animatorController: {fileID: 0}
+    proceduralWingFlap: 1
+    wingBones: L_wing,R_wing
+    talonBones: LeftFoot,RightFoot
+    catchPointOffset: {x: 0, y: 0, z: 2.97}
+    colliderRadius: 2.72
+    colliderCenter: {x: 0, y: 0, z: 0.286}
+    health: 600
+    speedMultiplier: 0.8
+    damage: 30
+    detectRange: 40
+    carryTime: 4
+    attackReach: 4
+    ability: 4
+    catchRadius: 2.6
+    catchDepth: 2.5
+    stalkAltitude: 7
+    scoopCount: 1
+    underwaterTime: 4
+    boss: 1
+    vulnerableTime: 3
+    vulnerableDamageMultiplier: 2
+    reinforcements: {fileID: 0}
+    reinforcementCount: 0

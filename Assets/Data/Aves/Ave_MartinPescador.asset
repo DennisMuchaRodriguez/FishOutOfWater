@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83f60ad13e9849669e8e17296921356b, type: 3}
+  m_Name: Ave_MartinPescador
+  m_EditorClassIdentifier: Assembly-CSharp::BirdDefinition
+  bird:
+    name: "Mart\u00EDn pescador"
+    model: {fileID: 919132149155446097, guid: 92751d68f8a64786afc336e2f0fddab1, type: 3}
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelOffset: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    materialOverride: {fileID: 2100000, guid: b77cfcf32fbc4c368dc428165aa90158, type: 2}
+    animatorController: {fileID: 0}
+    proceduralWingFlap: 1
+    wingBones: L_wing,R_wing
+    talonBones: LeftFoot,RightFoot
+    catchPointOffset: {x: 0, y: 0, z: 0.85}
+    colliderRadius: 0.7
+    colliderCenter: {x: 0, y: 0, z: 0.27}
+    health: 20
+    speedMultiplier: 1.5
+    damage: 8
+    detectRange: 20
+    carryTime: 2
+    attackReach: 2.4
+    ability: 2
+    catchRadius: 2
+    catchDepth: 1.8
+    stalkAltitude: 8
+    scoopCount: 1
+    underwaterTime: 4
+    boss: 0
+    vulnerableTime: 2.5
+    vulnerableDamageMultiplier: 2
+    reinforcements: {fileID: 0}
+    reinforcementCount: 0

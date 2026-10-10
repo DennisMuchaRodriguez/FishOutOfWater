@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83f60ad13e9849669e8e17296921356b, type: 3}
+  m_Name: Ave_Garza
+  m_EditorClassIdentifier: Assembly-CSharp::BirdDefinition
+  bird:
+    name: "Garza real"
+    model: {fileID: 919132149155446097, guid: 43b5648668724a758472d87bb9d01ed5, type: 3}
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelOffset: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    materialOverride: {fileID: 2100000, guid: 1129bf788541401dae69c44a0c03d29d, type: 2}
+    animatorController: {fileID: 0}
+    proceduralWingFlap: 1
+    wingBones: L_wing,R_wing
+    talonBones: LeftFoot,RightFoot
+    catchPointOffset: {x: 0, y: 0, z: 1.29}
+    colliderRadius: 1.311
+    colliderCenter: {x: 0, y: 0, z: 0.1}
+    health: 90
+    speedMultiplier: 0.7
+    damage: 25
+    detectRange: 22
+    carryTime: 3
+    attackReach: 4
+    ability: 4
+    catchRadius: 2.6
+    catchDepth: 2
+    stalkAltitude: 4
+    scoopCount: 1
+    underwaterTime: 4
+    boss: 0
+    vulnerableTime: 2.5
+    vulnerableDamageMultiplier: 2
+    reinforcements: {fileID: 0}
+    reinforcementCount: 0

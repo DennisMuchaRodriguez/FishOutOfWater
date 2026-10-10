@@ -40,6 +40,14 @@ public class GameHUD : MonoBehaviour
 
     const float BarWidth = 240f;
 
+    // Barra del jefe (arriba al centro)
+    RectTransform bossPanel;
+    TextMeshProUGUI bossName, bossInfo;
+    RawImage bossFill, bossTrail;
+    float bossTrail01 = 1f;
+    BirdAI boss;
+    const float BossBarWidth = 520f;
+
     void Start()
     {
         director = GetComponent<GameDirector>();
@@ -57,6 +65,7 @@ public class GameHUD : MonoBehaviour
 
         markerRoot = MenuUI.Stretch("Marcadores", root);
         BuildObjectives();
+        BuildBossBar();
         BuildBanner();
         BuildLetterbox();
 
@@ -105,6 +114,75 @@ public class GameHUD : MonoBehaviour
         fishBarLimit.rectTransform.sizeDelta = new Vector2(2f, 15f);
 
         countdownText = Line("Cuenta", 15f, -46f);
+    }
+
+    void BuildBossBar()
+    {
+        bossPanel = MenuUI.Rect("Jefe", root, new Vector2(0.5f, 1f), new Vector2(0f, -72f), new Vector2(BossBarWidth + 40f, 74f));
+        bossName = MenuUI.CreateText("Nombre", bossPanel, "", 20f, new Vector2(0.5f, 0.5f), new Vector2(0f, 20f), new Vector2(BossBarWidth, 28f));
+        bossName.characterSpacing = 6f;
+        bossName.color = GameDirector.Danger;
+
+        RectTransform bar = MenuUI.Rect("Barra", bossPanel, new Vector2(0.5f, 0.5f), new Vector2(0f, -6f), new Vector2(BossBarWidth, 12f));
+        RawImage bg = bar.gameObject.AddComponent<RawImage>();
+        bg.texture = FXFactory.White;
+        bg.color = new Color(0f, 0f, 0f, 0.55f);
+        bg.raycastTarget = false;
+        bossTrail = BarFill("Rastro", bar, new Color(1f, 0.85f, 0.45f, 0.85f));
+        bossFill = BarFill("Vida", bar, GameDirector.Danger);
+        // Marcas de las fases (2/3 y 1/3 de la vida)
+        for (int i = 1; i <= 2; i++)
+        {
+            RawImage tick = CreateRaw("Fase" + i, bar, FXFactory.White, new Color(1f, 1f, 1f, 0.7f));
+            tick.rectTransform.sizeDelta = new Vector2(2f, 20f);
+            tick.rectTransform.anchoredPosition = new Vector2((i / 3f - 0.5f) * BossBarWidth, 0f);
+        }
+        bossInfo = MenuUI.CreateText("Info", bossPanel, "", 14f, new Vector2(0.5f, 0.5f), new Vector2(0f, -27f), new Vector2(BossBarWidth, 22f));
+        bossInfo.characterSpacing = 4f;
+        bossPanel.gameObject.SetActive(false);
+    }
+
+    RawImage BarFill(string name, Transform bar, Color color)
+    {
+        RawImage img = CreateRaw(name, bar, FXFactory.White, color);
+        RectTransform rt = img.rectTransform;
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot = new Vector2(0f, 0.5f);
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
+        return img;
+    }
+
+    void UpdateBossBar(bool cinematic, float dt)
+    {
+        if (boss == null || !boss.IsAlive)
+        {
+            boss = null;
+            foreach (BirdAI b in BirdAI.All)
+            {
+                if (b != null && b.IsBoss && b.IsAlive)
+                {
+                    boss = b;
+                    bossTrail01 = 1f;
+                    break;
+                }
+            }
+        }
+        bool show = boss != null && !cinematic;
+        bossPanel.gameObject.SetActive(show);
+        if (!show) return;
+
+        float h = boss.Health01;
+        bossTrail01 = Mathf.Max(h, Mathf.MoveTowards(bossTrail01, h, dt * 0.35f));
+        bossFill.rectTransform.anchorMax = new Vector2(h, 1f);
+        bossTrail.rectTransform.anchorMax = new Vector2(bossTrail01, 1f);
+        bossName.text = boss.BossName.ToUpper();
+
+        bool vulnerable = boss.IsVulnerable;
+        float blink = Mathf.PingPong(Time.unscaledTime * 6f, 1f);
+        bossFill.color = vulnerable ? Color.Lerp(GameDirector.Danger, Color.white, blink) : GameDirector.Danger;
+        bossInfo.text = vulnerable ? "¡VULNERABLE!  DISPARA AHORA" : "FASE " + boss.BossPhase + " / 3";
+        bossInfo.color = vulnerable ? Color.Lerp(Color.white, GameDirector.Cyan, blink) : GameDirector.Cyan;
     }
 
     TextMeshProUGUI Line(string name, float size, float y)
@@ -183,6 +261,7 @@ public class GameHUD : MonoBehaviour
         bool cinematic = GameDirector.InCinematic;
 
         UpdateObjectives(cinematic);
+        UpdateBossBar(cinematic, dt);
         UpdateMessages(dt);
 
         // Barras de cine

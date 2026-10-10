@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83f60ad13e9849669e8e17296921356b, type: 3}
+  m_Name: Ave_AguilaPescadora
+  m_EditorClassIdentifier: Assembly-CSharp::BirdDefinition
+  bird:
+    name: "\u00C1guila pescadora"
+    model: {fileID: 919132149155446097, guid: 31b678d6bee243ea8e8c68e8f7a90710, type: 3}
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelOffset: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    materialOverride: {fileID: 2100000, guid: 33a84162fd1a4d6eabdc2f82f40b8984, type: 2}
+    animatorController: {fileID: 0}
+    proceduralWingFlap: 1
+    wingBones: L_wing,R_wing
+    talonBones: LeftFoot,RightFoot
+    catchPointOffset: {x: 0, y: -0.35, z: 0.05}
+    colliderRadius: 1.252
+    colliderCenter: {x: 0, y: 0, z: 0.01}
+    health: 110
+    speedMultiplier: 1.4
+    damage: 30
+    detectRange: 34
+    carryTime: 2.5
+    attackReach: 2.8
+    ability: 8
+    catchRadius: 2.6
+    catchDepth: 2.5
+    stalkAltitude: 24
+    scoopCount: 1
+    underwaterTime: 4
+    boss: 0
+    vulnerableTime: 2.5
+    vulnerableDamageMultiplier: 2
+    reinforcements: {fileID: 0}
+    reinforcementCount: 0

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelDefinition
   number: 16
   displayName: "Garras del cielo"
-  description: "Llegan las cazadoras de \u00E9lite desde lo alto."
+  description: "Llega el \u00E1guila pescadora: cae en picada desde muy alto, con las garras por delante."
   fish:
   - type: {fileID: 11400000, guid: ec036fa557a443eaa27e1a65665f1eea, type: 2}
     count: 10
@@ -27,18 +27,42 @@ MonoBehaviour:
   waves:
   - delayBefore: 12
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
-      count: 7
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
+      count: 2
+    - type: {fileID: 11400000, guid: c2736885980147aca076ce9b0637bce2, type: 2}
+      count: 1
+    - type: {fileID: 11400000, guid: b0c6e075a7644da3b40247643d6edeff, type: 2}
+      count: 3
+    - type: {fileID: 11400000, guid: 7a3219b6c3464e5e911a3439f0778ece, type: 2}
+      count: 1
     healthMultiplier: 1.75
   - delayBefore: 10
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
-      count: 9
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
+      count: 2
+    - type: {fileID: 11400000, guid: b0c6e075a7644da3b40247643d6edeff, type: 2}
+      count: 3
+    - type: {fileID: 11400000, guid: 62c8d585248844fe948197438263b7fc, type: 2}
+      count: 3
+    - type: {fileID: 11400000, guid: 7950a254b7594af891690a59f9de7a1e, type: 2}
+      count: 1
     healthMultiplier: 1.75
   - delayBefore: 10
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
-      count: 10
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
+      count: 2
+    - type: {fileID: 11400000, guid: c2736885980147aca076ce9b0637bce2, type: 2}
+      count: 1
+    - type: {fileID: 11400000, guid: b0c6e075a7644da3b40247643d6edeff, type: 2}
+      count: 3
+    - type: {fileID: 11400000, guid: 0342a5f5ce4f4cfcbcccd42123acb408, type: 2}
+      count: 1
+    - type: {fileID: 11400000, guid: a4eafba4333243fcbfc3f4eb5adeb7c5, type: 2}
+      count: 1
+    - type: {fileID: 11400000, guid: 7950a254b7594af891690a59f9de7a1e, type: 2}
+      count: 1
+    - type: {fileID: 11400000, guid: 7a3219b6c3464e5e911a3439f0778ece, type: 2}
+      count: 1
     healthMultiplier: 2.01
   isBossLevel: 0
   workshopAfter: 0

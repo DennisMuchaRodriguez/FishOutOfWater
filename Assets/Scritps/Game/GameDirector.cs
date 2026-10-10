@@ -83,6 +83,7 @@ public class GameDirector : MonoBehaviour
     public static readonly Color Danger = new Color(1f, 0.3f, 0.25f, 1f);
 
     readonly List<BirdAI> birds = new List<BirdAI>();
+    float currentHealthMultiplier = 1f;
     readonly List<AmmoPickup> pickups = new List<AmmoPickup>();
     float anchorTimer;
     bool ended;
@@ -405,6 +406,7 @@ public class GameDirector : MonoBehaviour
     List<BirdAI> SpawnWave(RuntimeWave wave)
     {
         List<BirdAI> list = new List<BirdAI>();
+        currentHealthMultiplier = wave.healthMultiplier;
         float yaw = arrivalYaw >= 0f ? arrivalYaw : Random.Range(0f, 360f);
         Vector3 fromDir = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
         Vector3 right = Vector3.Cross(Vector3.up, fromDir);
@@ -420,7 +422,9 @@ public class GameDirector : MonoBehaviour
             Vector3 arrive = center + Vector3.up * Random.Range(14f, 20f) + right * side * row * 6f;
 
             BirdType type = wave.birds[i];
-            int health = Mathf.Max(1, Mathf.RoundToInt(type.health * Mathf.Max(0.1f, wave.healthMultiplier)));
+            // Los jefes usan su vida tal cual (ya está pensada para la pelea)
+            float mult = type.boss != BossKind.None ? 1f : Mathf.Max(0.1f, wave.healthMultiplier);
+            int health = Mathf.Max(1, Mathf.RoundToInt(type.health * mult));
             BirdAI bird = CreateBird("Ave_" + type.name + "_" + CurrentWave + "_" + (i + 1), spawn, type, health);
             bird.BeginArrival(arrive, lake, player);
             list.Add(bird);
@@ -455,8 +459,37 @@ public class GameDirector : MonoBehaviour
         bird.hitPrefab = birdHitPrefab;
         bird.deathPrefab = birdDeathPrefab;
         bird.Died += OnBirdDied;
-        bird.FishCaught += (b, f) => Toast?.Invoke("¡UN PÁJARO ATRAPÓ UN PEZ!  Dispárale para que lo suelte", Danger);
+        bird.FishCaught += (b, f) =>
+        {
+            // Un bocado del pelícano atrapa varios: un solo aviso
+            if (b.CarriedCount <= 1) Toast?.Invoke("¡UN PÁJARO ATRAPÓ UN PEZ!  Dispárale para que lo suelte", Danger);
+            else if (b.CarriedCount == 2) Toast?.Invoke("¡ATRAPÓ VARIOS PECES DE UN BOCADO!", Danger);
+        };
         return bird;
+    }
+
+    // Aviso corto en el HUD desde otros scripts (jefes, habilidades)
+    public void ShowToast(string text, Color color)
+    {
+        Toast?.Invoke(text, color);
+    }
+
+    // Refuerzos de un jefe (Reina Águila): llegan desde lo alto cerca de 'near' y cuentan para ganar
+    public void SpawnReinforcements(BirdType type, int count, Vector3 near)
+    {
+        if (type == null || count <= 0 || lake == null || State == GameState.Victory || State == GameState.Defeat) return;
+        for (int i = 0; i < count; i++)
+        {
+            float a = (i / (float)count) * Mathf.PI * 2f + Random.Range(-0.3f, 0.3f);
+            Vector3 dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+            Vector3 spawn = near + dir * 25f + Vector3.up * 18f;
+            Vector3 arrive = lake.Center + dir * lake.Radius * 0.4f + Vector3.up * Random.Range(12f, 18f);
+            int health = Mathf.Max(1, Mathf.RoundToInt(type.health * Mathf.Max(0.1f, currentHealthMultiplier)));
+            BirdAI bird = CreateBird("Refuerzo_" + type.name + "_" + (i + 1), spawn, type, health);
+            bird.BeginArrival(arrive, lake, player);
+            birds.Add(bird);
+        }
+        Toast?.Invoke("¡LLEGAN REFUERZOS!", Danger);
     }
 
     void OnBirdDied(BirdAI bird)

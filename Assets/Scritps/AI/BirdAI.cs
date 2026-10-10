@@ -8,13 +8,18 @@ using FishGame.AI;
 //  1. Muerto                    -> cae girando
 //  2. Llegando                  -> vuela desde el cielo hasta el lago (cinemática)
 //  3. Aturdido                  -> tras embestir al jugador se queda quieto 2.5 s
-//  4. Lleva un pez              -> sube y se aleja; si nadie lo detiene, se lo come
-//  5. Pelear con el jugador     -> si lo ve cerca o si le disparó (aunque estuviera cazando)
-//  6. Recuperándose             -> remonta tras una picada fallida
-//  7. Cazar peces               -> acechar en círculos sobre un pez y lanzarse en picada
-//  8. Patrullar                 -> vuela en círculos sobre el lago
+//  4. Jefe: furia / vulnerable  -> ruge al cambiar de fase; pausa vulnerable tras un ataque fuerte
+//  5. Lleva peces               -> sube y se aleja; si nadie lo detiene, se los come
+//  6. Jefe: ataque fuerte       -> el patrón propio de cada jefe (BirdAI.Boss.cs)
+//  7. Bajo el agua              -> buceadores: persiguen peces (o al jugador) nadando y luego salen
+//  8. Pelear con el jugador     -> si lo ve cerca o si le disparó (aunque estuviera cazando)
+//  9. Recuperándose             -> remonta tras una picada fallida
+// 10. Caza especial             -> la reina roba presas, la garza se planta en la orilla
+// 11. Cazar peces               -> acechar sobre un pez y lanzarse (cada especie a su manera)
+// 12. Patrullar                 -> vuela en círculos sobre el lago
+// Los ataques especiales de cada especie están en BirdAI.Abilities.cs y los jefes en BirdAI.Boss.cs.
 [RequireComponent(typeof(Rigidbody))]
-public class BirdAI : MonoBehaviour
+public partial class BirdAI : MonoBehaviour
 {
     public static readonly List<BirdAI> All = new List<BirdAI>();
 
@@ -55,7 +60,7 @@ public class BirdAI : MonoBehaviour
     public float knockbackForce = 16f;
     public float knockbackUp = 6f;
     public float stunDuration = 2.5f;
-    [Tooltip("Si el jugador está más hondo que esto bajo el agua, no lo ve")]
+    [Tooltip("Si el jugador está más hondo que esto bajo el agua, no lo ve (los buceadores sí)")]
     public float playerHiddenDepth = 1.5f;
 
     [Header("Visual")]
@@ -81,11 +86,23 @@ public class BirdAI : MonoBehaviour
     public bool IsDiving { get { return diving; } }
     public bool IsStunned { get { return stunTimer > 0f; } }
     public bool IsAggro { get { return player != null && !player.isDead && Time.time < aggroUntil; } }
+    // Buceando bajo la superficie (cormorán, serreta, Cormorán Rey): los peces huyen en horizontal
+    public bool IsSubmerged { get { return submerged && !dead; } }
+    // Garza quieta en la orilla: los peces no la ven venir
+    public bool IsLurking { get { return lurking && !dead; } }
     public FishAI TargetFish { get; private set; }
-    public FishAI CarriedFish { get; private set; }
+    // Primer pez que lleva (el pelícano puede llevar varios: CarriedFishes)
+    public FishAI CarriedFish { get { return carried.Count > 0 ? carried[0] : null; } }
+    public IReadOnlyList<FishAI> CarriedFishes { get { return carried; } }
+    public int CarriedCount { get { return carried.Count; } }
+    public float Health01 { get { return health != null ? health.Health01 : (dead ? 0f : 1f); } }
+    public BirdType Type { get; private set; }
+    public BirdAbility Ability { get; private set; }
+    public BossKind BossType { get; private set; }
     public string CurrentBehaviour { get { return tree != null ? tree.ActiveAction : ""; } }
 
     public event System.Action<BirdAI> Died;
+    // Se lanzan una vez por cada pez (un bocado del pelícano lanza varios)
     public event System.Action<BirdAI, FishAI> FishCaught;
     public event System.Action<BirdAI, FishAI> FishEaten;
     public event System.Action<BirdAI, FishAI> FishDropped;
@@ -102,6 +119,7 @@ public class BirdAI : MonoBehaviour
     bool arriving;
     bool dead;
     bool diving;
+    bool diveTicked;
     float diveStartTime;
     float stalkTimer;
     float stalkDuration;
@@ -120,6 +138,17 @@ public class BirdAI : MonoBehaviour
     float groundCacheTimer;
     float sightTimer;
     bool canSeePlayer;
+    float bodyRadius = 1.3f;
+    float hoverHeight = 1.4f;
+
+    // Peces que lleva (normalmente uno; el pelícano varios)
+    readonly List<FishAI> carried = new List<FishAI>();
+    readonly List<FishAI> carriedTemp = new List<FishAI>();
+    static readonly System.Predicate<FishAI> NotHeld = f => f == null || f.State != FishAI.FishState.Grabbed;
+
+    // Lo que piden las acciones en este tick (se limpia antes de cada tick)
+    Vector3 lookOverride;
+    float poseTarget;
 
     // Aleteo procedural (huesos de las alas)
     readonly List<Transform> wingBones = new List<Transform>();
@@ -127,6 +156,8 @@ public class BirdAI : MonoBehaviour
     readonly List<float> wingSide = new List<float>();
     float flapPhase;
     Vector3 visualBasePos;
+    Quaternion visualBaseRot = Quaternion.identity;
+    float posePitch;
     float hitPunch;
 
     void Awake()
@@ -176,6 +207,7 @@ public class BirdAI : MonoBehaviour
     public void ApplyType(BirdType type)
     {
         if (type == null) return;
+        Type = type;
         float speed = Mathf.Max(0.1f, type.speedMultiplier);
         arrivalSpeed *= speed;
         patrolSpeed *= speed;
@@ -185,11 +217,22 @@ public class BirdAI : MonoBehaviour
         damage = type.damage;
         detectRange = type.detectRange;
         carryTime = Mathf.Max(0.5f, type.carryTime);
+        attackReach = Mathf.Max(0.5f, type.attackReach);
+        catchRadius = Mathf.Max(0.5f, type.catchRadius);
+        catchDepth = Mathf.Max(0f, type.catchDepth);
+        stalkAltitude = Mathf.Max(1f, type.stalkAltitude);
+        bodyRadius = Mathf.Max(0.2f, type.colliderRadius);
+        hoverHeight = Mathf.Max(1.4f, bodyRadius * 1.1f);
         wingBoneNames = type.wingBones;
         talonBoneNames = type.talonBones;
         catchPointOffset = type.catchPointOffset;
         proceduralFlap = type.proceduralWingFlap && type.animatorController == null;
         SetVisualScale(type.model != null ? type.modelScale : 1f);
+
+        Ability = type.ability;
+        BossType = type.boss;
+        ConfigureAbility();
+        if (IsBoss) SetupBoss();
 
         // Si el modelo ya trae animación (controlador), no se pisa con el aleteo por código
         if (visual != null)
@@ -211,6 +254,7 @@ public class BirdAI : MonoBehaviour
     {
         if (visual == null) return;
         visualBasePos = visual.localPosition;
+        visualBaseRot = visual.localRotation;
 
         // Huesos de alas del modelo (si existen)
         if (proceduralFlap)
@@ -256,22 +300,40 @@ public class BirdAI : MonoBehaviour
                 new BTSequence("Aturdido",
                     new BTCondition("¿Aturdido?", () => stunTimer > 0f),
                     new BTAction("Quedarse quieto", Hover)),
+                new BTSequence("Furia",
+                    new BTCondition("¿Jefe cambiando de fase?", () => IsBoss && phaseChangeTimer > 0f),
+                    new BTAction("Rugir", BossRoar)),
+                new BTSequence("Vulnerable",
+                    new BTCondition("¿Jefe agotado?", () => IsBoss && vulnerableTimer > 0f),
+                    new BTAction("Pausa vulnerable", BossVulnerablePause)),
                 new BTSequence("LlevarPresa",
-                    new BTCondition("¿Lleva un pez?", () => CarriedFish != null),
+                    new BTCondition("¿Lleva peces?", () => carried.Count > 0),
                     new BTAction("Escapar con la presa", CarryAway)),
+                new BTSequence("AtaqueJefe",
+                    new BTCondition("¿Ataque fuerte?", BossWantsAttack),
+                    new BTAction("Ataque del jefe", BossAttackAct)),
+                new BTSequence("BajoElAgua",
+                    new BTCondition("¿Bajo el agua?", () => submerged),
+                    new BTAction("Nadar bajo el agua", Underwater)),
                 new BTSequence("Combate",
-                    new BTCondition("¿Pelear con el jugador?", ShouldFightPlayer),
+                    new BTCondition("¿Pelear con el jugador?", () => !IsBoss && ShouldFightPlayer()),
                     new BTAction("Perseguir y embestir", ChasePlayer)),
                 new BTSequence("Remontar",
                     new BTCondition("¿Picada fallida?", () => recoverTimer > 0f),
                     new BTAction("Remontar vuelo", Climb)),
+                new BTSequence("RobarPresa",
+                    new BTCondition("¿Otra ave lleva un pez?", WantsSteal),
+                    new BTAction("Robar la presa", StealFish)),
+                new BTSequence("Orilla",
+                    new BTCondition("¿Cazar desde la orilla?", WantsShore),
+                    new BTAction("Arponear desde la orilla", ShoreHunt)),
                 new BTSequence("Cazar",
                     new BTCondition("¿Hay presa?", AcquireFish),
                     new BTSelector("Ataque",
                         new BTSequence("Picada",
                             new BTCondition("¿Listo para lanzarse?", () => diving || ReadyToDive()),
                             new BTAction("Lanzarse en picada", Dive)),
-                        new BTAction("Acechar en círculos", Stalk))),
+                        new BTAction("Acechar", Stalk))),
                 new BTAction("Patrullar el lago", Patrol)));
     }
 
@@ -283,11 +345,23 @@ public class BirdAI : MonoBehaviour
         if (attackTimer > 0f) attackTimer -= dt;
         if (diveCooldownTimer > 0f) diveCooldownTimer -= dt;
         if (recoverTimer > 0f) recoverTimer -= dt;
+        if (carried.Count > 0) carried.RemoveAll(NotHeld);
+        TickAbilities(dt);
+        if (IsBoss) TickBoss(dt);
 
+        lookOverride = Vector3.zero;
+        poseTarget = 0f;
+        lowFlight = false;
+        diveTicked = false;
         tree.Tick();
+        // Si otra prioridad interrumpió la picada, se cancela limpia
+        if (diving && !diveTicked) diving = false;
 
-        if (!dead) Move(dt);
-
+        if (!dead)
+        {
+            Move(dt);
+            UpdateSubmerged(dt);
+        }
     }
 
     // ======================= CONDICIONES =======================
@@ -323,12 +397,13 @@ public class BirdAI : MonoBehaviour
         aggroUntil = Mathf.Max(aggroUntil, Time.time + seconds);
         if (TargetFish != null) ReleaseTarget();
         diving = false;
+        CancelSpecialHunt();
     }
 
     bool CanSeePlayer()
     {
-        // Escondido en lo profundo: no lo ve
-        if (player.isInWater && lake.SurfaceY - (player.transform.position.y + 0.5f) > playerHiddenDepth) return false;
+        // Escondido en lo profundo: no lo ve (los buceadores sí: el agua no es refugio)
+        if (!IsDiver && player.isInWater && lake.SurfaceY - (player.transform.position.y + 0.5f) > playerHiddenDepth) return false;
 
         Vector3 from = transform.position;
         Vector3 to = player.transform.position + Vector3.up * 0.5f;
@@ -365,8 +440,8 @@ public class BirdAI : MonoBehaviour
                 d.y = 0f;
                 float dist = d.magnitude;
                 if (dist > huntRange) continue;
-                // Prefiere peces cercanos, poco profundos y que nadie más esté cazando
-                float score = dist + Mathf.Max(0f, f.Depth - catchDepth) * 10f + (f.Hunter != null ? 50f : 0f);
+                // Prefiere peces cercanos, a su alcance (según la especie) y que nadie más esté cazando
+                float score = dist + FishScore(f) + (f.Hunter != null ? 50f : 0f);
                 if (score < bestScore) { bestScore = score; best = f; }
             }
             if (best == null) return false;
@@ -377,16 +452,21 @@ public class BirdAI : MonoBehaviour
             stalkTimer = 0f;
             stalkDuration = Random.Range(stalkTime.x, stalkTime.y);
             orbitAngle = Mathf.Atan2(pos.z - best.transform.position.z, pos.x - best.transform.position.x);
+            OnTargetAcquired();
         }
         return TargetFish != null;
     }
 
     bool ReadyToDive()
     {
-        if (TargetFish == null || diveCooldownTimer > 0f || stalkTimer < stalkDuration) return false;
+        if (TargetFish == null || diveCooldownTimer > 0f) return false;
+        if (Ability == BirdAbility.GroupDive && inGroup) return GroupReady();
+        if (stalkTimer < stalkDuration) return false;
+        if (Ability == BirdAbility.HoverDive && !hovering) return false;
+        if (IsDiver && surfaceCooldown > 0f) return false;
         Vector3 d = TargetFish.transform.position - transform.position;
         d.y = 0f;
-        return d.magnitude < maxDiveDistance && TargetFish.Depth <= catchDepth + 0.4f;
+        return d.magnitude < maxDiveDistance && (IsDiver || TargetFish.Depth <= catchDepth + 0.4f);
     }
 
     void ReleaseTarget()
@@ -394,6 +474,9 @@ public class BirdAI : MonoBehaviour
         if (TargetFish != null && TargetFish.Hunter == this) TargetFish.Hunter = null;
         TargetFish = null;
         diving = false;
+        hovering = false;
+        inGroup = false;
+        chainFollower = false;
     }
 
     // ======================= ACCIONES =======================
@@ -445,17 +528,27 @@ public class BirdAI : MonoBehaviour
 
         if (carryTimer <= 0f)
         {
-            FishAI fish = CarriedFish;
-            CarriedFish = null;
             recoverTimer = 1f;
-            if (fish != null)
-            {
-                FishEaten?.Invoke(this, fish);
-                fish.Kill(true);
-            }
+            hasShore = false;
+            EatAll();
             return BTStatus.Success;
         }
         return BTStatus.Running;
+    }
+
+    // Se come todo lo que lleva (un evento por pez para que el GameDirector cuente bien)
+    void EatAll()
+    {
+        carriedTemp.Clear();
+        carriedTemp.AddRange(carried);
+        carried.Clear();
+        foreach (FishAI fish in carriedTemp)
+        {
+            if (fish == null) continue;
+            FishEaten?.Invoke(this, fish);
+            fish.Kill(true);
+        }
+        carriedTemp.Clear();
     }
 
     BTStatus ChasePlayer()
@@ -469,10 +562,19 @@ public class BirdAI : MonoBehaviour
         float speed = chaseSpeed;
         if (lead.y < minY)
         {
-            // El jugador está bajo el agua: espera encima, dando vueltas
-            orbitAngle += Time.fixedDeltaTime * 1.2f * orbitDirection;
-            aim = new Vector3(lead.x + Mathf.Cos(orbitAngle) * 5f, minY + 3f, lead.z + Mathf.Sin(orbitAngle) * 5f);
-            speed = patrolSpeed;
+            if (IsDiver && surfaceCooldown <= 0f && lake.IsInsideXZ(lead, 1f))
+            {
+                // Buceador: se zambulle tras el jugador (bajo el agua lo sigue la rama "Bajo el agua")
+                KeepDiving();
+                if (Time.time - diveStartTime > 3f) surfaceCooldown = 3f; // no logra entrar: espera arriba
+            }
+            else
+            {
+                // El jugador está bajo el agua: espera encima, dando vueltas
+                orbitAngle += Time.fixedDeltaTime * 1.2f * orbitDirection;
+                aim = new Vector3(lead.x + Mathf.Cos(orbitAngle) * 5f, minY + 3f, lead.z + Mathf.Sin(orbitAngle) * 5f);
+                speed = patrolSpeed;
+            }
         }
         else if (attackTimer <= 0f)
         {
@@ -500,48 +602,63 @@ public class BirdAI : MonoBehaviour
 
     BTStatus Stalk()
     {
+        if (Ability == BirdAbility.HoverDive) return HoverStalk();
+
         tree.MarkActive("Acechar en círculos");
         Vector3 fish = TargetFish.transform.position;
-        orbitAngle += Time.fixedDeltaTime * 0.9f * orbitDirection;
-        Vector3 point = new Vector3(fish.x + Mathf.Cos(orbitAngle) * 7f, lake.SurfaceY + stalkAltitude, fish.z + Mathf.Sin(orbitAngle) * 7f);
+        // La serreta del grupo se queda en su lado del cardumen (gira muy despacio)
+        if (inGroup) orbitAngle += Time.fixedDeltaTime * 0.25f * orbitDirection;
+        else orbitAngle += Time.fixedDeltaTime * 0.9f * orbitDirection;
+        Vector3 point = new Vector3(fish.x + Mathf.Cos(orbitAngle) * stalkRadius, lake.SurfaceY + stalkAltitude, fish.z + Mathf.Sin(orbitAngle) * stalkRadius);
         desiredVelocity = (point - transform.position).normalized * patrolSpeed * 1.15f;
 
         Vector3 flat = fish - transform.position;
         flat.y = 0f;
-        if (flat.magnitude < 14f) stalkTimer += Time.fixedDeltaTime;
+        if (flat.magnitude < stalkRadius * 2f) stalkTimer += Time.fixedDeltaTime;
         return BTStatus.Running;
     }
 
     BTStatus Dive()
     {
         tree.MarkActive("Lanzarse en picada");
+        diveTicked = true;
         if (!diving)
         {
             diving = true;
             diveStartTime = Time.time;
+            OnDiveStarted();
         }
 
         FishAI fish = TargetFish;
         Vector3 talonPos = talons != null ? talons.position : transform.position;
         float surface = lake.SurfaceY;
+        float speed = diveSpeed * diveSpeedMul;
 
         // Apunta a donde va a estar el pez
-        float t = Mathf.Clamp(Vector3.Distance(talonPos, fish.transform.position) / diveSpeed, 0f, 1.2f);
+        float t = Mathf.Clamp(Vector3.Distance(talonPos, fish.transform.position) / speed, 0f, diveLeadMax);
         Vector3 predicted = fish.transform.position + fish.Velocity * t;
-        predicted.y = Mathf.Max(predicted.y, surface - catchDepth * 0.5f);
-        desiredVelocity = (predicted - talonPos).normalized * diveSpeed;
+        if (!IsDiver) predicted.y = Mathf.Max(predicted.y, surface - catchDepth * 0.5f);
+        if (Ability == BirdAbility.SurfaceSnatch)
+        {
+            // Pasada rasante: baja en curva suave, casi horizontal, sin zambullirse
+            Vector3 flatTo = predicted - talonPos;
+            flatTo.y = 0f;
+            predicted.y = Mathf.Max(predicted.y, surface - 0.5f) + Mathf.Clamp(flatTo.magnitude * 0.2f, 0f, 3f);
+        }
+        desiredVelocity = (predicted - talonPos).normalized * speed;
 
         // ¡Atrapado!
-        if (Vector3.Distance(talonPos, fish.transform.position) < catchRadius && fish.Depth <= catchDepth + 0.3f)
+        if (Vector3.Distance(talonPos, fish.transform.position) < catchRadius && (IsDiver || fish.Depth <= catchDepth + 0.3f))
         {
             Catch(fish);
             return BTStatus.Success;
         }
 
         // Falla si el pez se escondió en lo hondo, si tardó demasiado o si ya se metió al agua
-        bool fishTooDeep = fish.Depth > catchDepth + 0.4f && transform.position.y < surface + 3f;
-        bool tooLong = Time.time - diveStartTime > 3.5f;
-        bool underWater = transform.position.y < surface - 1.1f;
+        // (los buceadores sí entran: bajo el agua sigue la rama "Bajo el agua")
+        bool fishTooDeep = !IsDiver && fish.Depth > catchDepth + 0.4f && transform.position.y < surface + 3f;
+        bool tooLong = Time.time - diveStartTime > diveTimeout;
+        bool underWater = !IsDiver && transform.position.y < surface - Mathf.Max(diveFloor, 0.5f) - 0.1f;
         if (fishTooDeep || tooLong || underWater)
         {
             EndDive();
@@ -557,22 +674,55 @@ public class BirdAI : MonoBehaviour
         stalkTimer = 0f;
         stalkDuration = Random.Range(stalkTime.x, stalkTime.y);
         diveCooldownTimer = Random.Range(diveCooldown.x, diveCooldown.y);
+        hovering = false;
+        inGroup = false;
+        chainFollower = false;
         // La salpicadura al tocar el agua la hace WaterInteractor
         // A veces cambia de presa
         if (Random.value < 0.4f) ReleaseTarget();
     }
 
+    // Sigue (o empieza) una picada desde una acción que no es Dive (jefes, buceo tras el jugador)
+    void KeepDiving()
+    {
+        if (!diving) diveStartTime = Time.time;
+        diving = true;
+        diveTicked = true;
+    }
+
     void Catch(FishAI fish)
     {
         diving = false;
+        hovering = false;
+        inGroup = false;
+        chainFollower = false;
         if (TargetFish != null && TargetFish.Hunter == this) TargetFish.Hunter = null;
         TargetFish = null;
-        CarriedFish = fish;
         carryTimer = carryTime;
-        fish.Grab(talons != null ? talons : transform);
+        Vector3 at = fish.transform.position;
+        if (!GrabFish(fish)) return;
         // Las garras golpean el agua: salpicadura y anillos aunque el cuerpo no se sumerja
-        LakeWater.Splash(new Vector3(fish.transform.position.x, lake.SurfaceY, fish.transform.position.z), 0.7f, false);
+        if (!submerged) LakeWater.Splash(new Vector3(fish.transform.position.x, lake.SurfaceY, fish.transform.position.z), 0.7f, false);
+        // Pelícano: el mismo bocado se lleva a los peces de alrededor
+        if (ScoopMax > 1) ScoopAround(at);
+    }
+
+    bool GrabFish(FishAI fish)
+    {
+        if (fish == null || !fish.IsCatchable) return false;
+        if (!fish.Grab(talons != null ? talons : transform, CarryOffset(carried.Count))) return false;
+        carried.Add(fish);
         FishCaught?.Invoke(this, fish);
+        return true;
+    }
+
+    // Varios peces en las garras / el saco: se reparten un poco para que no se encimen
+    Vector3 CarryOffset(int index)
+    {
+        if (index <= 0) return Vector3.zero;
+        float s = Mathf.Max(1f, visualScale * 0.7f);
+        float side = index % 2 == 1 ? -1f : 1f;
+        return new Vector3(side * 0.32f * ((index + 1) / 2), -0.18f * index, 0.25f * (index / 2)) * s;
     }
 
     BTStatus Patrol()
@@ -592,7 +742,7 @@ public class BirdAI : MonoBehaviour
     void Move(float dt)
     {
         Vector3 v = rb.linearVelocity;
-        float accel = acceleration * (diving ? 1.6f : 1f);
+        float accel = acceleration * (diving ? diveAccelMul : 1f);
 
         // Separación entre pájaros
         Vector3 push = Vector3.zero;
@@ -607,19 +757,25 @@ public class BirdAI : MonoBehaviour
 
         v = Vector3.MoveTowards(v, desired, accel * dt);
 
-        // Altura mínima: sobre el agua (salvo en la picada) y sobre el terreno
+        // Altura mínima: sobre el agua (salvo en la picada o buceando) y sobre el terreno
         groundCacheTimer -= dt;
         if (groundCacheTimer <= 0f)
         {
             groundCacheY = GroundBelow();
             groundCacheTimer = 0.2f;
         }
-        float minY = diving ? lake.SurfaceY - 1f : lake.SurfaceY + 0.6f;
-        if (!arriving) minY = Mathf.Max(minY, groundCacheY + minAltitudeAboveGround);
+        float surface = lake.SurfaceY;
+        float minY;
+        if (submerged) minY = groundCacheY + 0.6f;
+        else if (diving) minY = surface - diveFloor;
+        else minY = surface + 0.6f;
+        if (!arriving && !submerged) minY = Mathf.Max(minY, groundCacheY + GroundClearance());
         if (transform.position.y < minY && v.y < 0f) v.y = Mathf.Max(v.y, (minY - transform.position.y) * 4f);
 
+        if (submerged) KeepUnderwater(ref v);
+
         // Esquiva obstáculos al frente (árboles, rocas)
-        if (v.sqrMagnitude > 1f && !diving)
+        if (v.sqrMagnitude > 1f && !diving && !submerged)
         {
             RaycastHit hit;
             if (Physics.SphereCast(transform.position, 0.8f, v.normalized, out hit, Mathf.Max(4f, v.magnitude * 0.6f), ~0, QueryTriggerInteraction.Ignore)
@@ -632,7 +788,8 @@ public class BirdAI : MonoBehaviour
         rb.linearVelocity = v;
 
         // Mirar hacia donde vuela (o al jugador si está aturdido), con alabeo en las curvas
-        Vector3 look = stunTimer > 0f && player != null ? (player.transform.position - transform.position) : v;
+        Vector3 look = stunTimer > 0f && player != null ? (player.transform.position - transform.position)
+                     : (lookOverride.sqrMagnitude > 0.01f ? lookOverride : v);
         if (look.sqrMagnitude > 0.1f)
         {
             Quaternion targetRot = Quaternion.LookRotation(look.normalized);
@@ -660,11 +817,14 @@ public class BirdAI : MonoBehaviour
         if (visual == null) return;
         float dt = Time.deltaTime;
 
-        // Aleteo: rápido al subir o perseguir, planeo en picada, quieto si está muerto
+        // Aleteo: rápido al subir o perseguir, planeo en picada, alas recogidas buceando, quieto si está muerto
         float flapRate = flapSpeed;
         float amp = flapAngle;
         if (diving) { amp = 6f; flapRate *= 0.5f; }
-        else if (CarriedFish != null || stunTimer > 0f) flapRate *= 1.5f;
+        else if (submerged) { amp = 10f; flapRate *= 0.6f; }
+        else if (lurking) { amp = 5f; flapRate *= 0.4f; }
+        else if (hovering) flapRate *= 2.2f;
+        else if (carried.Count > 0 || stunTimer > 0f) flapRate *= 1.5f;
         if (dead) amp = 0f;
         flapPhase += dt * flapRate;
         float flap = Mathf.Sin(flapPhase) * amp;
@@ -680,6 +840,10 @@ public class BirdAI : MonoBehaviour
         hitPunch = Mathf.MoveTowards(hitPunch, 0f, dt * 4f);
         visual.localPosition = visualBasePos + Vector3.up * Mathf.Cos(flapPhase) * 0.12f * (amp / Mathf.Max(1f, flapAngle));
         visual.localScale = Vector3.one * visualScale * (1f + hitPunch * 0.15f);
+
+        // Postura (levantar el pico, mirar abajo antes de una picada...): cabeceo de todo el modelo
+        posePitch = Mathf.MoveTowards(posePitch, dead ? 0f : poseTarget, dt * 140f);
+        visual.localRotation = Quaternion.Euler(-posePitch, 0f, 0f) * visualBaseRot;
     }
 
     float visualScale = 1f;
@@ -690,6 +854,11 @@ public class BirdAI : MonoBehaviour
     void HitPlayer()
     {
         if (player == null || player.isDead || stunTimer > 0f || dead) return;
+        if (IsBoss)
+        {
+            BumpPlayer();
+            return;
+        }
         Vector3 dir = player.transform.position - transform.position;
         dir.y = 0f;
         if (dir.sqrMagnitude < 0.01f) dir = transform.forward;
@@ -716,28 +885,51 @@ public class BirdAI : MonoBehaviour
 
     void OnDamaged(int amount, Vector3 point)
     {
-        if (dead) return;
+        // El daño extra de la pausa vulnerable no cuenta como otro disparo
+        if (dead || applyingBonus) return;
         hitPunch = 1f;
         FXFactory.SpawnOneShot(hitPrefab, point, Quaternion.identity, 0.8f, 2f);
+
+        if (IsBoss)
+        {
+            OnBossDamaged(amount);
+            return;
+        }
 
         // Si le disparan, va por el jugador (aunque estuviera cazando)
         arriving = false;
         aggroUntil = Time.time + aggroMemory;
         ReleaseTarget();
+        CancelSpecialHunt();
 
-        // Del susto suelta al pez
-        if (CarriedFish != null) DropFish();
+        // Del susto suelta al pez (o a todos)
+        if (carried.Count > 0) DropFish();
     }
 
     void DropFish()
     {
-        FishAI fish = CarriedFish;
-        CarriedFish = null;
-        if (fish != null)
-        {
-            fish.Release();
-            FishDropped?.Invoke(this, fish);
-        }
+        carriedTemp.Clear();
+        carriedTemp.AddRange(carried);
+        carried.Clear();
+        foreach (FishAI fish in carriedTemp) ReleaseFish(fish);
+        carriedTemp.Clear();
+    }
+
+    // Suelta solo el último pez (el saco del Pelícano jefe)
+    void DropOneFish()
+    {
+        int last = carried.Count - 1;
+        if (last < 0) return;
+        FishAI fish = carried[last];
+        carried.RemoveAt(last);
+        ReleaseFish(fish);
+    }
+
+    void ReleaseFish(FishAI fish)
+    {
+        if (fish == null) return;
+        fish.Release();
+        FishDropped?.Invoke(this, fish);
     }
 
     void OnDied()
@@ -745,8 +937,12 @@ public class BirdAI : MonoBehaviour
         if (dead) return;
         dead = true;
         diving = false;
+        submerged = false;
+        lurking = false;
+        CancelSpecialHunt();
+        ClearBossState();
         ReleaseTarget();
-        if (CarriedFish != null) DropFish();
+        if (carried.Count > 0) DropFish();
 
         gameObject.tag = "Untagged";
         rb.useGravity = true;
@@ -756,6 +952,13 @@ public class BirdAI : MonoBehaviour
 
         Died?.Invoke(this);
         Destroy(gameObject, 6f);
+    }
+
+    static float FlatDistance(Vector3 a, Vector3 b)
+    {
+        float dx = a.x - b.x;
+        float dz = a.z - b.z;
+        return Mathf.Sqrt(dx * dx + dz * dz);
     }
 
     void OnDrawGizmosSelected()
@@ -768,6 +971,11 @@ public class BirdAI : MonoBehaviour
         {
             Gizmos.color = Color.magenta;
             Gizmos.DrawLine(transform.position, TargetFish.transform.position);
+        }
+        if (hasShore)
+        {
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawWireSphere(shorePoint, 1f);
         }
     }
 }

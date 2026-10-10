@@ -27,18 +27,24 @@ MonoBehaviour:
   waves:
   - delayBefore: 12
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
+      count: 2
+    - type: {fileID: 11400000, guid: c2736885980147aca076ce9b0637bce2, type: 2}
+      count: 1
+    healthMultiplier: 1.15
+  - delayBefore: 12
+    birds:
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
       count: 3
+    - type: {fileID: 11400000, guid: c2736885980147aca076ce9b0637bce2, type: 2}
+      count: 1
     healthMultiplier: 1.15
   - delayBefore: 12
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
       count: 4
-    healthMultiplier: 1.15
-  - delayBefore: 12
-    birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
-      count: 6
+    - type: {fileID: 11400000, guid: c2736885980147aca076ce9b0637bce2, type: 2}
+      count: 2
     healthMultiplier: 1.32
   isBossLevel: 0
   workshopAfter: 0

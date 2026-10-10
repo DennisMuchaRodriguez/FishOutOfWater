@@ -38,10 +38,34 @@ public class FishType
     public float staminaMultiplier = 1f;
 }
 
+// Forma de cazar propia de cada especie (copia cómo pesca el ave real)
+public enum BirdAbility
+{
+    None,               // acecha en círculos y se lanza en picada (ave básica)
+    SurfaceSnatch,      // gaviota: pasada rasante y rápida, roba peces de la superficie
+    HoverDive,          // martín pescador: se queda quieto en el aire y cae en vertical
+    ChainDive,          // charrán: cuando uno se lanza, los cercanos lo siguen en cadena
+    ShoreSpear,         // garza: se planta en la orilla y arponea a los peces que pasan
+    UnderwaterHunter,   // cormorán: se mete al agua y persigue peces nadando
+    GroupDive,          // serreta: varias bucean a la vez desde lados distintos del cardumen
+    Scoop,              // pelícano: atrapa varios peces de un bocado
+    HighDive            // águila pescadora: acecha muy alto y cae en picada larga y precisa
+}
+
+// Jefes del modo Historia (oleada 3 de los niveles 5, 10, 15 y 20)
+public enum BossKind
+{
+    None,
+    GiantHeron,         // La Garza Gris Gigante: estocadas desde la orilla que levantan olas
+    BottomlessPelican,  // El Pelícano Saco Sin Fondo: traga grupos enteros; cada disparo le saca un pez
+    CormorantKing,      // El Cormorán Rey: pelea arriba y abajo del agua
+    EagleQueen          // La Reina Águila Marina: 3 fases, roba presas, llama refuerzos, picadas largas
+}
+
 [System.Serializable]
 public class BirdType
 {
-    [Tooltip("Nombre del tipo (solo para identificarlo en el Inspector)")]
+    [Tooltip("Nombre del tipo. En los jefes es el nombre que se ve sobre su barra de vida")]
     public string name = "Ave";
 
     [Header("Modelo (pon aquí tu modelado)")]
@@ -69,6 +93,8 @@ public class BirdType
     public Vector3 colliderCenter = new Vector3(0f, 0.3f, 0f);
 
     [Header("Estadísticas")]
+    [Tooltip("Vida. En las oleadas se multiplica por el 'Health Multiplier' de la oleada, " +
+             "salvo en los jefes: ellos usan este valor tal cual")]
     public int health = 40;
     [Tooltip("1 = normal. Afecta patrulla, persecución y picada")]
     public float speedMultiplier = 1f;
@@ -78,4 +104,32 @@ public class BirdType
     public float detectRange = 26f;
     [Tooltip("Segundos que tarda en comerse un pez atrapado (tiempo que tienes para rescatarlo)")]
     public float carryTime = 3.5f;
+    [Tooltip("Distancia a la que te golpea. La garza tiene una estocada larga; los jefes, más")]
+    public float attackReach = 2.6f;
+
+    [Header("Caza")]
+    [Tooltip("Ataque especial de la especie (cómo caza peces)")]
+    public BirdAbility ability = BirdAbility.None;
+    [Tooltip("Distancia de las garras al pez para atraparlo")]
+    public float catchRadius = 2.4f;
+    [Tooltip("Profundidad máxima (m bajo la superficie) a la que alcanza un pez")]
+    public float catchDepth = 2f;
+    [Tooltip("Altura sobre el agua a la que acecha antes de lanzarse")]
+    public float stalkAltitude = 9f;
+    [Tooltip("Pelícano: cuántos peces atrapa como máximo de un bocado")]
+    [Min(1)] public int scoopCount = 3;
+    [Tooltip("Cormorán / serreta: segundos que aguanta bajo el agua persiguiendo peces")]
+    public float underwaterTime = 4f;
+
+    [Header("Jefe")]
+    [Tooltip("Si no es None, es un jefe: barra de vida arriba, fases y pausa vulnerable")]
+    public BossKind boss = BossKind.None;
+    [Tooltip("Segundos de la pausa vulnerable después de cada ataque fuerte")]
+    public float vulnerableTime = 2.5f;
+    [Tooltip("Multiplica el daño que recibe durante la pausa vulnerable")]
+    public float vulnerableDamageMultiplier = 2f;
+    [Tooltip("Reina Águila: ave que llama como refuerzo al cambiar de fase")]
+    public BirdDefinition reinforcements;
+    [Tooltip("Cuántas aves de refuerzo llegan en cada cambio de fase")]
+    public int reinforcementCount = 3;
 }

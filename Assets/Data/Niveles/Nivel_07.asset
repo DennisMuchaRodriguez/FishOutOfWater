@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelDefinition
   number: 7
   displayName: "Lluvia de picos"
-  description: "Las picadas llegan una tras otra. Despu\u00E9s, el Taller."
+  description: "Llegan los charranes: caen en picada uno tras otro, en cadena."
   fish:
   - type: {fileID: 11400000, guid: ec036fa557a443eaa27e1a65665f1eea, type: 2}
     count: 7
@@ -27,18 +27,30 @@ MonoBehaviour:
   waves:
   - delayBefore: 12
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
-      count: 4
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
+      count: 1
+    - type: {fileID: 11400000, guid: b0c6e075a7644da3b40247643d6edeff, type: 2}
+      count: 3
     healthMultiplier: 1.3
   - delayBefore: 12
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
-      count: 5
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
+      count: 1
+    - type: {fileID: 11400000, guid: b0c6e075a7644da3b40247643d6edeff, type: 2}
+      count: 3
+    - type: {fileID: 11400000, guid: 0342a5f5ce4f4cfcbcccd42123acb408, type: 2}
+      count: 1
     healthMultiplier: 1.3
   - delayBefore: 12
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
-      count: 7
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
+      count: 2
+    - type: {fileID: 11400000, guid: c2736885980147aca076ce9b0637bce2, type: 2}
+      count: 1
+    - type: {fileID: 11400000, guid: b0c6e075a7644da3b40247643d6edeff, type: 2}
+      count: 3
+    - type: {fileID: 11400000, guid: 0342a5f5ce4f4cfcbcccd42123acb408, type: 2}
+      count: 1
     healthMultiplier: 1.49
   isBossLevel: 0
   workshopAfter: 0

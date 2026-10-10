@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83f60ad13e9849669e8e17296921356b, type: 3}
+  m_Name: Ave_Pelicano
+  m_EditorClassIdentifier: Assembly-CSharp::BirdDefinition
+  bird:
+    name: "Pel\u00EDcano"
+    model: {fileID: 919132149155446097, guid: 45f89b30ad6645eb96439a5df94a3c4a, type: 3}
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelOffset: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    materialOverride: {fileID: 2100000, guid: f0ce45bbc8174b7894b3f6eb8115d9cc, type: 2}
+    animatorController: {fileID: 0}
+    proceduralWingFlap: 1
+    wingBones: L_wing,R_wing
+    talonBones: LeftFoot,RightFoot
+    catchPointOffset: {x: 0, y: 0, z: 1.24}
+    colliderRadius: 1.547
+    colliderCenter: {x: 0, y: 0, z: 0.28}
+    health: 140
+    speedMultiplier: 0.6
+    damage: 20
+    detectRange: 24
+    carryTime: 5
+    attackReach: 3
+    ability: 7
+    catchRadius: 3
+    catchDepth: 2.2
+    stalkAltitude: 10
+    scoopCount: 3
+    underwaterTime: 4
+    boss: 0
+    vulnerableTime: 2.5
+    vulnerableDamageMultiplier: 2
+    reinforcements: {fileID: 0}
+    reinforcementCount: 0

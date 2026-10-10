@@ -83,6 +83,7 @@ public class FishAI : MonoBehaviour
     float exhaustedTimer;
     float alarmTimer;
     Vector3 threatPosition;
+    bool underwaterThreat;
     float speedVariation;
     float outOfWaterTimer;
     float flopTimer;
@@ -194,11 +195,14 @@ public class FishAI : MonoBehaviour
         float best = float.MaxValue;
         bool found = false;
         Vector3 pos = transform.position;
+        underwaterThreat = false;
 
         foreach (BirdAI bird in BirdAI.All)
         {
             if (bird == null || !bird.IsAlive || bird.IsArriving) continue;
             float dist = Vector3.Distance(pos, bird.transform.position);
+            // La garza quieta en la orilla pasa desapercibida hasta que está muy cerca
+            if (bird.IsLurking && dist > 3f) continue;
             bool huntingMe = bird.TargetFish == this && bird.IsHunting;
             bool low = bird.transform.position.y - lake.SurfaceY < 12f;
             float radius = huntingMe ? threatRadius * 1.5f : threatRadius;
@@ -206,6 +210,7 @@ public class FishAI : MonoBehaviour
             {
                 best = dist;
                 threatPosition = bird.transform.position;
+                underwaterThreat = bird.IsSubmerged;
                 found = true;
             }
         }
@@ -281,8 +286,9 @@ public class FishAI : MonoBehaviour
             away.y = 0f;
             away.Normalize();
 
-            // Zigzag: cada tramo se desvía un poco a un lado distinto
-            Vector2 depthRange = deep ? panicDepth : cruiseDepth;
+            // Zigzag: cada tramo se desvía un poco a un lado distinto.
+            // Si el cazador bucea (cormorán, serreta), lo hondo no sirve: huye en horizontal
+            Vector2 depthRange = deep && !underwaterThreat ? panicDepth : cruiseDepth;
             bool ok = false;
             float[] angles = { Random.Range(-45f, 45f), 75f, -75f, 120f, -120f };
             foreach (float a in angles)
@@ -456,19 +462,26 @@ public class FishAI : MonoBehaviour
         }
     }
 
-    // Lo agarra un pájaro: queda colgando de sus garras
+    // Lo agarra un pájaro: queda colgando de sus garras (o del pico)
     public void Grab(Transform talons)
     {
-        if (State != FishState.Swimming) return;
+        Grab(talons, Vector3.zero);
+    }
+
+    // offset: separación local para que varios peces atrapados (pelícano) no se encimen
+    public bool Grab(Transform talons, Vector3 offset)
+    {
+        if (State != FishState.Swimming || talons == null) return false;
         State = FishState.Grabbed;
         wasGrabbed = true;
         rb.isKinematic = true;
         rb.interpolation = RigidbodyInterpolation.None;
         col.enabled = false;
         transform.SetParent(talons, true);
-        transform.localPosition = Vector3.zero;
+        transform.localPosition = offset;
         transform.localRotation = Quaternion.Euler(0f, 90f, 0f);
         RaiseAlarm(transform.position, alarmRadius);
+        return true;
     }
 
     // El pájaro lo suelta (porque le dispararon o murió): cae

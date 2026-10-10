@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelDefinition
   number: 20
   displayName: "La Reina \u00C1guila Marina"
-  description: "Jefe final: la Reina \u00C1guila Marina."
+  description: "Jefe final: la Reina \u00C1guila Marina roba presas, llama refuerzos y cae en picada desde el cielo."
   fish:
   - type: {fileID: 11400000, guid: ec036fa557a443eaa27e1a65665f1eea, type: 2}
     count: 10
@@ -27,20 +27,40 @@ MonoBehaviour:
   waves:
   - delayBefore: 12
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
-      count: 8
-    healthMultiplier: 1.95
-  - delayBefore: 10
-    birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
-      count: 10
-    healthMultiplier: 1.95
-  - delayBefore: 10
-    birds:
-    - type: {fileID: 11400000, guid: 9b5cc464bc614ec6aa033ab7740027d0, type: 2}
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
+      count: 2
+    - type: {fileID: 11400000, guid: c2736885980147aca076ce9b0637bce2, type: 2}
       count: 1
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
-      count: 6
+    - type: {fileID: 11400000, guid: b0c6e075a7644da3b40247643d6edeff, type: 2}
+      count: 3
+    - type: {fileID: 11400000, guid: 7a3219b6c3464e5e911a3439f0778ece, type: 2}
+      count: 1
+    - type: {fileID: 11400000, guid: 7950a254b7594af891690a59f9de7a1e, type: 2}
+      count: 1
+    healthMultiplier: 1.95
+  - delayBefore: 10
+    birds:
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
+      count: 2
+    - type: {fileID: 11400000, guid: b0c6e075a7644da3b40247643d6edeff, type: 2}
+      count: 3
+    - type: {fileID: 11400000, guid: 62c8d585248844fe948197438263b7fc, type: 2}
+      count: 3
+    - type: {fileID: 11400000, guid: a4eafba4333243fcbfc3f4eb5adeb7c5, type: 2}
+      count: 1
+    - type: {fileID: 11400000, guid: 7950a254b7594af891690a59f9de7a1e, type: 2}
+      count: 1
+    healthMultiplier: 1.95
+  - delayBefore: 10
+    birds:
+    - type: {fileID: 11400000, guid: 5b0ce8572f604d9d8e5857662822b344, type: 2}
+      count: 1
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
+      count: 2
+    - type: {fileID: 11400000, guid: b0c6e075a7644da3b40247643d6edeff, type: 2}
+      count: 3
+    - type: {fileID: 11400000, guid: 7950a254b7594af891690a59f9de7a1e, type: 2}
+      count: 1
     healthMultiplier: 2.24
   isBossLevel: 1
   workshopAfter: 0

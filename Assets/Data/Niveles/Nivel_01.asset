@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelDefinition
   number: 1
   displayName: "Sombras en el cielo"
-  description: "Las primeras aves llegan al lago. Aprende a proteger al cardumen."
+  description: "Llegan las gaviotas: roban peces de la superficie al vuelo. Protege al cardumen."
   fish:
   - type: {fileID: 11400000, guid: ec036fa557a443eaa27e1a65665f1eea, type: 2}
     count: 6
@@ -27,17 +27,17 @@ MonoBehaviour:
   waves:
   - delayBefore: 15
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
       count: 2
     healthMultiplier: 1.0
   - delayBefore: 12
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
       count: 3
     healthMultiplier: 1.0
   - delayBefore: 12
     birds:
-    - type: {fileID: 11400000, guid: 740a50ecbb2c47b18b187a8713e45739, type: 2}
+    - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
       count: 4
     healthMultiplier: 1.15
   isBossLevel: 0
