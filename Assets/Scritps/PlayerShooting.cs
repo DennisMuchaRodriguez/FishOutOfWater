@@ -61,6 +61,9 @@ public class PlayerShooting : MonoBehaviour
     public float CurrentSpread { get; private set; }
     public float LastShotTime { get; private set; } = -10f;
     public bool IsCharging { get; private set; }
+    // CONTRATO para el HUD: nombre del arma principal activa y si es la metralleta de burbujas
+    public string CurrentWeaponName { get { return "PISTOLA DE AGUA"; } }
+    public bool IsBubbleGun { get { return false; } }
 
     public event System.Action<bool> OnShot;          // bool = cargado
     public event System.Action<bool> OnTargetHit;     // bool = objetivo destruido

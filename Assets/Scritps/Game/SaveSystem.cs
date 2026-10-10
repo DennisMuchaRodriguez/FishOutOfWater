@@ -3,7 +3,7 @@ using System.IO;
 using UnityEngine;
 
 // Progreso del jugador en un archivo JSON (Application.persistentDataPath/progreso.json):
-// niveles desbloqueados, estrellas por nivel y cómics ya vistos.
+// niveles desbloqueados, estrellas por nivel, cómics ya vistos, mejoras del traje y visitas al Taller.
 [System.Serializable]
 public class SaveData
 {
@@ -12,6 +12,10 @@ public class SaveData
     public int unlockedLevels = 1;
     public List<int> stars = new List<int>();
     public List<string> comicsSeen = new List<string>();
+    [Tooltip("Mejoras instaladas, como \"Nombre:nivel\" (por ejemplo BubbleGun:1)")]
+    public List<string> upgrades = new List<string>();
+    [Tooltip("Niveles (índice del catálogo) cuya visita al Taller ya se usó")]
+    public List<int> workshopsUsed = new List<int>();
 }
 
 public static class SaveSystem
@@ -44,6 +48,8 @@ public static class SaveSystem
         if (data == null) data = new SaveData();
         if (data.stars == null) data.stars = new List<int>();
         if (data.comicsSeen == null) data.comicsSeen = new List<string>();
+        if (data.upgrades == null) data.upgrades = new List<string>();
+        if (data.workshopsUsed == null) data.workshopsUsed = new List<int>();
         if (data.unlockedLevels < 1) data.unlockedLevels = 1;
     }
 
@@ -104,12 +110,47 @@ public static class SaveSystem
         Save();
     }
 
+    // ---- Mejoras del traje ----
+
+    public static int GetUpgradeLevel(UpgradeId id)
+    {
+        string prefix = id + ":";
+        foreach (string entry in Data.upgrades)
+        {
+            if (!entry.StartsWith(prefix)) continue;
+            int level;
+            if (int.TryParse(entry.Substring(prefix.Length), out level)) return Mathf.Clamp(level, 0, 2);
+        }
+        return 0;
+    }
+
+    public static void SetUpgradeLevel(UpgradeId id, int level)
+    {
+        string prefix = id + ":";
+        Data.upgrades.RemoveAll(e => e.StartsWith(prefix));
+        if (level > 0) Data.upgrades.Add(prefix + Mathf.Clamp(level, 1, 2));
+        Save();
+        Upgrades.NotifyChanged();
+    }
+
+    // ---- Taller ----
+
+    public static bool IsWorkshopUsed(int levelIndex) { return Data.workshopsUsed.Contains(levelIndex); }
+
+    public static void MarkWorkshopUsed(int levelIndex)
+    {
+        if (levelIndex < 0 || Data.workshopsUsed.Contains(levelIndex)) return;
+        Data.workshopsUsed.Add(levelIndex);
+        Save();
+    }
+
     // ---- Pruebas ----
 
     public static void ResetProgress()
     {
         data = new SaveData();
         Save();
+        Upgrades.NotifyChanged();
     }
 
     public static void UnlockAll(int levelCount)
