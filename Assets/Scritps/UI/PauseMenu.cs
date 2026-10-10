@@ -5,9 +5,9 @@ using TMPro;
 using System.Collections;
 
 // Pausa (ESC), pantalla de muerte y pantalla de fin de nivel. Se construyen por código
-// con el mismo estilo de cómic del menú principal (MenuUI).
+// con el mismo estilo holográfico del casco que el menú principal (MenuUI).
 //  - Victoria: estrellas, resumen, cómic de después del nivel (la primera vez) y
-//    SIGUIENTE NIVEL / REPETIR / MAPA DE NIVELES.
+//    SIGUIENTE NIVEL / REPETIR / MAPA DE NIVELES. Si el nivel da visita al Taller: IR AL TALLER.
 //  - Derrota o muerte: REINTENTAR / MAPA DE NIVELES.
 public class PauseMenu : MonoBehaviour
 {
@@ -43,9 +43,10 @@ public class PauseMenu : MonoBehaviour
 
         // ---- Pausa ----
         pauseGroup = MenuUI.Stretch("Pausa", root);
-        MenuUI.Panel("Oscuro", pauseGroup, new Color(MenuUI.Ink.r, MenuUI.Ink.g, MenuUI.Ink.b, 0.78f));
-        RectTransform card = MenuUI.ComicPanel("Ficha", pauseGroup, new Vector2(0.5f, 0.5f), new Vector2(0f, -10f), new Vector2(460f, 470f), MenuUI.Cream, 6f, 10f);
-        MenuUI.Title("Titulo", card, "PAUSA", 70f, new Vector2(0.5f, 1f), new Vector2(0f, -60f), new Vector2(420f, 90f), MenuUI.Orange);
+        Backdrop(pauseGroup, MenuUI.WithAlpha(MenuUI.Ink, 0.78f));
+        RectTransform card = Card("Ficha", pauseGroup, new Vector2(0f, -10f), new Vector2(460f, 470f), MenuUI.Accent, MenuUI.Glass);
+        MenuUI.Title("Titulo", card, "PAUSA", 70f, new Vector2(0.5f, 1f), new Vector2(0f, -60f), new Vector2(420f, 90f), MenuUI.Accent);
+        MenuUI.Rule(card, new Vector2(0.5f, 1f), new Vector2(0f, -108f), 300f, MenuUI.Accent);
         MenuUI.ComicButton("CONTINUAR", card, new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), new Vector2(340f, 62f), MenuUI.Orange, Resume, 28f);
         MenuUI.ComicButton("REINICIAR NIVEL", card, new Vector2(0.5f, 0.5f), new Vector2(0f, -18f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.ReplayLevel, 24f);
         MenuUI.ComicButton("MAPA DE NIVELES", card, new Vector2(0.5f, 0.5f), new Vector2(0f, -90f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToLevelMap, 24f);
@@ -54,10 +55,12 @@ public class PauseMenu : MonoBehaviour
 
         // ---- Muerte ----
         deathGroup = MenuUI.Stretch("Muerte", root);
-        MenuUI.Panel("Rojo", deathGroup, new Color(0.18f, 0f, 0f, 0.6f));
-        RectTransform dcard = MenuUI.ComicPanel("Ficha", deathGroup, new Vector2(0.5f, 0.5f), new Vector2(0f, -10f), new Vector2(560f, 380f), MenuUI.Cream, 6f, 10f);
+        Backdrop(deathGroup, new Color(0.18f, 0f, 0f, 0.6f));
+        RectTransform dcard = Card("Ficha", deathGroup, new Vector2(0f, -10f), new Vector2(560f, 380f), MenuUI.Red,
+                                   MenuUI.WithAlpha(Color.Lerp(MenuUI.Ink, MenuUI.Red, 0.08f), 0.9f));
         MenuUI.Title("Titulo", dcard, "TRAJE DESTRUIDO", 64f, new Vector2(0.5f, 1f), new Vector2(0f, -62f), new Vector2(520f, 90f), MenuUI.Red);
-        MenuUI.Text("Sub", dcard, "La armadura llegó a cero", 24f, new Vector2(0.5f, 1f), new Vector2(0f, -122f), new Vector2(500f, 40f), MenuUI.Ink);
+        MenuUI.Text("Sub", dcard, "La armadura llegó a cero", 24f, new Vector2(0.5f, 1f), new Vector2(0f, -122f), new Vector2(500f, 40f), MenuUI.TextDim)
+            .characterSpacing = 2f;
         MenuUI.ComicButton("REINTENTAR", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(340f, 62f), MenuUI.Orange, GameSession.ReplayLevel, 28f);
         MenuUI.ComicButton("MAPA DE NIVELES", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 74f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToLevelMap, 24f);
         deathGroup.gameObject.SetActive(false);
@@ -125,13 +128,13 @@ public class PauseMenu : MonoBehaviour
     void BuildResults(bool victory, GameDirector director, LevelDefinition level)
     {
         RectTransform group = MenuUI.Stretch("Resultado", root);
-        MenuUI.Panel("Oscuro", group, victory ? new Color(MenuUI.Ink.r, MenuUI.Ink.g, MenuUI.Ink.b, 0.8f) : new Color(0.18f, 0f, 0f, 0.65f));
-        RectTransform card = MenuUI.ComicPanel("Ficha", group, new Vector2(0.5f, 0.5f), new Vector2(0f, -6f), new Vector2(640f, 600f), MenuUI.Cream, 6f, 12f);
+        Backdrop(group, victory ? MenuUI.WithAlpha(MenuUI.Ink, 0.8f) : new Color(0.16f, 0f, 0f, 0.68f));
+        RectTransform card = Card("Ficha", group, new Vector2(0f, -6f), new Vector2(640f, 600f), victory ? MenuUI.Accent : MenuUI.Red, MenuUI.Glass);
 
         int number = director != null ? director.LevelNumber : 1;
         string levelName = level != null && !string.IsNullOrEmpty(level.displayName) ? level.displayName : "";
         MenuUI.Text("Nivel", card, "NIVEL " + number + (levelName != "" ? "  ·  " + levelName.ToUpper() : ""), 22f,
-                    new Vector2(0.5f, 1f), new Vector2(0f, -36f), new Vector2(600f, 34f), new Color(0.3f, 0.35f, 0.42f, 1f));
+                    new Vector2(0.5f, 1f), new Vector2(0f, -36f), new Vector2(600f, 34f), MenuUI.TextDim).characterSpacing = 3f;
         MenuUI.Title("Titulo", card, victory ? "¡LAGO A SALVO!" : "LOS PECES FUERON CAZADOS", victory ? 66f : 50f,
                      new Vector2(0.5f, 1f), new Vector2(0f, -90f), new Vector2(600f, 80f), victory ? MenuUI.Orange : MenuUI.Red);
 
@@ -141,31 +144,51 @@ public class PauseMenu : MonoBehaviour
 
         if (director != null)
         {
-            string stats = "Peces a salvo: <color=#E8622A>" + director.FishAlive + " de " + director.TotalFish + "</color>\n" +
-                           "Aves derribadas: <color=#E8622A>" + director.BirdsKilled + "</color>      " +
-                           "Peces rescatados: <color=#E8622A>" + director.FishRescued + "</color>";
-            MenuUI.Text("Resumen", card, stats, 23f, new Vector2(0.5f, 1f), new Vector2(0f, -268f), new Vector2(600f, 70f), MenuUI.Ink).lineSpacing = 8f;
+            string o = "<color=" + MenuUI.HexOrange + ">";
+            string stats = "Peces a salvo: " + o + director.FishAlive + " de " + director.TotalFish + "</color>\n" +
+                           "Aves derribadas: " + o + director.BirdsKilled + "</color>      " +
+                           "Peces rescatados: " + o + director.FishRescued + "</color>";
+            MenuUI.Text("Resumen", card, stats, 23f, new Vector2(0.5f, 1f), new Vector2(0f, -268f), new Vector2(600f, 70f), MenuUI.Cream).lineSpacing = 8f;
         }
 
-        // Novedades: siguiente nivel desbloqueado, Taller, historia completada
+        // Novedades: Taller abierto, siguiente nivel desbloqueado, historia completada
+        bool workshop = victory && WorkshopFlow.IsPending(GameSession.LevelIndex);
         string news = "";
-        if (victory)
+        Color newsColor = MenuUI.Yellow;
+        if (workshop) { news = "TALLER ABIERTO: instala una mejora en tu traje"; newsColor = MenuUI.Orange; }
+        else if (victory)
         {
-            if (level != null && level.workshopAfter) news = "TALLER: pronto podrás elegir una mejora del traje aquí";
-            else if (GameSession.HasNextLevel) news = "¡Nivel " + (number + 1) + " desbloqueado!";
+            if (GameSession.HasNextLevel) news = "¡Nivel " + (number + 1) + " desbloqueado!";
             else if (GameSession.LevelIndex >= 0) news = "¡COMPLETASTE LA HISTORIA!";
         }
-        else news = "Protege mejor a los peces: si cazan demasiados, pierdes";
+        else { news = "Protege mejor a los peces: si cazan demasiados, pierdes"; newsColor = MenuUI.Red; }
         if (news != "")
         {
-            RectTransform tag = MenuUI.ComicPanel("Novedad", card, new Vector2(0.5f, 1f), new Vector2(0f, -334f), new Vector2(560f, 44f),
-                                                  victory ? MenuUI.Yellow : new Color(1f, 0.84f, 0.78f, 1f), 3f, 4f);
-            MenuUI.Text("Texto", tag, news, 19f, new Vector2(0.5f, 0.5f), new Vector2(0f, 1f), new Vector2(540f, 40f), MenuUI.Ink);
+            RectTransform tag = MenuUI.HoloPanel("Novedad", card, new Vector2(0.5f, 1f), new Vector2(0f, -334f), new Vector2(560f, 44f),
+                                                 MenuUI.WithAlpha(Color.Lerp(MenuUI.Ink, newsColor, 0.16f), 0.92f), MenuUI.WithAlpha(newsColor, 0.92f),
+                                                 MenuUI.WithAlpha(newsColor, 0.28f), MenuUI.WithAlpha(newsColor, 0.38f), 0f, false, false);
+            Color textColor = Color.Lerp(newsColor, Color.white, 0.55f);
+            float textX = 0f;
+            if (workshop)
+            {
+                MenuUI.Img("Llave", tag, MenuUI.Wrench, newsColor, new Vector2(0f, 0.5f), new Vector2(26f, 0f), new Vector2(24f, 24f));
+                textX = 12f;
+            }
+            MenuUI.Text("Texto", tag, news, 19f, new Vector2(0.5f, 0.5f), new Vector2(textX, 1f), new Vector2(520f, 40f), textColor);
         }
 
         // Botones
         Button first;
-        if (victory)
+        if (workshop)
+        {
+            // Después de un nivel con Taller: primero la mejora (al salir del Taller sigue el siguiente nivel)
+            int levelIndex = GameSession.LevelIndex;
+            first = MenuUI.ComicButton("IR AL TALLER", card, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(380f, 64f), MenuUI.Orange,
+                                       () => WorkshopFlow.Open(levelIndex, true), 30f);
+            MenuUI.ComicButton("REPETIR", card, new Vector2(0.5f, 0f), new Vector2(-130f, 66f), new Vector2(230f, 54f), MenuUI.Blue, GameSession.ReplayLevel, 22f);
+            MenuUI.ComicButton("MAPA DE NIVELES", card, new Vector2(0.5f, 0f), new Vector2(130f, 66f), new Vector2(230f, 54f), MenuUI.Blue, GameSession.GoToLevelMap, 20f);
+        }
+        else if (victory)
         {
             if (GameSession.HasNextLevel)
             {
@@ -199,6 +222,24 @@ public class PauseMenu : MonoBehaviour
             ComicViewer.Show(comic, () => { SaveSystem.MarkSeen(comic); GameSession.PlayNextLevel(); });
         else
             GameSession.PlayNextLevel();
+    }
+
+    // Fondo oscuro con líneas de escaneo (como mirar a través del visor)
+    static void Backdrop(RectTransform group, Color color)
+    {
+        MenuUI.Panel("Oscuro", group, color);
+        Image scan = MenuUI.Stretch("Escaneo", group).gameObject.AddComponent<Image>();
+        scan.sprite = MenuUI.ScanSprite;
+        scan.type = Image.Type.Tiled;
+        scan.color = MenuUI.WithAlpha(MenuUI.Accent, 0.04f);
+        scan.raycastTarget = false;
+    }
+
+    // Ficha holográfica con borde del color indicado (cian normal, rojo en la derrota)
+    static RectTransform Card(string name, RectTransform parent, Vector2 pos, Vector2 size, Color edge, Color glass)
+    {
+        return MenuUI.HoloPanel(name, parent, new Vector2(0.5f, 0.5f), pos, size, glass, MenuUI.WithAlpha(edge, 0.9f),
+                                MenuUI.WithAlpha(edge, 0.18f), MenuUI.WithAlpha(edge, 0.3f), 0.05f);
     }
 
     // Los botones no responden durante medio segundo: así un clic o tecla que venía

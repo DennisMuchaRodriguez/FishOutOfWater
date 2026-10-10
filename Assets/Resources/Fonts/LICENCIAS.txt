@@ -1,13 +1,14 @@
 Fuentes de la interfaz
 ======================
 
-Bangers-Regular.ttf     "Bangers" de Vernon Adams (Google Fonts)
-LilitaOne-Regular.ttf   "Lilita One" de Juan Montoreano (Google Fonts)
+Oxanium-ExtraBold.ttf   "Oxanium" de Severin Meyer (Google Fonts)      títulos y números
+Rajdhani-Bold.ttf       "Rajdhani" de Indian Type Foundry (Google Fonts)  textos y botones
+LilitaOne-Regular.ttf   "Lilita One" de Juan Montoreano (Google Fonts)  texto de los cómics
 
-Ambas se distribuyen con la licencia SIL Open Font License 1.1 (OFL):
+Las tres se distribuyen con la licencia SIL Open Font License 1.1 (OFL):
 se pueden usar, incluir y distribuir en el juego, también comercialmente,
 siempre que no se vendan las fuentes por separado.
 Texto de la licencia: https://openfontlicense.org
 
-El menú las carga por código desde Resources/Fonts (MenuUI.cs). Si se borran,
-la interfaz usa la fuente por defecto de TextMeshPro.
+El menú, el HUD y el visor del casco las cargan por código desde Resources/Fonts
+(MenuUI.cs). Si se borran, la interfaz usa la fuente por defecto de TextMeshPro.

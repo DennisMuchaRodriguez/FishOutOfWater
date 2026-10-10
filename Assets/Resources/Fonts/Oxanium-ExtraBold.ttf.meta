@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: fb9752abc1324e0bbafd040f406450a3
+guid: 264d1eba238d43309f59e42b46c63949
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Bangers
+  - Oxanium
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0

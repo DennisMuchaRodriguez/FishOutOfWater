@@ -9,6 +9,7 @@ public static class GameSession
 
     public const string MenuScene = "MainMenu";
     public const string LakeScene = "SampleScene";
+    public const string WorkshopScene = WorkshopFlow.WorkshopScene;
 
     public static Mode CurrentMode = Mode.Historia;
     // Índice en el LevelCatalog (-1 = no se eligió desde el menú)
@@ -68,5 +69,24 @@ public static class GameSession
         OpenLevelMap = false;
         Time.timeScale = 1f;
         SceneManager.LoadScene(MenuScene);
+    }
+
+    // ---- Taller (modo Historia) ----
+
+    // ¿Ganar este nivel da una visita al Taller que todavía no se usó?
+    public static bool HasPendingWorkshop(int index) { return WorkshopFlow.IsPending(index); }
+
+    // Abre el Taller por la visita de ese nivel. continueToNextLevel: al terminar, siguiente nivel (si no, el mapa)
+    public static void GoToWorkshop(int index, bool continueToNextLevel)
+    {
+        WorkshopFlow.Open(index, continueToNextLevel);
+    }
+
+    // Salida del Taller: siguiente nivel (si se pidió y existe) o el mapa
+    public static void LeaveWorkshop(bool playNextLevel)
+    {
+        WorkshopFlow.ClearVisit();
+        if (playNextLevel && HasNextLevel) PlayLevel(LevelIndex + 1);
+        else GoToLevelMap();
     }
 }

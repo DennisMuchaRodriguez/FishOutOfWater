@@ -6,11 +6,13 @@ using System.Collections;
 using System.Collections.Generic;
 
 // Menú principal. Se construye solo por código (basta con este componente en la escena MainMenu).
+// Se ve como el visor del casco: paneles holográficos, marco curvo, líneas de escaneo y miras.
 // Pantallas:
 //  1. Título:   JUGAR / CONTROLES / SALIR, con el protagonista flotando a la derecha.
 //  2. Modos:    HISTORIA (disponible), SUPERVIVENCIA y COOPERATIVO (próximamente).
 //  3. Mapa:     los niveles del LevelCatalog, que se desbloquean de uno en uno.
-//               Clic en un nivel = ficha con estrellas, detalles, JUGAR y VER CÓMIC.
+//               Clic en un nivel = ficha con estrellas, detalles, JUGAR, VER CÓMIC e IR AL TALLER.
+//               Calavera = nivel de jefe; llave inglesa = después se visita el Taller.
 //  4. Controles.
 // Atajos de prueba en el mapa: F9 desbloquea todos los niveles.
 public class MainMenu : MonoBehaviour
@@ -50,7 +52,9 @@ public class MainMenu : MonoBehaviour
     {
         public int index;
         public RectTransform rt;
-        public Image ring;
+        public Image ring;          // anillo con marcas (seleccionado / nivel actual)
+        public Image halo;          // aro naranja del nivel actual
+        public Image workshopGlow;  // brillo de la llave si el Taller está pendiente
         public bool current;
     }
 
@@ -87,6 +91,9 @@ public class MainMenu : MonoBehaviour
 
         Canvas canvas = MenuUI.CreateCanvas("MainMenuCanvas", 0);
         root = (RectTransform)canvas.transform;
+
+        // Marco del casco detrás de todas las pantallas (encima del lago y del protagonista)
+        MenuUI.VisorOverlay(root);
 
         titleScreen = BuildTitleScreen();
         modesScreen = BuildModesScreen();
@@ -254,9 +261,9 @@ public class MainMenu : MonoBehaviour
         MenuUI.Title("Linea1", s, titleLine1, 118f, new Vector2(0.5f, 0.5f), new Vector2(-300f, 222f), new Vector2(700f, 130f), MenuUI.Orange);
         MenuUI.Title("Linea2", s, titleLine2, 118f, new Vector2(0.5f, 0.5f), new Vector2(-270f, 116f), new Vector2(700f, 130f), MenuUI.Blue);
 
-        RectTransform pill = MenuUI.ComicPanel("Subtitulo", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, 32f), new Vector2(520f, 46f), MenuUI.Cream, 4f, 5f);
-        pill.localRotation = Quaternion.Euler(0f, 0f, -2f);
-        MenuUI.Text("Texto", pill, subtitle, 22f, new Vector2(0.5f, 0.5f), new Vector2(0f, 1f), new Vector2(500f, 40f), MenuUI.Ink);
+        RectTransform pill = MenuUI.ComicPanel("Subtitulo", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, 32f), new Vector2(520f, 46f), MenuUI.Glass);
+        MenuUI.Text("Texto", pill, subtitle, 22f, new Vector2(0.5f, 0.5f), new Vector2(0f, 1f), new Vector2(500f, 40f), MenuUI.Accent)
+            .characterSpacing = 6f;
 
         Button play = MenuUI.ComicButton("JUGAR", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, -70f), new Vector2(380f, 74f), MenuUI.Orange, () => Go(modesScreen), 36f);
         MenuUI.ComicButton("CONTROLES", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, -164f), new Vector2(340f, 60f), MenuUI.Blue, () => Go(controlsScreen), 28f);
@@ -264,7 +271,7 @@ public class MainMenu : MonoBehaviour
         play.Select();
 
         TextMeshProUGUI ver = MenuUI.Text("Version", s, "PROTOTIPO  ·  MODO HISTORIA", 15f, new Vector2(1f, 0f), new Vector2(-170f, 24f),
-                                          new Vector2(320f, 30f), new Color(MenuUI.Cream.r, MenuUI.Cream.g, MenuUI.Cream.b, 0.55f));
+                                          new Vector2(320f, 30f), MenuUI.WithAlpha(MenuUI.Accent, 0.6f));
         ver.characterSpacing = 4f;
         return g;
     }
@@ -276,7 +283,8 @@ public class MainMenu : MonoBehaviour
         RectTransform s = MenuUI.Stretch("Modos", root);
         CanvasGroup g = s.gameObject.AddComponent<CanvasGroup>();
 
-        MenuUI.Title("Encabezado", s, "ELIGE TU MODO", 76f, new Vector2(0.5f, 1f), new Vector2(0f, -82f), new Vector2(900f, 100f), MenuUI.Yellow);
+        MenuUI.Title("Encabezado", s, "ELIGE TU MODO", 76f, new Vector2(0.5f, 1f), new Vector2(0f, -82f), new Vector2(900f, 100f), MenuUI.Cream);
+        MenuUI.Rule(s, new Vector2(0.5f, 1f), new Vector2(0f, -138f), 520f, MenuUI.Accent);
 
         int unlocked = catalog != null ? Mathf.Min(SaveSystem.Data.unlockedLevels, catalog.Count) : 0;
         int levels = catalog != null ? catalog.Count : 0;
@@ -285,7 +293,7 @@ public class MainMenu : MonoBehaviour
                  "NIVEL " + Mathf.Max(1, unlocked) + " DE " + levels, true, () => Go(mapScreen), true);
         ModeCard(s, new Vector2(0f, -30f), "SUPERVIVENCIA", MenuUI.Blue,
                  "Oleadas sin fin\nLos peces no vuelven", "", false, null, false);
-        ModeCard(s, new Vector2(380f, -30f), "COOPERATIVO", new Color32(124, 92, 206, 255),
+        ModeCard(s, new Vector2(380f, -30f), "COOPERATIVO", MenuUI.Purple,
                  "Hasta 4 jugadores online\nChat de voz tipo radio", "", false, null, false);
 
         MenuUI.ComicButton("VOLVER", s, new Vector2(0f, 0f), new Vector2(130f, 52f), new Vector2(200f, 52f), MenuUI.BlueDark, () => Go(titleScreen), 24f);
@@ -296,39 +304,77 @@ public class MainMenu : MonoBehaviour
                   UnityEngine.Events.UnityAction onClick, bool showStars)
     {
         Vector2 size = new Vector2(340f, 400f);
+        Vector2 top = new Vector2(0.5f, 1f), bottom = new Vector2(0.5f, 0f);
         RectTransform card;
+        MenuUI.HoloStyle st;
         if (available)
         {
-            Button b = MenuUI.ComicButton(title, parent, new Vector2(0.5f, 0.5f), pos, size, color, onClick, 1f);
-            card = (RectTransform)b.transform;
-            Destroy(card.Find("Label").gameObject);
-            Destroy(card.Find("Brillo").gameObject);
+            st = MenuUI.Derive(color);
+            card = MenuUI.HoloPanel(title, parent, new Vector2(0.5f, 0.5f), pos, size,
+                                    MenuUI.WithAlpha(Color.Lerp(MenuUI.Ink, color, 0.3f), 0.9f), st.edge,
+                                    MenuUI.WithAlpha(color, 0.35f), MenuUI.WithAlpha(color, 0.5f), 0.08f);
+            MakeClickable(card, onClick);
         }
         else
         {
-            card = MenuUI.ComicPanel(title, parent, new Vector2(0.5f, 0.5f), pos, size, Color.Lerp(color, MenuUI.Locked, 0.55f), 4f, 7f);
+            Color c = Color.Lerp(color, MenuUI.Locked, 0.55f);
+            st = MenuUI.Derive(c);
+            card = MenuUI.HoloPanel(title, parent, new Vector2(0.5f, 0.5f), pos, size,
+                                    MenuUI.WithAlpha(Color.Lerp(MenuUI.Ink, c, 0.12f), 0.82f), MenuUI.WithAlpha(st.edge, 0.55f),
+                                    MenuUI.WithAlpha(c, 0.1f), MenuUI.WithAlpha(c, 0.22f), 0.04f);
         }
 
-        MenuUI.Text("Titulo", card, title, 50f, new Vector2(0.5f, 1f), new Vector2(0f, -54f), new Vector2(320f, 70f), MenuUI.Cream, true, 0.22f);
-        MenuUI.Text("Desc", card, desc, 21f, new Vector2(0.5f, 1f), new Vector2(0f, -136f), new Vector2(300f, 80f), MenuUI.Cream, false, 0.15f);
+        Color titleColor = available ? MenuUI.Cream : Color.Lerp(MenuUI.Cream, MenuUI.Locked, 0.4f);
+        TextMeshProUGUI t = MenuUI.Text("Titulo", card, title, 50f, top, new Vector2(0f, -54f), new Vector2(320f, 70f), titleColor, true);
+        t.enableAutoSizing = true;
+        t.fontSizeMax = 50f;
+        t.fontSizeMin = 30f;
+        t.characterSpacing = 2f;
+        t.textWrappingMode = TextWrappingModes.NoWrap;
+        MenuUI.Img("Linea", card, MenuUI.Pixel, MenuUI.WithAlpha(st.edge, 0.5f), top, new Vector2(0f, -92f), new Vector2(220f, 1.5f));
+        MenuUI.Text("Desc", card, desc, 21f, top, new Vector2(0f, -136f), new Vector2(300f, 80f),
+                    available ? MenuUI.TextDim : MenuUI.WithAlpha(MenuUI.TextDim, 0.6f));
 
         if (available)
         {
             if (showStars)
             {
-                MenuUI.Img("Estrella", card, MenuUI.Star, MenuUI.Yellow, new Vector2(0.5f, 0f), new Vector2(-46f, 150f), new Vector2(46f, 46f));
+                RectTransform starHolder = MenuUI.Rect("Estrella", card, bottom, new Vector2(-46f, 150f), new Vector2(46f, 46f));
+                MenuUI.StarIcon(starHolder, Vector2.zero, 46f, true);
                 int max = catalog != null ? catalog.Count * 3 : 0;
-                MenuUI.Text("Estrellas", card, SaveSystem.TotalStars + " / " + max, 30f, new Vector2(0.5f, 0f), new Vector2(30f, 150f),
-                            new Vector2(160f, 46f), MenuUI.Cream, false, 0.25f).alignment = TextAlignmentOptions.MidlineLeft;
+                MenuUI.Text("Estrellas", card, SaveSystem.TotalStars + " / " + max, 30f, bottom, new Vector2(30f, 150f),
+                            new Vector2(160f, 46f), MenuUI.Cream, true).alignment = TextAlignmentOptions.MidlineLeft;
             }
-            MenuUI.Text("Progreso", card, progress, 24f, new Vector2(0.5f, 0f), new Vector2(0f, 96f), new Vector2(300f, 40f), MenuUI.Cream, false, 0.25f);
-            MenuUI.Tag("JUGAR", card, new Vector2(0.5f, 0f), new Vector2(0f, 44f), MenuUI.OrangeDark, 22f);
+            MenuUI.Text("Progreso", card, progress, 24f, bottom, new Vector2(0f, 96f), new Vector2(300f, 40f), MenuUI.Accent)
+                .characterSpacing = 3f;
+            MenuUI.Tag("JUGAR", card, bottom, new Vector2(0f, 44f), MenuUI.Orange, 22f);
         }
         else
         {
-            MenuUI.Img("Candado", card, MenuUI.Lock, MenuUI.Ink, new Vector2(0.5f, 0f), new Vector2(0f, 130f), new Vector2(84f, 84f));
-            MenuUI.Tag("PRÓXIMAMENTE", card, new Vector2(0.5f, 0f), new Vector2(0f, 50f), MenuUI.OrangeDark, 20f);
+            MenuUI.Img("HaloCandado", card, MenuUI.HexGlow, MenuUI.WithAlpha(MenuUI.Locked, 0.25f), bottom, new Vector2(0f, 130f), new Vector2(120f, 120f));
+            MenuUI.Img("Hexagono", card, MenuUI.HexLine, MenuUI.WithAlpha(MenuUI.Locked, 0.9f), bottom, new Vector2(0f, 130f), new Vector2(96f, 96f));
+            MenuUI.Img("Candado", card, MenuUI.Lock, Color.Lerp(MenuUI.Locked, MenuUI.Cream, 0.3f), bottom, new Vector2(0f, 130f), new Vector2(52f, 52f));
+            MenuUI.Tag("PRÓXIMAMENTE", card, bottom, new Vector2(0f, 50f), MenuUI.Locked, 20f);
         }
+    }
+
+    // Convierte un panel holográfico en botón (el cristal recibe el clic)
+    static Button MakeClickable(RectTransform panel, UnityEngine.Events.UnityAction onClick)
+    {
+        Image fill = panel.Find("Relleno").GetComponent<Image>();
+        fill.raycastTarget = true;
+        Button b = panel.gameObject.AddComponent<Button>();
+        ColorBlock cb = b.colors;
+        cb.normalColor = Color.white;
+        cb.highlightedColor = new Color(0.92f, 1f, 1f, 1f);
+        cb.selectedColor = new Color(0.92f, 1f, 1f, 1f);
+        cb.pressedColor = new Color(0.75f, 0.85f, 0.9f, 1f);
+        cb.fadeDuration = 0.08f;
+        b.colors = cb;
+        b.targetGraphic = fill;
+        if (onClick != null) b.onClick.AddListener(onClick);
+        panel.gameObject.AddComponent<MenuButtonFX>();
+        return b;
     }
 
     // ======================= PANTALLA: MAPA DE NIVELES =======================
@@ -343,29 +389,40 @@ public class MainMenu : MonoBehaviour
         MenuUI.Title("Encabezado", s, "MODO HISTORIA", 62f, new Vector2(0f, 1f), new Vector2(230f, -50f), new Vector2(460f, 80f), MenuUI.Orange);
 
         // Total de estrellas (arriba a la derecha)
+        MenuUI.Img("BrilloEstrella", s, MenuUI.StarGlow, MenuUI.WithAlpha(MenuUI.Yellow, 0.45f), new Vector2(1f, 1f), new Vector2(-190f, -50f), new Vector2(72f, 72f));
         MenuUI.Img("EstrellaTotal", s, MenuUI.Star, MenuUI.Yellow, new Vector2(1f, 1f), new Vector2(-190f, -50f), new Vector2(46f, 46f));
-        totalStarsText = MenuUI.Text("TotalEstrellas", s, "", 32f, new Vector2(1f, 1f), new Vector2(-90f, -50f), new Vector2(150f, 50f), MenuUI.Cream, false, 0.25f);
+        totalStarsText = MenuUI.Text("TotalEstrellas", s, "", 32f, new Vector2(1f, 1f), new Vector2(-90f, -50f), new Vector2(150f, 50f), MenuUI.Cream, true);
         totalStarsText.alignment = TextAlignmentOptions.MidlineLeft;
 
-        // El lago con los nenúfares
-        RectTransform map = MenuUI.ComicPanel("Lago", s, new Vector2(0.5f, 0.5f), new Vector2(-210f, -24f), new Vector2(820f, 548f),
-                                              new Color32(22, 96, 146, 255), 6f, 10f);
-        Image water = MenuUI.Img("Agua", map, MenuUI.Rounded, Color.white, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(808f, 536f));
-        water.sprite = MenuUI.WaterGradient;
+        // El lago visto como en el sonar del traje: cristal, rejilla hexagonal y curvas de nivel
+        RectTransform map = MenuUI.HoloPanel("Lago", s, new Vector2(0.5f, 0.5f), new Vector2(-210f, -24f), new Vector2(820f, 548f),
+                                             MenuUI.Glass, MenuUI.WithAlpha(MenuUI.Accent, 0.9f), MenuUI.WithAlpha(MenuUI.Accent, 0.16f),
+                                             MenuUI.WithAlpha(MenuUI.Accent, 0.3f), 0.05f);
+        Vector2 waterSize = new Vector2(796f, 524f);
+        Image water = MenuUI.Img("Agua", map, MenuUI.WaterGradient, new Color(1f, 1f, 1f, 0.3f), new Vector2(0.5f, 0.5f), Vector2.zero, waterSize);
         water.type = Image.Type.Simple;
-        water.color = new Color(1f, 1f, 1f, 0.55f);
+        RawImage grid = MenuUI.Rect("Rejilla", map, new Vector2(0.5f, 0.5f), Vector2.zero, waterSize).gameObject.AddComponent<RawImage>();
+        Texture2D hexTex = MenuUI.HexGridTexture;
+        grid.texture = hexTex;
+        grid.uvRect = new Rect(0f, 0f, waterSize.x / hexTex.width, waterSize.y / hexTex.height);
+        grid.color = MenuUI.WithAlpha(MenuUI.Accent, 0.07f);
+        grid.raycastTarget = false;
+        RawImage contour = MenuUI.Rect("Curvas", map, new Vector2(0.5f, 0.5f), Vector2.zero, waterSize).gameObject.AddComponent<RawImage>();
+        contour.texture = MenuUI.ContourTexture;
+        contour.color = MenuUI.WithAlpha(MenuUI.Accent, 0.13f);
+        contour.raycastTarget = false;
         mapNodesHolder = MenuUI.Rect("Niveles", map, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(820f, 548f));
 
         // Ficha del nivel (derecha)
-        RectTransform info = MenuUI.ComicPanel("Ficha", s, new Vector2(0.5f, 0.5f), new Vector2(432f, -24f), new Vector2(360f, 548f), MenuUI.Cream, 6f, 10f);
+        RectTransform info = MenuUI.ComicPanel("Ficha", s, new Vector2(0.5f, 0.5f), new Vector2(432f, -24f), new Vector2(360f, 548f), MenuUI.Glass);
         infoContent = MenuUI.Rect("Contenido", info, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(360f, 548f));
 
         MenuUI.ComicButton("VOLVER", s, new Vector2(0f, 0f), new Vector2(120f, 40f), new Vector2(180f, 48f), MenuUI.BlueDark, () => Go(modesScreen), 22f);
         Button reset = MenuUI.ComicButton("BORRAR PROGRESO", s, new Vector2(0f, 0f), new Vector2(360f, 40f), new Vector2(250f, 40f),
-                                          new Color32(110, 120, 135, 255), ResetProgress, 17f);
+                                          Color.Lerp(MenuUI.Locked, MenuUI.Red, 0.35f), ResetProgress, 17f);
         resetLabel = reset.GetComponentInChildren<TextMeshProUGUI>();
 
-        mapMessage = MenuUI.Text("Mensaje", s, "", 22f, new Vector2(0.5f, 0f), new Vector2(-210f, 40f), new Vector2(640f, 40f), MenuUI.Yellow, false, 0.25f);
+        mapMessage = MenuUI.Text("Mensaje", s, "", 22f, new Vector2(0.5f, 0f), new Vector2(-210f, 40f), new Vector2(640f, 40f), MenuUI.Yellow);
 
         RebuildMap();
         return g;
@@ -387,7 +444,7 @@ public class MainMenu : MonoBehaviour
         if (catalog == null || catalog.Count == 0)
         {
             MenuUI.Text("SinNiveles", mapNodesHolder, "No se encontró Assets/Resources/LevelCatalog.\nCrea el catálogo y agrega los niveles.",
-                        24f, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(700f, 120f), MenuUI.Cream, false, 0.2f);
+                        24f, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(700f, 120f), MenuUI.Cream);
             return;
         }
 
@@ -400,24 +457,27 @@ public class MainMenu : MonoBehaviour
         for (int row = 0; row * 5 < count; row++)
         {
             RectTransform lbl = MenuUI.ComicPanel("Bloque" + row, mapNodesHolder, new Vector2(0.5f, 0.5f), new Vector2(-322f, 196f - row * 124f),
-                                                  new Vector2(140f, 64f), new Color32(13, 52, 84, 255), 3f, 4f);
-            MenuUI.Text("Num", lbl, "BLOQUE " + (row + 1), 15f, new Vector2(0.5f, 0.5f), new Vector2(0f, 13f), new Vector2(130f, 22f), MenuUI.Accent);
+                                                  new Vector2(140f, 64f), new Color32(13, 52, 84, 255));
+            MenuUI.Text("Num", lbl, "BLOQUE " + (row + 1), 15f, new Vector2(0.5f, 0.5f), new Vector2(0f, 13f), new Vector2(130f, 22f), MenuUI.Accent)
+                .characterSpacing = 3f;
             MenuUI.Text("Nombre", lbl, row < BlockNames.Length ? BlockNames[row] : "", 18f, new Vector2(0.5f, 0.5f), new Vector2(0f, -9f),
-                        new Vector2(132f, 26f), MenuUI.Cream, false, 0.15f);
+                        new Vector2(132f, 26f), MenuUI.Cream);
         }
 
-        // Sendero de puntos entre niveles
+        // Sendero de rayitas entre niveles (cian si ya está abierto)
         for (int i = 0; i + 1 < count; i++)
         {
             Vector2 a = NodePosition(i), b = NodePosition(i + 1);
-            int steps = Mathf.Max(2, Mathf.RoundToInt(Vector2.Distance(a, b) / 18f));
+            int steps = Mathf.Max(2, Mathf.RoundToInt(Vector2.Distance(a, b) / 16f));
+            float ang = Mathf.Atan2(b.y - a.y, b.x - a.x) * Mathf.Rad2Deg;
             bool open = i + 1 < unlocked;
             for (int k = 1; k < steps; k++)
             {
                 Vector2 p = Vector2.Lerp(a, b, k / (float)steps);
-                MenuUI.Img("Punto", mapNodesHolder, MenuUI.Circle,
-                           open ? new Color(1f, 0.95f, 0.8f, 0.85f) : new Color(0.75f, 0.85f, 0.95f, 0.3f),
-                           new Vector2(0.5f, 0.5f), p, Vector2.one * (open ? 8f : 6f));
+                Image dash = MenuUI.Img("Raya", mapNodesHolder, MenuUI.Pixel,
+                                        open ? MenuUI.WithAlpha(MenuUI.Accent, 0.75f) : MenuUI.WithAlpha(MenuUI.Locked, 0.5f),
+                                        new Vector2(0.5f, 0.5f), p, open ? new Vector2(7f, 2.5f) : new Vector2(5f, 2f));
+                dash.rectTransform.localRotation = Quaternion.Euler(0f, 0f, ang);
             }
         }
 
@@ -432,47 +492,57 @@ public class MainMenu : MonoBehaviour
         LevelDefinition level = catalog.Get(index);
         bool boss = level != null && level.isBossLevel;
         bool shop = level != null && level.workshopAfter;
+        bool pending = unlocked && WorkshopFlow.IsPending(index);
         int stars = SaveSystem.GetStars(index);
         float size = boss ? 80f : 66f;
         Vector2 pos = NodePosition(index);
+        Vector2 c = new Vector2(0.5f, 0.5f);
+        Color edge = !unlocked ? MenuUI.Locked : boss ? MenuUI.Red : MenuUI.Accent;
 
-        RectTransform holder = MenuUI.Rect("Nivel" + (index + 1), mapNodesHolder, new Vector2(0.5f, 0.5f), pos, new Vector2(size + 16f, size + 16f));
+        RectTransform holder = MenuUI.Rect("Nivel" + (index + 1), mapNodesHolder, c, pos, new Vector2(size + 16f, size + 16f));
 
-        // Anillo (seleccionado / nivel actual)
-        Image ring = MenuUI.Img("Anillo", holder, MenuUI.Circle, new Color(1f, 1f, 1f, 0f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.one * (size + 18f));
+        // Aro del nivel actual y anillo con marcas (seleccionado / actual)
+        Image halo = MenuUI.Img("Aro", holder, MenuUI.Ring, new Color(1f, 1f, 1f, 0f), c, Vector2.zero, Vector2.one * size * 1.45f);
+        Image ring = MenuUI.Img("Anillo", holder, MenuUI.RingTicks, new Color(1f, 1f, 1f, 0f), c, Vector2.zero, Vector2.one * (size + 26f));
 
-        MenuUI.Img("Sombra", holder, MenuUI.Circle, new Color(MenuUI.Ink.r, MenuUI.Ink.g, MenuUI.Ink.b, 0.5f), new Vector2(0.5f, 0.5f),
-                   new Vector2(4f, -5f), Vector2.one * (size + 6f));
-        MenuUI.Img("Contorno", holder, MenuUI.Circle, boss && unlocked ? MenuUI.Red : MenuUI.Ink, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.one * (size + 8f));
-        Image pad = MenuUI.Img("Nenufar", holder, MenuUI.Circle, unlocked ? MenuUI.Green : MenuUI.Locked, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.one * size);
-        pad.raycastTarget = true;
-        // Brillo y la "muesca" del nenúfar
-        MenuUI.Img("Brillo", holder, MenuUI.Circle, new Color(1f, 1f, 1f, 0.18f), new Vector2(0.5f, 0.5f), new Vector2(-size * 0.14f, size * 0.16f), Vector2.one * size * 0.5f);
+        // Hexágono: halo ("Brillo", lo aviva MenuButtonFX al pasar el mouse), relleno y dos bordes
+        if (unlocked) MenuUI.Img("Brillo", holder, MenuUI.HexGlow, MenuUI.WithAlpha(edge, 0.28f), c, Vector2.zero, Vector2.one * size * 1.5f);
+        Color fill = unlocked ? MenuUI.WithAlpha(Color.Lerp(MenuUI.Ink, edge, stars > 0 ? 0.32f : 0.18f), 0.94f) : MenuUI.WithAlpha(MenuUI.Ink, 0.85f);
+        Image hex = MenuUI.Img("Hexagono", holder, MenuUI.Hex, fill, c, Vector2.zero, Vector2.one * size);
+        hex.raycastTarget = true;
+        MenuUI.Img("LineaInterior", holder, MenuUI.HexLine, MenuUI.WithAlpha(edge, 0.35f), c, Vector2.zero, Vector2.one * size * 0.78f);
+        MenuUI.Img("Borde", holder, MenuUI.HexLine, MenuUI.WithAlpha(edge, unlocked ? 1f : 0.6f), c, Vector2.zero, Vector2.one * size);
 
         if (unlocked)
-            MenuUI.Text("Numero", holder, (index + 1).ToString(), boss ? 40f : 34f, new Vector2(0.5f, 0.5f), new Vector2(0f, 1f),
-                        Vector2.one * size, MenuUI.Cream, true, 0.3f);
+            MenuUI.Text("Numero", holder, (index + 1).ToString(), boss ? 34f : 28f, c, new Vector2(0f, 1f), Vector2.one * size, MenuUI.Cream, true);
         else
-            MenuUI.Img("Candado", holder, MenuUI.Lock, MenuUI.Ink, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.one * size * 0.55f);
+            MenuUI.Img("Candado", holder, MenuUI.Lock, MenuUI.WithAlpha(MenuUI.Locked, 0.9f), c, Vector2.zero, Vector2.one * size * 0.42f);
 
         if (stars > 0)
         {
             for (int k = 0; k < 3; k++)
-                MenuUI.Img("Est" + k, holder, MenuUI.Star, k < stars ? MenuUI.Yellow : new Color(0.15f, 0.25f, 0.35f, 0.9f),
-                           new Vector2(0.5f, 0.5f), new Vector2((k - 1) * 19f, -size * 0.5f - 6f + (k == 1 ? -3f : 0f)), Vector2.one * 20f);
+                MenuUI.StarIcon(holder, new Vector2((k - 1) * 17f, -size * 0.5f - 6f + (k == 1 ? -3f : 0f)), 17f, k < stars);
         }
+
         // Etiquetas: JEFE arriba; TALLER arriba (o abajo si el nivel también es de jefe)
-        if (boss) MenuUI.Tag("JEFE", holder, new Vector2(0.5f, 0.5f), new Vector2(0f, size * 0.5f + 14f), unlocked ? MenuUI.Red : MenuUI.Locked, 14f);
-        if (shop) MenuUI.Tag("TALLER", holder, new Vector2(0.5f, 0.5f), new Vector2(0f, boss ? -size * 0.5f - 34f : size * 0.5f + 13f),
-                             unlocked ? MenuUI.Blue : MenuUI.Locked, 12f);
+        if (boss) MenuUI.Tag("JEFE", holder, c, new Vector2(0f, size * 0.5f + 14f), unlocked ? MenuUI.Red : MenuUI.Locked, 14f, MenuUI.Skull);
+        Image workshopGlow = null;
+        if (shop)
+        {
+            Color col = pending ? MenuUI.Orange : (unlocked ? MenuUI.Blue : MenuUI.Locked);
+            RectTransform tag = MenuUI.Tag("TALLER", holder, c, new Vector2(0f, boss ? -size * 0.5f - 34f : size * 0.5f + 13f), col, 12f, MenuUI.Wrench);
+            if (pending)
+                workshopGlow = MenuUI.Img("BrilloTaller", tag, MenuUI.Glow, MenuUI.WithAlpha(MenuUI.Orange, 0.5f), new Vector2(0f, 0.5f), new Vector2(14f, 0f), Vector2.one * 36f);
+        }
 
         Button b = holder.gameObject.AddComponent<Button>();
         b.transition = Selectable.Transition.None;
+        b.targetGraphic = hex;
         int captured = index;
         b.onClick.AddListener(() => SelectLevel(captured));
         holder.gameObject.AddComponent<MenuButtonFX>();
 
-        nodes.Add(new LevelNode { index = index, rt = holder, ring = ring, current = isCurrent && unlocked });
+        nodes.Add(new LevelNode { index = index, rt = holder, ring = ring, halo = halo, workshopGlow = workshopGlow, current = isCurrent && unlocked });
     }
 
     void SelectLevel(int index)
@@ -489,41 +559,54 @@ public class MainMenu : MonoBehaviour
 
         bool unlocked = SaveSystem.IsUnlocked(index);
         int stars = SaveSystem.GetStars(index);
-        Color ink = MenuUI.Ink;
+        Vector2 top = new Vector2(0.5f, 1f), bottom = new Vector2(0.5f, 0f);
 
-        MenuUI.Title("Numero", infoContent, "NIVEL " + (index + 1), 56f, new Vector2(0.5f, 1f), new Vector2(0f, -50f), new Vector2(340f, 70f),
+        MenuUI.Title("Numero", infoContent, "NIVEL " + (index + 1), 56f, top, new Vector2(0f, -50f), new Vector2(340f, 70f),
                      level.isBossLevel ? MenuUI.Red : MenuUI.Orange);
-        MenuUI.Text("Nombre", infoContent, level.displayName, 26f, new Vector2(0.5f, 1f), new Vector2(0f, -106f), new Vector2(320f, 60f), ink);
-        TextMeshProUGUI desc = MenuUI.Text("Descripcion", infoContent, level.description, 18f, new Vector2(0.5f, 1f), new Vector2(0f, -172f),
-                                           new Vector2(310f, 80f), new Color(0.25f, 0.3f, 0.36f, 1f));
+        MenuUI.Text("Nombre", infoContent, level.displayName, 26f, top, new Vector2(0f, -106f), new Vector2(320f, 60f), MenuUI.Cream);
+        TextMeshProUGUI desc = MenuUI.Text("Descripcion", infoContent, level.description, 18f, top, new Vector2(0f, -172f),
+                                           new Vector2(310f, 80f), MenuUI.TextDim);
         desc.alignment = TextAlignmentOptions.Top;
 
-        MenuUI.Stars(infoContent, new Vector2(0.5f, 1f), new Vector2(0f, -248f), 44f, stars);
+        MenuUI.Stars(infoContent, top, new Vector2(0f, -248f), 44f, stars);
 
         int fish = 0;
         foreach (FishSpawn f in level.fish) if (f != null && f.type != null) fish += f.count;
         string details = level.waves.Count + " OLEADAS  ·  " + fish + " PECES\nPierdes si cazan el " + Mathf.RoundToInt(level.maxFishLossFraction * 100f) + " %";
-        MenuUI.Text("Detalles", infoContent, details, 18f, new Vector2(0.5f, 1f), new Vector2(0f, -314f), new Vector2(320f, 56f), ink);
+        MenuUI.Text("Detalles", infoContent, details, 18f, top, new Vector2(0f, -314f), new Vector2(320f, 56f), MenuUI.Accent);
 
         float tagY = -360f;
         if (level.isBossLevel && level.workshopAfter)
         {
-            MenuUI.Tag("JEFE", infoContent, new Vector2(0.5f, 1f), new Vector2(-70f, tagY), MenuUI.Red, 15f);
-            MenuUI.Tag("TALLER DESPUÉS", infoContent, new Vector2(0.5f, 1f), new Vector2(60f, tagY), MenuUI.Blue, 15f);
+            MenuUI.Tag("JEFE", infoContent, top, new Vector2(-82f, tagY), MenuUI.Red, 15f, MenuUI.Skull);
+            MenuUI.Tag("TALLER DESPUÉS", infoContent, top, new Vector2(62f, tagY), MenuUI.Blue, 15f, MenuUI.Wrench);
         }
-        else if (level.isBossLevel) MenuUI.Tag("NIVEL DE JEFE", infoContent, new Vector2(0.5f, 1f), new Vector2(0f, tagY), MenuUI.Red, 15f);
-        else if (level.workshopAfter) MenuUI.Tag("TALLER DESPUÉS", infoContent, new Vector2(0.5f, 1f), new Vector2(0f, tagY), MenuUI.Blue, 15f);
+        else if (level.isBossLevel) MenuUI.Tag("NIVEL DE JEFE", infoContent, top, new Vector2(0f, tagY), MenuUI.Red, 15f, MenuUI.Skull);
+        else if (level.workshopAfter) MenuUI.Tag("TALLER DESPUÉS", infoContent, top, new Vector2(0f, tagY), MenuUI.Blue, 15f, MenuUI.Wrench);
 
         if (unlocked)
         {
-            Button play = MenuUI.ComicButton("JUGAR", infoContent, new Vector2(0.5f, 0f), new Vector2(0f, level.comicBefore != null ? 108f : 64f),
-                                             new Vector2(290f, 66f), MenuUI.Orange, () => PlayLevel(index), 32f);
-            play.Select();
-            if (level.comicBefore != null)
+            bool hasComic = level.comicBefore != null;
+            if (WorkshopFlow.IsPending(index))
+            {
+                // Ganó el nivel pero todavía no instaló la mejora: el Taller lo espera
+                Button shop = MenuUI.ComicButton("IR AL TALLER", infoContent, bottom, new Vector2(0f, 142f), new Vector2(290f, 52f),
+                                                 MenuUI.Orange, () => OpenWorkshop(index), 28f);
+                MenuUI.ComicButton("JUGAR", infoContent, bottom, new Vector2(0f, hasComic ? 86f : 80f), new Vector2(290f, 46f),
+                                   MenuUI.Blue, () => PlayLevel(index), 26f);
+                shop.Select();
+            }
+            else
+            {
+                Button play = MenuUI.ComicButton("JUGAR", infoContent, bottom, new Vector2(0f, hasComic ? 108f : 64f),
+                                                 new Vector2(290f, 66f), MenuUI.Orange, () => PlayLevel(index), 32f);
+                play.Select();
+            }
+            if (hasComic)
             {
                 ComicDefinition comic = level.comicBefore;
                 Button comicButton = null;
-                comicButton = MenuUI.ComicButton("VER CÓMIC", infoContent, new Vector2(0.5f, 0f), new Vector2(0f, 40f), new Vector2(230f, 44f), MenuUI.Blue,
+                comicButton = MenuUI.ComicButton("VER CÓMIC", infoContent, bottom, new Vector2(0f, 38f), new Vector2(230f, 40f), MenuUI.Blue,
                                    () => ComicViewer.Show(comic, () =>
                                    {
                                        SaveSystem.MarkSeen(comic);
@@ -533,12 +616,26 @@ public class MainMenu : MonoBehaviour
         }
         else
         {
-            MenuUI.Img("Candado", infoContent, MenuUI.Lock, MenuUI.Locked, new Vector2(0.5f, 0f), new Vector2(0f, 120f), new Vector2(64f, 64f));
-            MenuUI.Text("Bloqueado", infoContent, "Supera el nivel " + index + " para desbloquearlo", 19f, new Vector2(0.5f, 0f),
-                        new Vector2(0f, 56f), new Vector2(310f, 50f), MenuUI.Locked);
+            MenuUI.Img("HaloCandado", infoContent, MenuUI.HexGlow, MenuUI.WithAlpha(MenuUI.Locked, 0.25f), bottom, new Vector2(0f, 120f), new Vector2(96f, 96f));
+            MenuUI.Img("Candado", infoContent, MenuUI.Lock, MenuUI.Locked, bottom, new Vector2(0f, 120f), new Vector2(64f, 64f));
+            MenuUI.Text("Bloqueado", infoContent, "Supera el nivel " + index + " para desbloquearlo", 19f, bottom,
+                        new Vector2(0f, 56f), new Vector2(310f, 50f), MenuUI.TextDim);
         }
 
         foreach (LevelNode n in nodes) n.ring.color = n.index == index ? MenuUI.Cream : new Color(1f, 1f, 1f, 0f);
+    }
+
+    void OpenWorkshop(int index)
+    {
+        if (busy) return;
+        StartCoroutine(OpenWorkshopRoutine(index));
+    }
+
+    IEnumerator OpenWorkshopRoutine(int index)
+    {
+        busy = true;
+        yield return FadeTo(1f, 0.4f);
+        WorkshopFlow.Open(index, false);
     }
 
     void PlayLevel(int index)
@@ -597,21 +694,23 @@ public class MainMenu : MonoBehaviour
         RectTransform s = MenuUI.Stretch("Controles", root);
         CanvasGroup g = s.gameObject.AddComponent<CanvasGroup>();
 
-        MenuUI.Title("Encabezado", s, "CONTROLES", 72f, new Vector2(0.5f, 1f), new Vector2(0f, -76f), new Vector2(800f, 90f), MenuUI.Yellow);
-        RectTransform panel = MenuUI.ComicPanel("Lista", s, new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(1000f, 470f), MenuUI.Cream, 6f, 10f);
+        MenuUI.Title("Encabezado", s, "CONTROLES", 72f, new Vector2(0.5f, 1f), new Vector2(0f, -76f), new Vector2(800f, 90f), MenuUI.Cream);
+        MenuUI.Rule(s, new Vector2(0.5f, 1f), new Vector2(0f, -128f), 460f, MenuUI.Accent);
+        RectTransform panel = MenuUI.ComicPanel("Lista", s, new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(1000f, 470f), MenuUI.Glass);
 
+        string k = "<color=" + MenuUI.HexOrange + ">", e = "</color>";
         string controls =
-            "<color=#E8622A>W / S</color>  Avanzar / retroceder        <color=#E8622A>A / D</color>  Girar\n" +
-            "<color=#E8622A>ESPACIO</color>  Propulsor (en el agua: subir y salir disparado)\n" +
-            "<color=#E8622A>SHIFT</color>  Turbo (mantener) · impulso de nado (en el agua)\n" +
-            "<color=#E8622A>CTRL</color>  Bucear más hondo\n" +
-            "<color=#E8622A>CLIC IZQUIERDO</color>  Disparar (mantener = ráfaga)\n" +
-            "<color=#E8622A>CLIC DERECHO</color>  Disparo cargado (soltar al llenarse)\n" +
-            "<color=#E8622A>Q</color>  Cambiar cámara        <color=#E8622A>ESC</color>  Pausa\n\n" +
-            "<color=#2F80ED>OBJETIVO:</color> derriba a todas las aves antes de que cacen a demasiados peces.\n" +
+            k + "W / S" + e + "  Avanzar / retroceder        " + k + "A / D" + e + "  Girar\n" +
+            k + "ESPACIO" + e + "  Propulsor (en el agua: subir y salir disparado)\n" +
+            k + "SHIFT" + e + "  Turbo (mantener) · impulso de nado (en el agua)\n" +
+            k + "CTRL" + e + "  Bucear más hondo\n" +
+            k + "CLIC IZQUIERDO" + e + "  Disparar (mantener = ráfaga)\n" +
+            k + "CLIC DERECHO" + e + "  Disparo cargado (soltar al llenarse)\n" +
+            k + "Q" + e + "  Cambiar cámara        " + k + "ESC" + e + "  Pausa\n\n" +
+            "<color=" + MenuUI.HexAccent + ">OBJETIVO:</color> derriba a todas las aves antes de que cacen a demasiados peces.\n" +
             "El agua recarga el propulsor. La munición está en cápsulas dentro del lago.\n" +
             "Si un ave atrapa un pez, dispárale: lo soltará.";
-        TextMeshProUGUI t = MenuUI.Text("Texto", panel, controls, 23f, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(920f, 420f), MenuUI.Ink);
+        TextMeshProUGUI t = MenuUI.Text("Texto", panel, controls, 23f, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(920f, 420f), MenuUI.Cream);
         t.lineSpacing = 12f;
 
         MenuUI.ComicButton("VOLVER", s, new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(220f, 54f), MenuUI.BlueDark, () => Go(titleScreen), 24f);
@@ -623,7 +722,7 @@ public class MainMenu : MonoBehaviour
     void Go(CanvasGroup target)
     {
         if (busy || target == current) return;
-        if (target == mapScreen) { selectedLevel = -1; RebuildMap(); }
+        if (target == mapScreen) { selectedLevel = -1; mapScreen.gameObject.SetActive(true); RebuildMap(); }
         if (target == modesScreen) target = RebuildModes();
         StartCoroutine(SwitchTo(target));
     }
@@ -722,14 +821,20 @@ public class MainMenu : MonoBehaviour
             hero.rotation = heroBaseRot * Quaternion.Euler(Mathf.Sin(time * 0.8f) * 3f, Mathf.Sin(time * 0.5f) * 14f, Mathf.Sin(time * 0.9f) * 3f);
         }
 
-        // Nivel actual en el mapa: anillo amarillo que late
         if (current == mapScreen)
         {
+            float pulse = Mathf.Sin(time * 4f) * 0.5f + 0.5f;
             foreach (LevelNode n in nodes)
             {
-                if (!n.current || n.index == selectedLevel) continue;
-                float pulse = Mathf.Sin(time * 4f) * 0.5f + 0.5f;
-                n.ring.color = new Color(MenuUI.Yellow.r, MenuUI.Yellow.g, MenuUI.Yellow.b, 0.35f + 0.5f * pulse);
+                // Nivel actual: aro naranja que late. El anillo con marcas gira despacio
+                bool selected = n.index == selectedLevel;
+                if (n.current)
+                {
+                    n.halo.color = MenuUI.WithAlpha(MenuUI.Orange, 0.25f + 0.3f * pulse);
+                    if (!selected) n.ring.color = MenuUI.WithAlpha(MenuUI.Orange, 0.5f + 0.4f * pulse);
+                }
+                if (selected || n.current) n.ring.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -time * 25f);
+                if (n.workshopGlow != null) n.workshopGlow.color = MenuUI.WithAlpha(MenuUI.Orange, 0.25f + 0.45f * pulse);
             }
             if (mapMessageTimer > 0f)
             {
