@@ -282,8 +282,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0d8b326ea661e63489c707c563561c0d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Projectile
-  damage: 10
+  damage: 40
   lifeTime: 3
+  impactEffectPrefab: {fileID: 0}
+  waterSplashPrefab: {fileID: 0}
+  waterSlowdown: 0.55
 --- !u!1001 &116304692554229937
 PrefabInstance:
   m_ObjectHideFlags: 0

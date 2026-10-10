@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a880b26966243d084960e45ef9f18a6, type: 3}
+  m_Name: Nivel_1
+  m_EditorClassIdentifier: Assembly-CSharp::LevelDefinition
+  number: 1
+  displayName: Nivel 1
+  description: 
+  fish:
+  - type: {fileID: 11400000, guid: 9d50749ee03142b5bb03a2575b7ba011, type: 2}
+    count: 5
+  - type: {fileID: 11400000, guid: 1186894792bf43eca729d8faa4c71e07, type: 2}
+    count: 5
+  - type: {fileID: 11400000, guid: ec036fa557a443eaa27e1a65665f1eea, type: 2}
+    count: 5
+  schools: 3
+  maxFishLossFraction: 0.8
+  waves:
+  - delayBefore: 1
+    birds:
+    - type: {fileID: 0}
+      count: 0
+    healthMultiplier: 0
+  - delayBefore: 2
+    birds: []
+    healthMultiplier: 0
+  - delayBefore: 3
+    birds: []
+    healthMultiplier: 0
+  twoStars: 0.6
+  threeStars: 0.9
