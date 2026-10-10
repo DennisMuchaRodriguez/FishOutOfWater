@@ -9,6 +9,9 @@ public static class Upgrades
 
     public static int Level(UpgradeId id)
     {
+#if UNITY_EDITOR
+        if (debugLevel >= 0) return debugLevel;
+#endif
         return SaveSystem.GetUpgradeLevel(id);
     }
 
@@ -21,4 +24,21 @@ public static class Upgrades
     {
         if (Changed != null) Changed();
     }
+
+#if UNITY_EDITOR
+    // Solo en el editor (atajo F10 del lago): fuerza el mismo nivel en todas las mejoras
+    // sin tocar el progreso guardado. -1 = usar el progreso.
+    static int debugLevel = -1;
+
+    public static int DebugLevel { get { return debugLevel; } }
+
+    public static void SetDebugLevel(int level)
+    {
+        debugLevel = Mathf.Clamp(level, -1, 2);
+        NotifyChanged();
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetDebug() { debugLevel = -1; }
+#endif
 }

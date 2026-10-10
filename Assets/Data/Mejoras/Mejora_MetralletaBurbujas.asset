@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 401360e0cd974f0e8e92b28134ac1f08, type: 3}
+  m_Name: Mejora_MetralletaBurbujas
+  m_EditorClassIdentifier: Assembly-CSharp::UpgradeDefinition
+  id: 0
+  displayName: "Metralleta de burbujas"
+  category: 0
+  maxLevel: 2
+  description: "Arma principal nueva: una r\u00E1faga de burbujas en l\u00EDnea recta."
+  levelOne: "Disparo recto, 10 por segundo, sin dispersi\u00F3n (da\u00F1o bajo). Cambia de arma con 1 / 2 o la rueda."
+  levelTwo: "+30 % de da\u00F1o por burbuja."
+  suitPart: "Ca\u00F1\u00F3n de burbujas en el brazo"
+  icon: 0
+  accent: {r: 1, g: 0.55, b: 0.2, a: 1}
+  coopOnly: 0

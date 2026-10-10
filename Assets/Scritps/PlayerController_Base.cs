@@ -110,6 +110,8 @@ public class PlayerController_Base : MonoBehaviour
     public float swimDashSpeed = 22f;
     public float swimDashDuration = 0.35f;
     public float swimDashCooldown = 1.1f;
+    [Tooltip("Dashes seguidos antes del enfriamiento (la mejora Dash doble lo sube a 2)")]
+    public int dashCharges = 1;
 
     [Header("Cámara de nado - NUEVO")]
     public float swimCameraSway = 1.2f;
@@ -128,6 +130,8 @@ public class PlayerController_Base : MonoBehaviour
     public float currentArmor;
     public float minDamage = 13f;
     public float maxDamage = 17f;
+    [Tooltip("Armadura que recupera por segundo dentro del agua (mejora Reparación acuática)")]
+    public float waterArmorRegen = 0f;
     public string enemyTag = "Enemy";
     private Rigidbody rb;
     private Vector3 moveInput;
@@ -160,6 +164,7 @@ public class PlayerController_Base : MonoBehaviour
     public Camera PlayerCamera { get; private set; }
     public Vector3 Velocity { get { return rb != null ? rb.linearVelocity : Vector3.zero; } }
     public bool IsKnockedBack { get { return Time.time < knockbackEndTime; } }
+    public int DashChargesLeft { get { return dashChargesLeft; } }
 
     // Cinemáticas: bloquea controles (la cinemática usa su propia cámara)
     public bool InputLocked { get; private set; }
@@ -173,7 +178,10 @@ public class PlayerController_Base : MonoBehaviour
 
     private float dashEndTime = -10f;
     private float nextDashTime = 0f;
+    private int dashChargesLeft = 1;
+    private float dashRefillTime = 0f;
     private bool dashRequested = false;
+    private BubbleShield shield;
     private bool turboHeld = false;
     private float swimPhase = 0f;
     private float baseFov = 60f;
@@ -193,6 +201,7 @@ public class PlayerController_Base : MonoBehaviour
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         currentArmor = maxArmor;
+        dashChargesLeft = Mathf.Max(1, dashCharges);
 
         currentJetpackEnergy = maxJetpackEnergy;
         if (modeloPez == null)
@@ -274,8 +283,10 @@ public class PlayerController_Base : MonoBehaviour
             isThirdPerson = !isThirdPerson;
         }
 
-        // El dash se lee en Update para no perder la pulsación
-        if (isInWater && Input.GetKeyDown(swimDashKey) && Time.time >= nextDashTime)
+        // El dash se lee en Update para no perder la pulsación.
+        // Cargas: tras el enfriamiento del último dash se rellenan todas.
+        if (dashChargesLeft < dashCharges && Time.time >= dashRefillTime) dashChargesLeft = Mathf.Max(1, dashCharges);
+        if (isInWater && Input.GetKeyDown(swimDashKey) && dashChargesLeft > 0 && Time.time >= nextDashTime)
         {
             dashRequested = true;
         }
@@ -303,6 +314,10 @@ public class PlayerController_Base : MonoBehaviour
                 currentJetpackEnergy = Mathf.Max(currentJetpackEnergy - turboSwimDrainRate * Time.fixedDeltaTime, 0f);
             else
                 currentJetpackEnergy = Mathf.Min(currentJetpackEnergy + jetpackRechargeRate * Time.fixedDeltaTime, maxJetpackEnergy);
+
+            // Reparación acuática (mejora): el agua también repara la armadura
+            if (waterArmorRegen > 0f && currentArmor < maxArmor)
+                currentArmor = Mathf.Min(currentArmor + waterArmorRegen * Time.fixedDeltaTime, maxArmor);
         }
         else
         {
@@ -467,7 +482,10 @@ public class PlayerController_Base : MonoBehaviour
         {
             dashRequested = false;
             dashEndTime = Time.time + swimDashDuration;
-            nextDashTime = Time.time + swimDashCooldown;
+            dashChargesLeft = Mathf.Max(0, dashChargesLeft - 1);
+            // Si quedan cargas, el siguiente dash se encadena casi enseguida
+            nextDashTime = Time.time + (dashChargesLeft > 0 ? Mathf.Min(swimDashCooldown, swimDashDuration * 0.6f) : swimDashCooldown);
+            dashRefillTime = Time.time + swimDashCooldown;
             fovKick = dashFovKick;
             OnDash?.Invoke();
         }
@@ -834,9 +852,25 @@ public class PlayerController_Base : MonoBehaviour
         knockbackEndTime = Time.time + controlLossTime;
     }
 
+    // Lo usan las mejoras (Dash doble)
+    public void SetDashCharges(int charges)
+    {
+        dashCharges = Mathf.Max(1, charges);
+        dashChargesLeft = dashCharges;
+    }
+
     public void TakeHit(float damage, Vector3 knockbackVelocity)
     {
         if (isDead) return;
+
+        // Escudo de burbuja (mejora): absorbe el golpe entero y el empujón es mucho menor
+        if (shield == null) shield = GetComponent<BubbleShield>();
+        if (shield != null && shield.TryAbsorb())
+        {
+            if (knockbackVelocity.sqrMagnitude > 0.01f) ApplyKnockback(knockbackVelocity * 0.35f, 0.15f);
+            return;
+        }
+
         currentArmor = Mathf.Max(currentArmor - damage, 0f);
         OnDamaged?.Invoke(damage);
 

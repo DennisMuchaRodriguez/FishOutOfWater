@@ -61,9 +61,34 @@ public class PlayerShooting : MonoBehaviour
     public float CurrentSpread { get; private set; }
     public float LastShotTime { get; private set; } = -10f;
     public bool IsCharging { get; private set; }
+    [Header("Metralleta de burbujas (mejora del Taller)")]
+    [Tooltip("Disparos por segundo de la metralleta")]
+    public float bubbleShotsPerSecond = 10f;
+    [Tooltip("Daño de cada burbuja comparado con la bala de la pistola")]
+    public float bubbleDamageFactor = 0.4f;
+    public float bubbleSpeedMultiplier = 1.35f;
+    public float bubbleScale = 0.55f;
+    [Tooltip("Burbujas que salen por cada bala del cargador")]
+    public int bubblesPerAmmo = 3;
+    [Tooltip("Teclas para cambiar de arma principal (también la rueda del mouse)")]
+    public KeyCode pistolKey = KeyCode.Alpha1;
+    public KeyCode bubbleKey = KeyCode.Alpha2;
+
+    // Lo ajustan las mejoras (PlayerUpgrades): aves que atraviesa el disparo cargado
+    [HideInInspector] public int chargedPierce = 0;
+
     // CONTRATO para el HUD: nombre del arma principal activa y si es la metralleta de burbujas
-    public string CurrentWeaponName { get { return "PISTOLA DE AGUA"; } }
-    public bool IsBubbleGun { get { return false; } }
+    public string CurrentWeaponName { get { return usingBubbleGun ? "METRALLETA DE BURBUJAS" : "PISTOLA DE AGUA"; } }
+    public bool IsBubbleGun { get { return usingBubbleGun; } }
+    public bool HasBubbleGun { get { return bubbleUnlocked; } }
+    public event System.Action<string> OnWeaponChanged;
+
+    bool bubbleUnlocked;
+    bool usingBubbleGun;
+    float bubbleDamageBonus = 1f;
+    int bubbleShotsSinceAmmo;
+    Material bubbleMaterial;
+    ParticleSystem bubbleTrail;
 
     public event System.Action<bool> OnShot;          // bool = cargado
     public event System.Action<bool> OnTargetHit;     // bool = objetivo destruido
@@ -147,13 +172,36 @@ public class PlayerShooting : MonoBehaviour
         bool airborne = controller != null && controller.IsJetting;
         CurrentSpread = Mathf.Min(baseSpread + spreadHeat + (airborne ? airSpread : 0f), maxSpread);
 
+        // --- Cambio de arma principal (1 / 2 o la rueda del mouse) ---
+        if (bubbleUnlocked && !IsCharging && (controller == null || !controller.isDead))
+        {
+            if (Input.GetKeyDown(pistolKey)) SelectWeapon(false);
+            else if (Input.GetKeyDown(bubbleKey)) SelectWeapon(true);
+            else if (Mathf.Abs(Input.mouseScrollDelta.y) > 0.01f) SelectWeapon(!usingBubbleGun);
+        }
+
         // --- Disparo normal ---
-        bool wantsFire = holdToFire ? Input.GetKey(shootKey) : Input.GetKeyDown(shootKey);
+        bool wantsFire = (holdToFire || usingBubbleGun) ? Input.GetKey(shootKey) : Input.GetKeyDown(shootKey);
         if (wantsFire && !IsCharging && Time.time >= nextFireTime && currentAmmo > 0)
         {
-            Shoot(false);
-            nextFireTime = Time.time + fireRate;
-            currentAmmo -= 1;
+            if (usingBubbleGun)
+            {
+                // Metralleta: 10 burbujas por segundo; cada 3 burbujas gastan una bala
+                Shoot(false, true);
+                nextFireTime = Time.time + 1f / Mathf.Max(1f, bubbleShotsPerSecond);
+                bubbleShotsSinceAmmo++;
+                if (bubbleShotsSinceAmmo >= Mathf.Max(1, bubblesPerAmmo))
+                {
+                    bubbleShotsSinceAmmo = 0;
+                    currentAmmo -= 1;
+                }
+            }
+            else
+            {
+                Shoot(false);
+                nextFireTime = Time.time + fireRate;
+                currentAmmo -= 1;
+            }
         }
 
         // --- Disparo cargado ---
@@ -231,7 +279,55 @@ public class PlayerShooting : MonoBehaviour
         isInWaterForAmmo = inWater;
     }
 
-    void Shoot(bool charged)
+    // ---- Metralleta de burbujas (la desbloquea PlayerUpgrades) ----
+
+    public void SetBubbleGun(bool unlocked, float damageBonus)
+    {
+        bool was = bubbleUnlocked;
+        bubbleUnlocked = unlocked;
+        bubbleDamageBonus = Mathf.Max(0.1f, damageBonus);
+        if (unlocked && !was) SelectWeapon(true);      // recién instalada: se estrena
+        if (!unlocked && usingBubbleGun) SelectWeapon(false);
+    }
+
+    void SelectWeapon(bool bubble)
+    {
+        bubble = bubble && bubbleUnlocked;
+        if (bubble == usingBubbleGun) return;
+        usingBubbleGun = bubble;
+        bubbleShotsSinceAmmo = 0;
+        if (bubble) EnsureBubbleFX();
+        OnWeaponChanged?.Invoke(CurrentWeaponName);
+    }
+
+    // Material de la burbuja y la estela de burbujitas (una sola para todas las balas)
+    void EnsureBubbleFX()
+    {
+        if (bubbleMaterial == null)
+            bubbleMaterial = FXFactory.ParticleMaterialAlpha(fxMaterialTemplate, FXFactory.Bubble, new Color(0.85f, 0.97f, 1f, 0.95f));
+        if (bubbleTrail == null)
+        {
+            Material mat = FXFactory.ParticleMaterialAlpha(fxMaterialTemplate, FXFactory.Bubble, new Color(0.8f, 0.96f, 1f, 0.8f));
+            bubbleTrail = FXFactory.CreateParticleSystem("EstelaBurbujas", null, mat);
+            var main = bubbleTrail.main;
+            main.maxParticles = 800;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.8f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.11f);
+            main.startSpeed = 0f;
+            main.gravityModifier = -0.06f;
+            var size = bubbleTrail.sizeOverLifetime;
+            size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.3f));
+            bubbleTrail.Play();
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (bubbleTrail != null) Destroy(bubbleTrail.gameObject);
+    }
+
+    void Shoot(bool charged, bool bubble = false)
     {
         if (projectilePrefab == null || firePoint == null || playerCamera == null)
         {
@@ -244,7 +340,7 @@ public class PlayerShooting : MonoBehaviour
 
         // PASO 2: Dirección desde firePoint hacia el objetivo, con un poco de dispersión
         Vector3 direction = (targetPoint - firePoint.position).normalized;
-        float spread = charged ? 0f : CurrentSpread;
+        float spread = charged || bubble ? 0f : CurrentSpread;   // la metralleta dispara recto
         if (spread > 0f)
         {
             Vector2 r = Random.insideUnitCircle * spread;
@@ -254,13 +350,17 @@ public class PlayerShooting : MonoBehaviour
         // PASO 3: Crear proyectil
         GameObject projectile = Instantiate(projectilePrefab, firePoint.position, Quaternion.LookRotation(direction));
         if (charged) projectile.transform.localScale *= chargedScale;
+        else if (bubble) projectile.transform.localScale *= bubbleScale;
 
         Projectile proj = projectile.GetComponent<Projectile>();
         if (proj != null)
         {
             int dmg = charged ? Mathf.RoundToInt(proj.damage * chargedDamageMultiplier) : proj.damage;
+            if (bubble) dmg = Mathf.Max(1, Mathf.RoundToInt(proj.damage * bubbleDamageFactor * bubbleDamageBonus));
             proj.Setup(this, dmg, charged ? chargedImpactPrefab : impactEffectPrefab,
                        shotColor, trailMaterial, charged);
+            if (bubble) proj.MakeBubble(bubbleMaterial, bubbleTrail);
+            if (charged && chargedPierce > 0) proj.pierceCount = chargedPierce;
         }
 
         // PASO 4: Darle velocidad en esa dirección
@@ -268,7 +368,7 @@ public class PlayerShooting : MonoBehaviour
         if (rb != null)
         {
             rb.useGravity = false;
-            rb.linearVelocity = direction * shootForce * (charged ? chargedSpeedMultiplier : 1f);
+            rb.linearVelocity = direction * shootForce * (charged ? chargedSpeedMultiplier : (bubble ? bubbleSpeedMultiplier : 1f));
         }
 
         // Ignorar colisión con el jugador
@@ -282,12 +382,12 @@ public class PlayerShooting : MonoBehaviour
         }
 
         // Efectos del disparo
-        FXFactory.SpawnOneShot(muzzleFlashPrefab, firePoint.position, Quaternion.LookRotation(direction), charged ? 0.8f : 0.35f, 2f);
-        if (muzzleLight != null) muzzleLight.intensity = charged ? 14f : 7f;
-        if (muzzleSparks != null) muzzleSparks.Emit(charged ? 30 : 8);
-        if (controller != null) controller.AddRecoil(charged ? chargedRecoilKick : recoilKick, charged ? 1f : 0.25f);
+        FXFactory.SpawnOneShot(muzzleFlashPrefab, firePoint.position, Quaternion.LookRotation(direction), charged ? 0.8f : (bubble ? 0.18f : 0.35f), 2f);
+        if (muzzleLight != null) muzzleLight.intensity = charged ? 14f : (bubble ? 3f : 7f);
+        if (muzzleSparks != null) muzzleSparks.Emit(charged ? 30 : (bubble ? 2 : 8));
+        if (controller != null) controller.AddRecoil(charged ? chargedRecoilKick : (bubble ? recoilKick * 0.3f : recoilKick), charged ? 1f : 0.25f);
 
-        spreadHeat = Mathf.Min(spreadHeat + spreadPerShot, maxSpread);
+        if (!bubble) spreadHeat = Mathf.Min(spreadHeat + spreadPerShot, maxSpread);
         LastShotTime = Time.time;
         OnShot?.Invoke(charged);
 

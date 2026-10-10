@@ -13,6 +13,11 @@ public class AmmoPickup : MonoBehaviour
     public GameObject collectPrefab;
 
     public System.Action<AmmoPickup> Collected;
+
+    // Mejora "Imán de cápsulas": desde pickupRadius × MagnetMultiplier la cápsula vuela hacia el jugador
+    public static float MagnetMultiplier = 1f;
+    public float magnetSpeed = 12f;
+    static PlayerShooting magnetTarget;
     public bool IsUnderwater { get; set; }
 
     Transform core;
@@ -84,13 +89,28 @@ public class AmmoPickup : MonoBehaviour
         return go.transform;
     }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() { MagnetMultiplier = 1f; magnetTarget = null; }
+
     void Update()
     {
         phase += Time.deltaTime;
+        if (MagnetMultiplier > 1.01f) Attract(Time.deltaTime);
         transform.position = basePos + Vector3.up * Mathf.Sin(phase * bobSpeed) * bobAmplitude;
         if (ring != null) ring.Rotate(0f, spinSpeed * Time.deltaTime, 0f, Space.World);
         if (core != null) core.localScale = Vector3.one * (0.6f + Mathf.Sin(phase * 4f) * 0.05f);
         if (glow != null) glow.intensity = 2.5f + Mathf.Sin(phase * 4f) * 0.8f;
+    }
+
+    void Attract(float dt)
+    {
+        if (magnetTarget == null) magnetTarget = FindFirstObjectByType<PlayerShooting>();
+        if (magnetTarget == null || !magnetTarget.enabled || magnetTarget.currentAmmo >= magnetTarget.maxAmmo) return;
+        Vector3 target = magnetTarget.transform.position;
+        float range = pickupRadius * MagnetMultiplier;
+        if ((target - basePos).sqrMagnitude > range * range) return;
+        // Vuela hacia el jugador (el disparador de siempre la recoge al llegar)
+        basePos = Vector3.MoveTowards(basePos, target, magnetSpeed * dt);
     }
 
     void OnTriggerEnter(Collider other)

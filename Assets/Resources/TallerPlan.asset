@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3e693668707400387eceb4593de7b8a, type: 3}
+  m_Name: TallerPlan
+  m_EditorClassIdentifier: Assembly-CSharp::WorkshopPlan
+  firstVisitComic: {fileID: 11400000, guid: 121537d318c84f98bf70fd0a80cd7437, type: 2}
+  visits:
+  - levelIndex: 2
+    mechanicLine: "\u00A1As\u00ED que t\u00FA eres el pez del traje! Te armo una de estas con chatarra del fondo. Elige bien: solo me alcanza para una."
+    offers:
+    - upgrade: 0
+      level: 1
+    - upgrade: 1
+      level: 1
+    - upgrade: 6
+      level: 1
+  - levelIndex: 5
+    mechanicLine: "Las garzas pegan fuerte y los charranes no paran. \u00BFBlindaje, combustible o un disparo que atraviese?"
+    offers:
+    - upgrade: 3
+      level: 1
+    - upgrade: 7
+      level: 1
+    - upgrade: 2
+      level: 1
+  - levelIndex: 8
+    mechanicLine: "Se acerca un pel\u00EDcano enorme que se traga card\u00FAmenes enteros. Vas a necesitar con qu\u00E9 responder."
+    offers:
+    - upgrade: 1
+      level: 1
+    - upgrade: 5
+      level: 1
+    - upgrade: 9
+      level: 1
+  - levelIndex: 11
+    mechanicLine: "Los cormoranes bucean como torpedos. El sonar te dir\u00E1 qui\u00E9n est\u00E1 cazando."
+    offers:
+    - upgrade: 8
+      level: 1
+    - upgrade: 11
+      level: 1
+    - upgrade: 0
+      level: 1
+  - levelIndex: 14
+    mechanicLine: "\u00A1Venciste al Cormor\u00E1n Rey! Ahora vienen los cielos: el \u00E1guila pescadora es r\u00E1pida."
+    offers:
+    - upgrade: 4
+      level: 1
+    - upgrade: 6
+      level: 1
+    - upgrade: 10
+      level: 1
+  - levelIndex: 17
+    mechanicLine: "\u00DAltima visita antes de la Reina. Ll\u00E9vate lo mejor que tengo."
+    offers:
+    - upgrade: 7
+      level: 2
+    - upgrade: 1
+      level: 2
+    - upgrade: 2
+      level: 2
