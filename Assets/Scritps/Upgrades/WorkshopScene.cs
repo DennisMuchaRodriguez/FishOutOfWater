@@ -64,6 +64,12 @@ public class WorkshopScene : MonoBehaviour
     Image fade;
 
     static readonly Vector3 SuitPos = new Vector3(2.3f, 0f, 0.6f);
+
+    // Franjas de la interfaz (unidades de 1280x720, desde abajo): así los planos nunca tapan los botones
+    const float ButtonsY = 36f;       // centro de la fila de botones (VOLVER AL MAPA, INSTALAR)
+    const float StatusY = 80f;        // mensaje (instalando / listo)
+    const float CardsBottom = 100f;   // borde de abajo de los planos
+    static readonly Vector2 CardSize = new Vector2(290f, 310f);
     static readonly Vector3 BenchPos = new Vector3(-2.6f, 0f, 1.1f);
 
     void Start()
@@ -437,21 +443,25 @@ public class WorkshopScene : MonoBehaviour
         mechanicText.alignment = TextAlignmentOptions.MidlineLeft;
 
         // Lo que ya tiene el traje (arriba a la derecha)
-        RectTransform list = MenuUI.ComicPanel("Instalado", ui, new Vector2(1f, 1f), new Vector2(-170f, -190f), new Vector2(290f, 240f), MenuUI.Glass);
+        RectTransform list = MenuUI.ComicPanel("Instalado", ui, new Vector2(1f, 1f), new Vector2(-170f, -168f), new Vector2(290f, 200f), MenuUI.Glass);
         MenuUI.Text("Encabezado", list, "EN TU TRAJE", 16f, new Vector2(0.5f, 1f), new Vector2(0f, -22f), new Vector2(260f, 24f), MenuUI.Accent)
             .characterSpacing = 4f;
-        installedList = MenuUI.Rect("Lista", list, new Vector2(0.5f, 1f), new Vector2(0f, -130f), new Vector2(260f, 190f));
+        installedList = MenuUI.Rect("Lista", list, new Vector2(0.5f, 1f), new Vector2(0f, -114f), new Vector2(260f, 152f));
         RefreshInstalled();
 
-        // Mensaje (instalando / listo)
-        statusText = MenuUI.Text("Estado", ui, "", 22f, new Vector2(0.5f, 0f), new Vector2(0f, 372f), new Vector2(900f, 34f), MenuUI.Yellow);
+        // Abajo, en franjas que no se pisan: botones (y 13..63), mensaje (y 65..95) y los planos (desde y 100)
+        statusText = MenuUI.Text("Estado", ui, "", 20f, new Vector2(0.5f, 0f), new Vector2(0f, StatusY), new Vector2(900f, 30f), MenuUI.Yellow);
         statusText.characterSpacing = 3f;
+        statusText.enableAutoSizing = true;
+        statusText.fontSizeMin = 13f;
+        statusText.fontSizeMax = 20f;
+        statusText.textWrappingMode = TextWrappingModes.NoWrap;
 
-        installButton = MenuUI.ComicButton("INSTALAR", ui, new Vector2(0.5f, 0f), new Vector2(0f, 372f), new Vector2(320f, 56f), MenuUI.Orange, OnInstallPressed, 26f);
+        installButton = MenuUI.ComicButton("INSTALAR", ui, new Vector2(0.5f, 0f), new Vector2(0f, ButtonsY), new Vector2(320f, 54f), MenuUI.Orange, OnInstallPressed, 26f);
         installLabel = installButton.GetComponentInChildren<TextMeshProUGUI>();
         installButton.gameObject.SetActive(false);
 
-        backButton = MenuUI.ComicButton("VOLVER AL MAPA", ui, new Vector2(0f, 0f), new Vector2(150f, 40f), new Vector2(240f, 46f), MenuUI.BlueDark, Leave, 20f);
+        backButton = MenuUI.ComicButton("VOLVER AL MAPA", ui, new Vector2(0f, 0f), new Vector2(150f, ButtonsY), new Vector2(240f, 46f), MenuUI.BlueDark, Leave, 20f);
 
         fade = MenuUI.Panel("Fundido", ui, MenuUI.Ink);
         fade.raycastTarget = false;
@@ -467,21 +477,21 @@ public class WorkshopScene : MonoBehaviour
                         new Vector2(250f, 40f), MenuUI.TextDim);
             return;
         }
-        int rows = Mathf.Min(ids.Count, 7);
+        int rows = Mathf.Min(ids.Count, 6);
         for (int i = 0; i < rows; i++)
         {
             UpgradeId id = ids[i];
-            float y = -12f - i * 25f;
+            float y = -12f - i * 22f;
             Color accent = UpgradeCatalog.AccentOf(id);
             MenuUI.Img("Icono", installedList, WorkshopIcons.For(id), accent, new Vector2(0f, 1f), new Vector2(14f, y), new Vector2(20f, 20f));
             TextMeshProUGUI t = MenuUI.Text("Mejora", installedList, UpgradeCatalog.NameOf(id) + "  <color=" + MenuUI.HexYellow + ">" +
-                                            UpgradeDefinition.Roman(Upgrades.Level(id)) + "</color>", 15f, new Vector2(0f, 1f), new Vector2(140f, y),
-                                            new Vector2(230f, 24f), MenuUI.Cream);
+                                            UpgradeDefinition.Roman(Upgrades.Level(id)) + "</color>", 14f, new Vector2(0f, 1f), new Vector2(140f, y),
+                                            new Vector2(230f, 22f), MenuUI.Cream);
             t.alignment = TextAlignmentOptions.MidlineLeft;
             t.textWrappingMode = TextWrappingModes.NoWrap;
         }
         if (ids.Count > rows)
-            MenuUI.Text("Mas", installedList, "y " + (ids.Count - rows) + " más", 14f, new Vector2(0.5f, 1f), new Vector2(0f, -12f - rows * 25f),
+            MenuUI.Text("Mas", installedList, "y " + (ids.Count - rows) + " más", 13f, new Vector2(0.5f, 1f), new Vector2(0f, -12f - rows * 22f),
                         new Vector2(250f, 22f), MenuUI.TextDim);
     }
 
@@ -503,7 +513,7 @@ public class WorkshopScene : MonoBehaviour
         float spacing = 320f;
         for (int i = 0; i < offers.Count; i++)
         {
-            Vector2 pos = new Vector2((i - (offers.Count - 1) * 0.5f) * spacing, 190f);
+            Vector2 pos = new Vector2((i - (offers.Count - 1) * 0.5f) * spacing, CardsBottom + CardSize.y * 0.5f);
             cards.Add(BuildCard(i, offers[i], pos));
             cards[i].Appear(0.15f + i * 0.12f);
         }
@@ -514,11 +524,11 @@ public class WorkshopScene : MonoBehaviour
         UpgradeDefinition def = UpgradeCatalog.Find(offer.upgrade);
         Color accent = UpgradeCatalog.AccentOf(offer.upgrade);
         UpgradeCategory category = UpgradeCatalog.CategoryOf(offer.upgrade);
-        Vector2 size = new Vector2(290f, 300f);
-        Vector2 top = new Vector2(0.5f, 1f), c = new Vector2(0.5f, 0.5f);
+        Vector2 size = CardSize;
+        Vector2 top = new Vector2(0.5f, 1f);
 
         // Haz del proyector (de la mesa hacia el plano)
-        Image beam = MenuUI.Img("Haz", ui, WorkshopIcons.Beam, MenuUI.WithAlpha(accent, 0.16f), new Vector2(0.5f, 0f), pos + new Vector2(0f, -150f), new Vector2(200f, 150f));
+        Image beam = MenuUI.Img("Haz", ui, WorkshopIcons.Beam, MenuUI.WithAlpha(accent, 0.16f), new Vector2(0.5f, 0f), pos + new Vector2(0f, -165f), new Vector2(200f, 150f));
         beam.transform.SetSiblingIndex(1);
 
         RectTransform card = MenuUI.HoloPanel("Plano" + index, ui, new Vector2(0.5f, 0f), pos, size,
@@ -528,27 +538,27 @@ public class WorkshopScene : MonoBehaviour
         card.Find("Relleno").GetComponent<Image>().raycastTarget = true;
 
         // Ícono del plano dentro de un hexágono
-        MenuUI.Img("HaloIcono", card, MenuUI.HexGlow, MenuUI.WithAlpha(accent, 0.3f), top, new Vector2(0f, -66f), new Vector2(118f, 118f));
-        MenuUI.Img("Hexagono", card, MenuUI.HexLine, accent, top, new Vector2(0f, -66f), new Vector2(92f, 92f));
-        MenuUI.Img("Icono", card, WorkshopIcons.For(offer.upgrade), Color.Lerp(accent, Color.white, 0.35f), top, new Vector2(0f, -66f), new Vector2(60f, 60f));
+        MenuUI.Img("HaloIcono", card, MenuUI.HexGlow, MenuUI.WithAlpha(accent, 0.3f), top, new Vector2(0f, -62f), new Vector2(110f, 110f));
+        MenuUI.Img("Hexagono", card, MenuUI.HexLine, accent, top, new Vector2(0f, -62f), new Vector2(86f, 86f));
+        MenuUI.Img("Icono", card, WorkshopIcons.For(offer.upgrade), Color.Lerp(accent, Color.white, 0.35f), top, new Vector2(0f, -62f), new Vector2(56f, 56f));
 
         string name = def != null && !string.IsNullOrEmpty(def.displayName) ? def.displayName : UpgradeCatalog.NameOf(offer.upgrade);
-        TextMeshProUGUI title = MenuUI.Text("Nombre", card, name.ToUpper(), 22f, top, new Vector2(0f, -132f), new Vector2(270f, 30f), MenuUI.Cream, true);
+        TextMeshProUGUI title = MenuUI.Text("Nombre", card, name.ToUpper(), 22f, top, new Vector2(0f, -124f), new Vector2(270f, 30f), MenuUI.Cream, true);
         title.enableAutoSizing = true;
         title.fontSizeMin = 15f;
         title.fontSizeMax = 22f;
         title.textWrappingMode = TextWrappingModes.NoWrap;
 
-        MenuUI.Tag(UpgradeDefinition.CategoryLabel(category).ToUpper(), card, top, new Vector2(-62f, -162f), UpgradeDefinition.CategoryColor(category), 12f);
-        MenuUI.Tag("NIVEL " + UpgradeDefinition.Roman(offer.level), card, top, new Vector2(82f, -162f), offer.level >= 2 ? MenuUI.Yellow : MenuUI.Blue, 12f);
+        MenuUI.Tag(UpgradeDefinition.CategoryLabel(category).ToUpper(), card, top, new Vector2(-62f, -153f), UpgradeDefinition.CategoryColor(category), 12f);
+        MenuUI.Tag("NIVEL " + UpgradeDefinition.Roman(offer.level), card, top, new Vector2(82f, -153f), offer.level >= 2 ? MenuUI.Yellow : MenuUI.Blue, 12f);
 
         string desc = def != null ? def.description : "";
-        MenuUI.Text("Descripcion", card, desc, 15f, top, new Vector2(0f, -206f), new Vector2(262f, 50f), MenuUI.TextDim);
+        FitText(MenuUI.Text("Descripcion", card, desc, 15f, top, new Vector2(0f, -194f), new Vector2(262f, 46f), MenuUI.TextDim));
         string what = def != null ? def.LevelText(offer.level) : "";
         if (offer.level >= 2 && def != null) what = "Nivel II: " + what;
-        MenuUI.Text("Efecto", card, "<color=" + MenuUI.HexAccent + ">+</color> " + what, 15f, top, new Vector2(0f, -256f), new Vector2(262f, 44f), MenuUI.Cream);
+        FitText(MenuUI.Text("Efecto", card, "<color=" + MenuUI.HexAccent + ">+</color> " + what, 15f, top, new Vector2(0f, -246f), new Vector2(262f, 54f), MenuUI.Cream));
         if (def != null && !string.IsNullOrEmpty(def.suitPart))
-            MenuUI.Text("Pieza", card, "En el traje: " + def.suitPart, 12f, top, new Vector2(0f, -287f), new Vector2(262f, 18f), MenuUI.WithAlpha(MenuUI.TextDim, 0.8f));
+            FitText(MenuUI.Text("Pieza", card, "En el traje: " + def.suitPart, 12f, top, new Vector2(0f, -290f), new Vector2(262f, 18f), MenuUI.WithAlpha(MenuUI.TextDim, 0.8f)), 10f);
 
         WorkshopCard wc = card.gameObject.AddComponent<WorkshopCard>();
         wc.index = index;
@@ -558,6 +568,15 @@ public class WorkshopScene : MonoBehaviour
         wc.group = card.gameObject.AddComponent<CanvasGroup>();
         wc.basePosition = pos;
         return wc;
+    }
+
+    // El texto se achica solo si no cabe (las descripciones largas no se salen del plano)
+    static void FitText(TextMeshProUGUI t, float min = 12f)
+    {
+        t.enableAutoSizing = true;
+        t.fontSizeMin = min;
+        t.fontSizeMax = t.fontSize;
+        t.overflowMode = TextOverflowModes.Truncate;
     }
 
     void OnCardClicked(int index)
@@ -652,8 +671,6 @@ public class WorkshopScene : MonoBehaviour
     {
         bool next = !testVisit && WorkshopFlow.ContinueToNextLevel && GameSession.HasNextLevel;
         installLabel.text = next ? "SIGUIENTE NIVEL" : "VOLVER AL MAPA";
-        RectTransform rt = (RectTransform)installButton.transform;
-        rt.anchoredPosition = new Vector2(0f, 318f);
         installButton.gameObject.SetActive(true);
         installButton.Select();
         backButton.gameObject.SetActive(false);

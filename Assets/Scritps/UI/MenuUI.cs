@@ -133,7 +133,10 @@ public static class MenuUI
             return Shape("UI_HexGlow", () => MakeAlpha(128, "UI_HexGlow", (x, y) =>
             {
                 float d = HexDistance(x / 128f, y / 128f, 0.34f);
-                return d > 0f ? 1f : Mathf.Exp(d * 128f / 9f);
+                float a = d > 0f ? 1f : Mathf.Exp(d * 128f / 9f);
+                // se apaga en redondo antes del borde de la textura (si no, al avivarlo se ve un cuadrado)
+                float r = Mathf.Sqrt(x * x + y * y) / 64f;
+                return a * Mathf.Clamp01((1f - r) / 0.22f);
             }));
         }
     }
@@ -147,7 +150,9 @@ public static class MenuUI
             return Shape("UI_StarGlow", () => MakeAlpha(128, "UI_StarGlow", (x, y) =>
             {
                 float d = StarDistance(x / 128f * 1.5f, y / 128f * 1.5f);
-                return d > 0f ? 1f : Mathf.Exp(d * 128f / 10f);
+                float a = d > 0f ? 1f : Mathf.Exp(d * 128f / 10f);
+                float r = Mathf.Sqrt(x * x + y * y) / 64f;
+                return a * Mathf.Clamp01((1f - r) / 0.22f);
             }));
         }
     }

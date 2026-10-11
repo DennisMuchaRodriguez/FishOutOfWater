@@ -70,6 +70,7 @@ public class HelmetVisorHUD : MonoBehaviour
     Image chargeRing;
     TextMeshProUGUI statusText, readoutText;
     VisorAmmoHUD ammoHud;
+    VisorStatusHUD statusHud;
     VisorSonarHUD sonarHud;
     readonly List<Droplet> droplets = new List<Droplet>();
     RectTransform dropletRoot;
@@ -102,12 +103,17 @@ public class HelmetVisorHUD : MonoBehaviour
         BuildSwayRoot();
         BuildOverlay();
 
-        // Munición (arco del borde derecho) y sonar, dentro del visor
+        // Munición (arco del borde derecho), propulsor y traje (arriba) y sonar, dentro del visor
         ammoHud = gameObject.AddComponent<VisorAmmoHUD>();
         ammoHud.visor = this;
         ammoHud.player = player;
         ammoHud.shooting = shooting;
         ammoHud.Build(swayRoot, accent, dangerColor);
+        // Propulsor y traje (arriba, siguiendo la curva del visor)
+        statusHud = gameObject.AddComponent<VisorStatusHUD>();
+        statusHud.visor = this;
+        statusHud.player = player;
+        statusHud.Build(swayRoot, accent, dangerColor);
         sonarHud = gameObject.AddComponent<VisorSonarHUD>();
         sonarHud.player = player;
         sonarHud.Build(overlayRoot, accent);

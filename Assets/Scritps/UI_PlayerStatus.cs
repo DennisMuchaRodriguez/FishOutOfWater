@@ -28,6 +28,8 @@ public class UI_PlayerStatus : MonoBehaviour
     public float lowAmmoThreshold = 5;
     [Tooltip("La munición ahora se ve en el visor del casco (VisorAmmoHUD). Activa esto solo para volver al contador viejo")]
     public bool useOldAmmoCounter = false;
+    [Tooltip("El propulsor y la armadura ahora se ven en el visor del casco (VisorStatusHUD). Activa esto solo para volver a las barras viejas")]
+    public bool useOldBars = false;
     public float lowEnergyThreshold = 25f;
 
     [Header("Armadura - NUEVO")]
@@ -84,6 +86,14 @@ public class UI_PlayerStatus : MonoBehaviour
         {
             if (ammoIcon != null) ammoIcon.gameObject.SetActive(false);
             if (ammoText != null) ammoText.gameObject.SetActive(false);
+        }
+
+        if (!useOldBars)
+        {
+            if (jetpackSlider != null) jetpackSlider.gameObject.SetActive(false);
+            if (jetpackText != null) jetpackText.gameObject.SetActive(false);
+            if (armorSlider != null) armorSlider.gameObject.SetActive(false);
+            if (armorText != null) armorText.gameObject.SetActive(false);
         }
 
         if (jetpackIcon != null) originalEnergyColor = jetpackIcon.color;

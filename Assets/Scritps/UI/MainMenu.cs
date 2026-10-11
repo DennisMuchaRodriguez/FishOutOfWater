@@ -505,8 +505,8 @@ public class MainMenu : MonoBehaviour
         Image halo = MenuUI.Img("Aro", holder, MenuUI.Ring, new Color(1f, 1f, 1f, 0f), c, Vector2.zero, Vector2.one * size * 1.45f);
         Image ring = MenuUI.Img("Anillo", holder, MenuUI.RingTicks, new Color(1f, 1f, 1f, 0f), c, Vector2.zero, Vector2.one * (size + 26f));
 
-        // Hexágono: halo ("Brillo", lo aviva MenuButtonFX al pasar el mouse), relleno y dos bordes
-        if (unlocked) MenuUI.Img("Brillo", holder, MenuUI.HexGlow, MenuUI.WithAlpha(edge, 0.28f), c, Vector2.zero, Vector2.one * size * 1.5f);
+        // Hexágono: halo redondo ("Brillo", lo aviva MenuButtonFX al pasar el mouse), relleno y dos bordes
+        if (unlocked) MenuUI.Img("Brillo", holder, MenuUI.Glow, MenuUI.WithAlpha(edge, 0.3f), c, Vector2.zero, Vector2.one * size * 1.9f);
         Color fill = unlocked ? MenuUI.WithAlpha(Color.Lerp(MenuUI.Ink, edge, stars > 0 ? 0.32f : 0.18f), 0.94f) : MenuUI.WithAlpha(MenuUI.Ink, 0.85f);
         Image hex = MenuUI.Img("Hexagono", holder, MenuUI.Hex, fill, c, Vector2.zero, Vector2.one * size);
         hex.raycastTarget = true;
