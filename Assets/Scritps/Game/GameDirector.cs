@@ -188,6 +188,7 @@ public class GameDirector : MonoBehaviour
             bool showCinematic = playArrivalCinematic && (!cinematicOnlyFirstWave || i == 0)
                                  && player != null && player.PlayerCamera != null && !player.isDead;
             Banner?.Invoke("OLEADA " + CurrentWave + " / " + TotalWaves, "¡DEPREDADORES EN CAMINO!", Danger);
+            Sfx.Play2D(Sonido.Oleada, 0.9f);
             if (showCinematic)
             {
                 cinematic = WaveCinematic.Play(player, spawned, lake, cinematicDuration, on => Letterbox?.Invoke(on));
@@ -209,7 +210,10 @@ public class GameDirector : MonoBehaviour
             }
 
             if (i < plan.Count - 1)
+            {
                 Banner?.Invoke("OLEADA SUPERADA", "Recarga munición antes de que vuelvan", Cyan);
+                Sfx.Play2D(Sonido.PezRescatado, 0.8f, 0.85f);
+            }
         }
 
         if (!ended) EndGame(true);
@@ -256,6 +260,7 @@ public class GameDirector : MonoBehaviour
             ? "Salvaste " + FishAlive + " de " + TotalFish + " peces  //  Depredadores abatidos: " + BirdsKilled
             : "Cazaron " + FishLost + " de " + TotalFish + " peces";
         Banner?.Invoke(title, sub, victory ? Cyan : Danger);
+        Sfx.Play2D(victory ? Sonido.Victoria : Sonido.Derrota, 0.9f);
 
         PauseMenu menu = FindFirstObjectByType<PauseMenu>();
         if (menu != null) menu.ShowEndScreen(victory);
@@ -392,13 +397,17 @@ public class GameDirector : MonoBehaviour
         FishLost++;
         int left = MaxFishLoss - FishLost;
         if (!ended)
+        {
             Toast?.Invoke(left > 0 ? "UN PEZ FUE CAZADO  //  " + FishAlive + " a salvo" : "¡DEMASIADOS PECES PERDIDOS!", Danger);
+            Sfx.Play2D(Sonido.Aviso, 0.7f, 0.75f);
+        }
     }
 
     void OnFishRescued(FishAI fish)
     {
         FishRescued++;
         Toast?.Invoke("¡PEZ RESCATADO!", Cyan);
+        Sfx.Play2D(Sonido.PezRescatado, 0.8f);
     }
 
     // ======================= PÁJAROS =======================
@@ -462,7 +471,11 @@ public class GameDirector : MonoBehaviour
         bird.FishCaught += (b, f) =>
         {
             // Un bocado del pelícano atrapa varios: un solo aviso
-            if (b.CarriedCount <= 1) Toast?.Invoke("¡UN PÁJARO ATRAPÓ UN PEZ!  Dispárale para que lo suelte", Danger);
+            if (b.CarriedCount <= 1)
+            {
+                Toast?.Invoke("¡UN PÁJARO ATRAPÓ UN PEZ!  Dispárale para que lo suelte", Danger);
+                Sfx.Play2D(Sonido.PezAtrapado, 0.8f);
+            }
             else if (b.CarriedCount == 2) Toast?.Invoke("¡ATRAPÓ VARIOS PECES DE UN BOCADO!", Danger);
         };
         return bird;

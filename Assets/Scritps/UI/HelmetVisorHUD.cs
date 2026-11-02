@@ -93,6 +93,29 @@ public class HelmetVisorHUD : MonoBehaviour
         public float speed, life, maxLife, size;
     }
 
+    // Manchas en el cristal (el "regalo" de una gaviota): se escurren despacio y se borran
+    class Splat
+    {
+        public RawImage img;
+        public Vector2 pos;
+        public float life, maxLife, size, angle;
+    }
+    readonly List<Splat> splats = new List<Splat>();
+    static Texture2D splatTex;
+
+    public static HelmetVisorHUD Instance { get; private set; }
+
+    // Ensucia el visor (solo se ve en primera persona)
+    public static void SplatGlass()
+    {
+        if (Instance != null) Instance.AddSplat();
+    }
+
+    void Awake()
+    {
+        Instance = this;
+    }
+
     void Start()
     {
         canvasRect = (RectTransform)transform;
@@ -131,6 +154,7 @@ public class HelmetVisorHUD : MonoBehaviour
 
     void OnDestroy()
     {
+        if (Instance == this) Instance = null;
         if (player != null) player.OnSubmergedChanged -= HandleSubmerged;
         if (shooting != null) shooting.OnTargetHit -= HandleTargetHit;
     }
@@ -406,9 +430,14 @@ public class HelmetVisorHUD : MonoBehaviour
         // la cinemática es una vista de cámara externa, no desde dentro del casco
         if (visorCanvas == null) visorCanvas = GetComponent<Canvas>();
         if (visorCanvas != null) visorCanvas.enabled = !cinematic;
+        // El casco (marco, munición, propulsor, traje, textos y sonar) solo se ve en primera persona.
+        // En tercera persona queda solo la retícula para apuntar
         frameRoot.gameObject.SetActive(firstPerson && !cinematic);
         overlayRoot.gameObject.SetActive(!cinematic);
-        swayRoot.gameObject.SetActive(!cinematic);
+        swayRoot.gameObject.SetActive(firstPerson && !cinematic);
+        bootLine.gameObject.SetActive(firstPerson);
+        if (statusText != null) statusText.gameObject.SetActive(firstPerson);
+        if (sonarHud != null) sonarHud.SetVisible(firstPerson);
 
         UpdateBoot(dt);
         UpdateSway(dt, firstPerson);
@@ -417,6 +446,7 @@ public class HelmetVisorHUD : MonoBehaviour
         UpdateReticle(dt);
         UpdateTexts();
         UpdateDroplets(dt);
+        UpdateSplats(dt);
         UpdateCursor();
     }
 
@@ -723,6 +753,100 @@ public class HelmetVisorHUD : MonoBehaviour
             d.img.color = new Color(0.85f, 0.97f, 1f, 0.55f * t);
             if (d.life <= 0f) d.img.gameObject.SetActive(false);
         }
+    }
+
+    void AddSplat()
+    {
+        if (dropletRoot == null || canvasRect == null) return;
+        if (splatTex == null) splatTex = MakeSplatTexture();
+        Rect r = canvasRect.rect;
+        int count = Random.Range(1, 3);
+        for (int i = 0; i < count; i++)
+        {
+            Splat sp = null;
+            foreach (Splat existing in splats)
+                if (existing.life <= 0f) { sp = existing; break; }
+            if (sp == null)
+            {
+                sp = new Splat();
+                sp.img = CreateRaw("Mancha", dropletRoot, splatTex, Color.white, false);
+                splats.Add(sp);
+            }
+            sp.img.gameObject.SetActive(true);
+            sp.size = Random.Range(90f, 170f) * (i == 0 ? 1f : 0.55f);
+            sp.pos = new Vector2(Random.Range(-r.width * 0.3f, r.width * 0.3f), Random.Range(-r.height * 0.05f, r.height * 0.3f));
+            sp.angle = Random.Range(-25f, 25f);
+            sp.maxLife = Random.Range(3.5f, 4.5f);
+            sp.life = sp.maxLife;
+        }
+        glitchTimer = Mathf.Max(glitchTimer, 0.12f);
+    }
+
+    void UpdateSplats(float dt)
+    {
+        foreach (Splat sp in splats)
+        {
+            if (sp.life <= 0f) continue;
+            sp.life -= dt;
+            float t = Mathf.Clamp01(sp.life / sp.maxLife);
+            float age = sp.maxLife - sp.life;
+            sp.pos.y -= dt * (4f + age * 3f);   // se escurre
+            RectTransform rt = sp.img.rectTransform;
+            rt.anchoredPosition = sp.pos;
+            float pop = Mathf.Min(1f, age * 9f);
+            rt.sizeDelta = new Vector2(sp.size, sp.size * (1f + age * 0.08f)) * Mathf.Lerp(0.6f, 1f, pop);
+            rt.localEulerAngles = new Vector3(0f, 0f, sp.angle);
+            sp.img.color = new Color(0.96f, 0.95f, 0.88f, 0.92f * Mathf.Clamp01(t * 1.6f));
+            if (sp.life <= 0f) sp.img.gameObject.SetActive(false);
+        }
+    }
+
+    // Mancha blanca con gotas que se escurren hacia abajo
+    static Texture2D MakeSplatTexture()
+    {
+        const int S = 128;
+        Texture2D tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        tex.name = "FX_Mancha";
+        System.Random rng = new System.Random(7);
+        Vector3[] blobs = new Vector3[9];
+        blobs[0] = new Vector3(0f, 0.12f, 0.3f);
+        for (int i = 1; i < blobs.Length; i++)
+        {
+            float a = (float)rng.NextDouble() * Mathf.PI * 2f;
+            float d = 0.18f + (float)rng.NextDouble() * 0.2f;
+            blobs[i] = new Vector3(Mathf.Cos(a) * d, 0.12f + Mathf.Sin(a) * d * 0.8f, 0.05f + (float)rng.NextDouble() * 0.09f);
+        }
+        Vector3[] drips = { new Vector3(-0.12f, -0.42f, 0.045f), new Vector3(0.05f, -0.3f, 0.05f), new Vector3(0.17f, -0.36f, 0.035f) };
+        Color32[] px = new Color32[S * S];
+        for (int y = 0; y < S; y++)
+        {
+            for (int x = 0; x < S; x++)
+            {
+                float u = (x + 0.5f) / S - 0.5f, v = (y + 0.5f) / S - 0.5f;
+                float field = 0f;
+                foreach (Vector3 b in blobs)
+                {
+                    float dx = u - b.x, dy = v - b.y;
+                    field = Mathf.Max(field, 1f - Mathf.Sqrt(dx * dx + dy * dy) / b.z);
+                }
+                foreach (Vector3 d in drips)
+                {
+                    // Gota: rayita vertical desde la mancha hasta la punta, con la punta redonda
+                    float dx = Mathf.Abs(u - d.x);
+                    if (v > d.y && v < 0.12f) field = Mathf.Max(field, 1f - dx / (d.z * 0.55f));
+                    float ty = v - d.y;
+                    field = Mathf.Max(field, 1f - Mathf.Sqrt(dx * dx + ty * ty) / d.z);
+                }
+                float a01 = Mathf.Clamp01(field * 6f);
+                float shade = Mathf.Lerp(0.82f, 1f, Mathf.Clamp01(field * 2f));
+                byte c = (byte)Mathf.RoundToInt(255f * shade);
+                px[y * S + x] = new Color32(c, c, c, (byte)Mathf.RoundToInt(255f * a01));
+            }
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        return tex;
     }
 
     void HandleTargetHit(bool killed)

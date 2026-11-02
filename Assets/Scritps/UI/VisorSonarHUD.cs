@@ -49,9 +49,15 @@ public class VisorSonarHUD : MonoBehaviour
         root.SetAsFirstSibling();   // debajo de la retícula
     }
 
+    // HelmetVisorHUD lo apaga en tercera persona (el sonar es parte del casco)
+    public void SetVisible(bool visible)
+    {
+        if (root != null && root.gameObject.activeSelf != visible) root.gameObject.SetActive(visible);
+    }
+
     void LateUpdate()
     {
-        if (root == null) return;
+        if (root == null || !root.gameObject.activeSelf) return;
         used = 0;
         int level = Upgrades.Level(UpgradeId.Sonar);
         Camera cam = player != null ? player.PlayerCamera : Camera.main;

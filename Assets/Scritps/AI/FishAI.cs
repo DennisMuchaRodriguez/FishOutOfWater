@@ -7,11 +7,14 @@ using FishGame.AI;
 // Prioridades (de mayor a menor):
 //  1. Atrapado / muerto            -> no hace nada (lo controla el pájaro)
 //  2. Fuera del agua               -> aletea hacia el agua; si tarda mucho, se asfixia
-//  3. Amenaza cerca                -> HUIR (solo por el agua)
+//  3. Aturdido                     -> flota panza arriba hacia la superficie, sin poder huir
+//                                     (ondas de choque de los jefes: presa fácil para las aves)
+//  4. Amenaza cerca                -> HUIR (solo por el agua)
 //        a) con energía: escapar hacia lo profundo, en zigzag y lejos del pájaro
 //        b) agotado: huir en horizontal cerca de la superficie (vulnerable)
-//  4. Agotado y muy profundo       -> subir a recuperar aliento
-//  5. Nada de lo anterior          -> nadar en cardumen por el lago
+//  5. Agotado y muy profundo       -> subir a recuperar aliento
+//  6. Nada de lo anterior          -> nadar en cardumen por el lago
+// Los jefes además pueden lanzarlos fuera del agua (Launch) y arrastrarlos con corrientes (Push).
 [RequireComponent(typeof(Rigidbody))]
 public class FishAI : MonoBehaviour
 {
@@ -57,6 +60,7 @@ public class FishAI : MonoBehaviour
     public FishState State { get; private set; }
     public bool IsAlive { get { return State != FishState.Dead; } }
     public bool IsCatchable { get { return State == FishState.Swimming; } }
+    public bool IsStunned { get { return stunTimer > 0f && State == FishState.Swimming; } }
     public float Depth { get { return lake != null ? lake.SurfaceY - transform.position.y : 0f; } }
     public Vector3 Velocity { get { return velocity; } }
     public float Stamina01 { get { return panicStamina > 0f ? stamina / panicStamina : 0f; } }
@@ -93,6 +97,8 @@ public class FishAI : MonoBehaviour
     Quaternion visualBaseRotation = Quaternion.identity;
     Animator swimAnim;
     bool wasGrabbed;
+    float stunTimer;
+    float roll;          // giro panza arriba (aturdido), 0..1
 
     void Awake()
     {
@@ -156,6 +162,9 @@ public class FishAI : MonoBehaviour
                 new BTSequence("FueraDelAgua",
                     new BTCondition("¿Cayendo / en tierra?", () => State == FishState.Falling),
                     new BTAction("Aletear hacia el agua", Flop)),
+                new BTSequence("Aturdido",
+                    new BTCondition("¿Aturdido?", () => IsStunned),
+                    new BTAction("Flotar aturdido", Stunned)),
                 new BTSequence("Huir",
                     new BTCondition("¿Amenaza cerca?", SenseThreat),
                     new BTSelector("ModoHuida",
@@ -175,6 +184,12 @@ public class FishAI : MonoBehaviour
         float dt = Time.fixedDeltaTime;
 
         if (alarmTimer > 0f) alarmTimer -= dt;
+        if (stunTimer > 0f)
+        {
+            stunTimer -= dt;
+            // Al despertar sale disparado (sabe que hay peligro)
+            if (stunTimer <= 0f && State == FishState.Swimming) alarmTimer = 3f;
+        }
         UpdateStamina(dt);
 
         IsFleeing = false;
@@ -322,6 +337,16 @@ public class FishAI : MonoBehaviour
         return BTStatus.Running;
     }
 
+    BTStatus Stunned()
+    {
+        tree.MarkActive("Flotar aturdido");
+        // Sube despacio hasta quedar justo bajo la superficie, a la deriva
+        Vector3 up = transform.position + transform.forward * 0.6f;
+        up.y = lake.SurfaceY - 0.45f;
+        SteerTowards(up, wanderSpeed * 0.45f, false);
+        return BTStatus.Running;
+    }
+
     BTStatus Flop()
     {
         tree.MarkActive("Aletear hacia el agua");
@@ -433,17 +458,30 @@ public class FishAI : MonoBehaviour
     void AnimateVisual(float dt)
     {
         float speed01 = State == FishState.Swimming ? Mathf.Clamp01(velocity.magnitude / fleeSpeed) : 1f;
+        bool stunned = IsStunned;
         if (swimAnim != null)
         {
-            // La animación de nado va más rápida cuanto más rápido nada (y frenética si lo atrapan)
-            swimAnim.speed = State == FishState.Dead ? 0f : State == FishState.Grabbed ? 2.6f : Mathf.Lerp(0.7f, 1.9f, speed01);
+            // La animación de nado va más rápida cuanto más rápido nada (y frenética si lo atrapan); aturdido casi se detiene
+            swimAnim.speed = State == FishState.Dead ? 0f : State == FishState.Grabbed ? 2.6f : (stunned ? 0.25f : Mathf.Lerp(0.7f, 1.9f, speed01));
         }
-        if (visual == null || !proceduralWiggle) return;
+        if (visual == null) return;
+
+        // Aturdido: gira panza arriba
+        float prevRoll = roll;
+        roll = Mathf.MoveTowards(roll, stunned ? 1f : 0f, dt * (stunned ? 2.5f : 1.5f));
+        Quaternion rollRot = Quaternion.AngleAxis(roll * 165f, Vector3.forward);
+
+        if (!proceduralWiggle)
+        {
+            if (roll > 0f || prevRoll > 0f) visual.localRotation = rollRot * visualBaseRotation;
+            return;
+        }
         float freq = State == FishState.Grabbed ? 22f : Mathf.Lerp(5f, 16f, speed01);
         float amp = State == FishState.Grabbed ? wiggleAmount * 2f : wiggleAmount * Mathf.Lerp(0.5f, 1.3f, speed01);
         if (State == FishState.Dead) amp = 0f;
+        if (stunned) { freq = 3f; amp = wiggleAmount * 0.3f; }
         wigglePhase += dt * freq;
-        visual.localRotation = Quaternion.Euler(0f, Mathf.Sin(wigglePhase) * amp, 0f) * visualBaseRotation;
+        visual.localRotation = rollRot * Quaternion.Euler(0f, Mathf.Sin(wigglePhase) * amp, 0f) * visualBaseRotation;
     }
 
     // ======================= EVENTOS EXTERNOS =======================
@@ -462,6 +500,45 @@ public class FishAI : MonoBehaviour
         }
     }
 
+    // Onda de choque de un jefe: flota panza arriba unos segundos (las aves lo atrapan fácil)
+    public void Stun(float seconds)
+    {
+        if (State != FishState.Swimming) return;
+        stunTimer = Mathf.Max(stunTimer, seconds);
+        IsFleeing = false;
+    }
+
+    // Lo lanza fuera del agua (pisotón, vendaval): vuela y cae; si cae en tierra aletea y puede asfixiarse
+    public bool Launch(Vector3 launchVelocity)
+    {
+        if (State != FishState.Swimming || lake == null) return false;
+        Hunter = null;
+        stunTimer = 0f;
+        Vector3 p = transform.position;
+        p.y = Mathf.Max(p.y, lake.SurfaceY + 0.3f);
+        transform.position = p;
+        State = FishState.Falling;
+        outOfWaterTimer = 0f;
+        flopTimer = 0.8f;
+        col.enabled = true;
+        col.isTrigger = false;
+        rb.isKinematic = false;
+        rb.useGravity = true;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.position = p;
+        rb.linearVelocity = launchVelocity;
+        rb.AddTorque(Random.insideUnitSphere * 6f, ForceMode.VelocityChange);
+        LakeWater.Splash(new Vector3(p.x, lake.SurfaceY, p.z), 0.35f, false);
+        return true;
+    }
+
+    // Corrientes (remolino del pelícano): suma velocidad al nado
+    public void Push(Vector3 velocityChange)
+    {
+        if (State != FishState.Swimming) return;
+        velocity += velocityChange;
+    }
+
     // Lo agarra un pájaro: queda colgando de sus garras (o del pico)
     public void Grab(Transform talons)
     {
@@ -473,6 +550,7 @@ public class FishAI : MonoBehaviour
     {
         if (State != FishState.Swimming || talons == null) return false;
         State = FishState.Grabbed;
+        stunTimer = 0f;
         wasGrabbed = true;
         rb.isKinematic = true;
         rb.interpolation = RigidbodyInterpolation.None;

@@ -19,11 +19,19 @@ public class MenuButtonFX : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
         if (glow != null) glowBase = glow.color.a;
     }
 
-    public void OnPointerEnter(PointerEventData e) { hover = true; }
+    public void OnPointerEnter(PointerEventData e)
+    {
+        hover = true;
+        Sfx.Play2D(Sonido.UIPasar, 0.35f, 1f, 0.05f, 0.05f);
+    }
     public void OnPointerExit(PointerEventData e) { hover = false; }
     public void OnSelect(BaseEventData e) { hover = true; }
     public void OnDeselect(BaseEventData e) { hover = false; }
-    public void OnPointerDown(PointerEventData e) { punch = 1f; }
+    public void OnPointerDown(PointerEventData e)
+    {
+        punch = 1f;
+        Sfx.Play2D(Sonido.UIClick, 0.6f);
+    }
 
     void OnDisable()
     {

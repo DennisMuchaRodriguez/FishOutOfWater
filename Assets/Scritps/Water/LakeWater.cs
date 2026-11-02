@@ -481,6 +481,12 @@ public class LakeWater : MonoBehaviour
     {
         strength = Mathf.Clamp01(strength);
         point.y = SurfaceY;
+        if (Application.isPlaying && strength > 0.15f)
+        {
+            // Más grande = más grave y más fuerte
+            Sfx.Play(entering ? Sonido.Chapuzon : Sonido.SalidaAgua, point, Mathf.Lerp(0.35f, 1f, strength),
+                     Mathf.Lerp(1.25f, 0.8f, strength), 3f + strength * 6f, 0.1f, 0.06f);
+        }
 
         AddRipple(point, Mathf.Max(0.25f, strength), 0f);
         if (strength > 0.3f) AddRipple(point, strength * 0.6f, 0.28f);

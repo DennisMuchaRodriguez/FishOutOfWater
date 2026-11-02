@@ -112,6 +112,7 @@ public class HomingMissile : MonoBehaviour
         if (done) return;
         done = true;
         Vector3 pos = transform.position;
+        Sfx.Play(Sonido.Explosion, pos, 1f, 1f, 10f, 0.08f, 0.05f);
 
         GameObject fx = shooting != null ? (shooting.chargedImpactPrefab != null ? shooting.chargedImpactPrefab : shooting.impactEffectPrefab) : null;
         FXFactory.SpawnOneShot(fx, pos, Quaternion.LookRotation(-dir), hit != null ? 0.9f : 0.6f, 3f);

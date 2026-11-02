@@ -60,11 +60,14 @@ El juego tiene dos escenas (en Build Settings, en este orden):
 
 Datos del juego (fuera de las escenas):
 - `Assets/Data/Niveles`: los 20 niveles (Nivel_01 a Nivel_20).
-- `Assets/Data/Aves`: Ave_Arcilla y Jefe_Provisional.
+- `Assets/Data/Aves`: las 8 aves (Gaviota, Martín pescador, Charrán, Garza, Cormorán, Serreta, Pelícano, Águila pescadora) y los 4 jefes (Garza Gris, Pelícano Saco, Cormorán Rey, Reina Águila).
+- `Assets/Data/Mejoras` y `Assets/Resources/TallerPlan`: las mejoras del traje y qué ofrece el Taller en cada visita.
+- `Assets/Resources/Decoracion/Decoracion_Lago`: qué decoración se reparte en el lago (algas, piedras, troncos, chatarra).
+- `Assets/Resources/Sonidos`: los sonidos (ver [Sonido](#sonido-assetsscritpsaudio)).
 - `Assets/Data/Peces`: Pez_Naranja, Pez_Dorado y Pez_Rosa.
 - `Assets/Data/Comics`: los cómics de la historia (viñetas en blanco por ahora).
 - `Assets/Resources/LevelCatalog`: la lista ordenada de niveles que lee el mapa.
-- `Assets/Resources/Fonts`: fuentes de la interfaz (Bangers y Lilita One, licencia OFL).
+- `Assets/Resources/Fonts`: fuentes de la interfaz (Oxanium, Rajdhani y Lilita One, licencia OFL).
 
 | Objeto (SampleScene) | Componentes propios | Para qué |
 |---|---|---|
@@ -293,11 +296,11 @@ Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel 
 | 4 · Los cielos | 16–20 | 28 | 55 % | de 7/9/10 a 8/10/12 | Nivel 20 | 18 |
 
 - La vida de las aves sube 5 % por nivel, y la tercera oleada lleva 15 % más.
-- Por ahora todas las aves son **Ave_Arcilla**. En los niveles de jefe, la tercera oleada trae un **Jefe_Provisional**: el ave de arcilla al doble de tamaño, con 220 de vida y 25 de daño. Cuando tengas los modelos de cormorán, garza, etc., crea un archivo Ave por cada uno y cámbialos en las oleadas.
+- Cada bloque suma especies nuevas (gaviota y martín pescador al principio; garza, cormorán y serreta en la orilla y bajo el agua; pelícano y águila pescadora en los cielos). En los niveles de jefe, la tercera oleada trae al jefe del bloque (ver [Jefes](#jefes-birdaibosscs)).
 - Cómics (en blanco): origen antes del nivel 1; antes y después de los jefes 5, 10 y 15; antes del jefe 20 y el final después del nivel 20.
 
 **Para agregar un nivel:** duplica uno (Ctrl+D), cámbiale los datos y súmalo al final de la lista **Levels** de `Resources/LevelCatalog`.
-**Para un ave nueva:** duplica `Ave_Arcilla`, cambia el modelo y los valores, y úsala en las oleadas.
+**Para un ave nueva:** duplica una de `Data/Aves` (por ejemplo `Ave_Gaviota`), cambia el modelo y los valores, y úsala en las oleadas. Su **Ability** decide cómo pesca y cómo pelea.
 
 **Valores de un Pez** (campo **Fish**; ejemplo: Pez_Naranja)
 
@@ -316,28 +319,30 @@ Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel 
 | **Speed Multiplier** | 1 | 1 | Multiplica la velocidad de nado y de huida |
 | **Stamina Multiplier** | 1 | 1 | Multiplica cuánto aguanta escondido en lo profundo |
 
-**Valores de un Ave** (campo **Bird**; ejemplo: Ave_Arcilla)
+**Valores de un Ave** (campo **Bird**; ejemplo: Ave_Gaviota)
 
-| Campo | Defecto | En Ave_Arcilla | Qué hace |
+| Campo | Defecto | En Ave_Gaviota | Qué hace |
 |---|---|---|---|
-| **Name** | "Ave" | Ave de arcilla | Nombre |
-| **Model** | — | Bird Clay Dedidara.fbx | Tu modelo. Sin modelo se usa una cápsula de prueba |
-| **Model Rotation** | (0, 0, 0) | (0, 0, 0) | Rotación para que el pico mire hacia +Z |
-| **Model Offset** | (0, 0, 0) | (0, 0, 0) | Desplazamiento del modelo |
-| **Model Scale** | 1 | 1 | Escala |
-| **Material Override** | — | vacío | Material que reemplaza al del modelo |
+| **Name** | "Ave" | Gaviota | Nombre (en los jefes, el de la barra de vida) |
+| **Model** | — | Ave_Gaviota.fbx | Tu modelo. Sin modelo se usa una cápsula de prueba |
+| **Model Rotation / Offset / Scale** | (0,0,0) / (0,0,0) / 1 | igual | Para que el pico mire hacia +Z, centrarlo y su tamaño (los jefes: 3 a 3.4) |
+| **Material Override** | — | Ave_Gaviota | Material que reemplaza al del modelo |
 | **Animator Controller** | — | vacío | Animación de vuelo. Si lo pones, se apaga el aleteo por código |
-| **Procedural Wing Flap** | ✔ | ✔ | Aleteo por código rotando los huesos de las alas |
-| **Wing Bones** | LeftArm,RightArm,L_wing,R_wing | igual | Nombres de los huesos de las alas, separados por coma |
-| **Talon Bones** | LeftFoot,RightFoot | igual | Huesos de las garras: el pez atrapado cuelga entre ellos |
-| **Catch Point Offset** | (0, -1.1, 0) | igual | Dónde cuelga el pez si no encuentra las garras |
-| **Collider Radius** | 1.3 | 1.3 | Radio de la esfera del ave (para que la golpeen tus balas) |
-| **Collider Center** | (0, 0.3, 0) | igual | Centro de esa esfera |
-| **Health** | 40 | 40 | Vida (se multiplica por el `Health Multiplier` de la oleada) |
-| **Speed Multiplier** | 1 | 1 | Multiplica todas sus velocidades (llegada, patrulla, persecución, picada, huida con presa) |
-| **Damage** | 15 | 15 | Armadura que te quita al embestirte |
-| **Detect Range** | 26 | 26 | Distancia a la que te ve y te ataca |
-| **Carry Time** | 3.5 | 3.5 | Segundos que tarda en comerse un pez atrapado (el tiempo que tienes para rescatarlo) |
+| **Procedural Wing Flap** | ✔ | ✔ | Aleteo por código rotando las alas |
+| **Wing Bones / Talon Bones** | … | L_wing,R_wing / LeftFoot,RightFoot | Alas que aletean y punto donde cuelga el pez atrapado |
+| **Collider Radius / Center** | 1.3 / (0,0.3,0) | 0.955 / (0,0,0.15) | Esfera del ave (para que la golpeen tus balas) |
+| **Health** | 40 | 30 | Vida (se multiplica por el `Health Multiplier` de la oleada; los jefes no) |
+| **Speed Multiplier** | 1 | 1.1 | Multiplica todas sus velocidades |
+| **Damage** | 15 | 10 | Armadura que te quita al golpearte (sus proyectiles hacen una parte) |
+| **Detect Range** | 26 | 26 | Distancia a la que te ve y te ataca (× 1.25) |
+| **Carry Time** | 3.5 | 4 | Segundos que tarda en comerse un pez atrapado (el tiempo que tienes para rescatarlo) |
+| **Attack Reach** | 2.6 | 2.6 | Distancia a la que te golpea |
+| **Ability** | None | SurfaceSnatch | Cómo pesca **y cómo pelea** (ver [Cómo pelea cada ave](#cómo-pelea-cada-ave-birdaicombatcs)) |
+| **Catch Radius / Catch Depth / Stalk Altitude** | 2.4 / 2 / 9 | 2.4 / 1.2 / 6 | Alcance para atrapar, profundidad máxima y altura al acechar |
+| **Scoop Count / Underwater Time** | 3 / 4 | 1 / 4 | Pelícano: peces por bocado. Buceadores: segundos bajo el agua |
+| **Boss** | None | None | Si es un jefe (barra de vida, fases y ataques propios) |
+| **Vulnerable Time / Vulnerable Damage Multiplier** | 2.5 / 2 | — | Jefes: pausa después de cada ataque fuerte, y cuánto daño extra recibe en ella |
+| **Reinforcements / Reinforcement Count** | — / 3 | — | Reina Águila: aves que llama en cada cambio de fase |
 
 **Campos de un Cómic:** **Title** (sale arriba del visor) y **Panels**, la lista de viñetas. Cada viñeta tiene **Image** (el dibujo; vacío = viñeta en blanco) y **Caption** (texto del recuadro amarillo; vacío = sin recuadro). Para poner tus dibujos: importa la imagen, cambia su *Texture Type* a **Sprite (2D and UI)** y arrástrala a **Image**.
 
@@ -600,6 +605,10 @@ Efectos del traje: burbujas al nadar, partículas de velocidad bajo el agua, das
 ## 9. Inspector: interfaz
 
 ### UI_PlayerStatus (en UiManager): barras de jetpack, munición y armadura
+Las barras y el contador viejos se ocultan solos: ahora el propulsor, el traje y la munición se ven en el visor del casco
+(`VisorStatusHUD` y `VisorAmmoHUD`). Para volver a los viejos activa **Use Old Bars** / **Use Old Ammo Counter**.
+Las grietas y el filtro rojo de daño siguen saliendo de aquí.
+
 | Campo | En escena | Qué hace |
 |---|---|---|
 | **Player Controller** / **Player Shooting** | PlayerBase | De dónde lee energía, armadura y balas |
@@ -620,7 +629,9 @@ Efectos del traje: burbujas al nadar, partículas de velocidad bajo el agua, das
 | **Ui Shake Duration** / **Ui Shake Magnitude** | 0.5 / 18.5 | Sacudida del panel al recibir daño |
 
 ### HelmetVisorHUD (en VistaInterior): vista desde el casco
-Construye el marco, el cristal, la retícula y los textos por código. **Durante la cinemática se apaga entero.** El marco solo se ve en primera persona.
+Construye el marco, el cristal, la retícula y los textos por código. **Durante la cinemática se apaga entero.**
+**El casco solo se ve en primera persona**: marco, munición (`VisorAmmoHUD`), propulsor y traje (`VisorStatusHUD`), textos y sonar.
+En tercera persona queda solo la retícula para apuntar. Si una gaviota te acierta en primera persona, el cristal se ensucia unos segundos.
 
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
@@ -670,7 +681,7 @@ Construye todo por código: el fondo del lago (degradado, rayos de luz, algas, r
 | **Title Line 1** / **Title Line 2** | FISH OUT / OF WATER | igual | Las dos líneas del título |
 | **Subtitle** | UN PEZ. UN TRAJE. NADA DE AGUA. | igual | Texto bajo el título |
 
-Estilo: fuentes **Bangers** (títulos) y **Lilita One** (textos), en `Resources/Fonts` (licencia OFL en `LICENCIAS.txt`); paneles de cómic con contorno grueso y sombra, y colores del lago (naranja del pez, azules del agua, amarillo de las viñetas). Todo eso está en `MenuUI`, que también usan la pausa, el resultado y el visor de cómics.
+Estilo: el mismo del visor del casco (holograma cian con detalles naranja). Fuentes **Oxanium** (títulos) y **Rajdhani** (textos), en `Resources/Fonts` (licencia OFL en `LICENCIAS.txt`). Todo eso está en `MenuUI`, que también usan la pausa, el resultado, el Taller y el visor de cómics.
 
 ### ComicViewer (se crea solo)
 No tiene campos: lo abren el mapa (cómic de antes) y el resultado (cómic de después). Los cómics se editan en `Data/Comics` (ver [Campos de un Cómic](#archivos-de-datos-niveles-aves-peces-y-cómics)).
@@ -702,8 +713,8 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
 ### BirdAI (cada pájaro)
 | Campo | Defecto | Qué hace |
 |---|---|---|
-| Arrival / Patrol / Chase / Dive / Carry Speed | 22 / 10 / 15 / 24 / 8 | Velocidades (**× Speed Multiplier del tipo**) |
-| Acceleration / Turn Speed | 18 / 4 | Respuesta del vuelo |
+| Arrival / Patrol / Chase / Dive / Carry Speed | 24 / 12 / 18 / 28 / 9 | Velocidades (**× Speed Multiplier del tipo**) |
+| Acceleration / Turn Speed | 26 / 5.5 | Respuesta del vuelo |
 | Patrol Altitude | (12, 20) | Altura de patrulla sobre el agua |
 | Stalk Altitude | 9 | Altura al acechar un pez |
 | Min Altitude Above Ground | 3 | Altura mínima sobre el terreno |
@@ -713,17 +724,58 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
 | Catch Radius / Catch Depth | 2.4 / 2 | Alcance y profundidad máxima para atrapar |
 | Carry Time | **por tipo** (3.5) | Segundos hasta comerse el pez (tiempo para rescatarlo) |
 | Dive Cooldown | (2.5, 4.5) | Espera entre picadas |
-| Detect Range | **por tipo** (26) | Distancia a la que te ve |
+| Detect Range | **por tipo** (26) × 1.25 | Distancia a la que te ve |
 | Lose Range | 80 | Si te alejas más, pierde el interés |
 | Aggro Memory | 10 | Segundos que te persigue después de que le dispares |
 | Attack Reach | 2.6 | Distancia para embestirte |
 | Damage | **por tipo** (15) | Armadura que te quita |
 | Knockback Force / Knockback Up | 16 / 6 | Empujón horizontal y vertical |
-| Stun Duration | 2.5 | Segundos quieto tras embestirte |
+| Stun Duration | 1.6 | Segundos quieto tras embestirte (las embestidas rápidas usan solo una parte) |
 | Player Hidden Depth | 1.5 | Más hondo que esto bajo el agua, no te ve |
 | Visual / Procedural Flap / Wing y Talon Bone Names / Catch Point Offset | **por tipo** | Modelo, aleteo y garras |
 | Flap Speed / Flap Angle | 7 / 28 | Aleteo por código |
 | Hit / Death Prefab | del GameDirector | Efectos |
+
+#### Cómo pelea cada ave (`BirdAI.Combat.cs`)
+Además de su forma de pescar, cada especie te ataca a su manera:
+
+| Ave | Ataque | ¿La empujan tus disparos? |
+|---|---|---|
+| Gaviota | **Bombardera**: vuela encima de ti y suelta "regalos" (ensucian el visor) | Sí |
+| Martín pescador | **Rayo**: se detiene, te apunta y cruza en línea recta a velocidad altísima | Mucho (es liviano) |
+| Charrán | **Enjambre**: embestidas rápidas; los de alrededor lo siguen uno tras otro | Mucho |
+| Garza | **Estocada** larga y fuerte después de levantar el pico | No (blindada) |
+| Cormorán | **Torpedo**: embestidas rectas, también bajo el agua | Poco |
+| Serreta | **A distancia**: te rodea de lejos y escupe chorros de agua en ráfagas | Sí |
+| Pelícano | **Aplastador**: embestida pesada que empuja mucho | No (blindado) |
+| Águila pescadora | **Picada** desde muy alto | Poco |
+
+Los proyectiles de las aves (`EnemyProjectile`) los absorbe el Escudo de burbuja como cualquier golpe.
+
+#### Jefes (`BirdAI.Boss.cs`)
+Los jefes son más grandes y **no cazan como las demás aves**: te rodean a pocos metros con ataques rápidos y cada pocos segundos
+hacen un **ataque fuerte** (después quedan vulnerables). Sus ataques son una amenaza para todo el cardumen:
+
+| Jefe | Ataques fuertes |
+|---|---|
+| Garza Gris Gigante | Estocada (la ola aturde peces) · Pisotón en el agua (lanza peces fuera, a la orilla) · Lluvia de dardos (fase 2+) |
+| Pelícano Saco Sin Fondo | Remolino (arrastra peces y se traga el centro) · Cañonazo de agua (explota y aturde peces) · Bocado (fase 2+) |
+| Cormorán Rey | Torpedos (2 a 4 seguidos, arriba y abajo del agua) · Onda expansiva submarina (aturde y se lleva peces) |
+| Reina Águila Marina | Picadas (1 a 3) · Ráfaga de plumas · Vendaval (te empuja y saca peces del agua; fase 2+) |
+
+Si te escondes en lo hondo y el jefe no bucea, ataca a los peces más seguido. Los peces **aturdidos** flotan panza arriba
+unos segundos (cualquier ave los atrapa fácil) y los **lanzados** pueden caer en la orilla: si no vuelven al agua, se asfixian.
+
+### Sonido (`Assets/Scritps/Audio`)
+- `Sfx.Play(Sonido.X, posición)` / `Sfx.Play2D(Sonido.X)` / `Sfx.Loop(...)`. Los nombres están en `Sonido.cs`.
+- Los clips están en `Assets/Resources/Sonidos/<Nombre>.wav`. Las variantes `<Nombre>_2`, `_3`… se eligen al azar.
+- **Para poner un sonido propio, reemplaza el `.wav` con el mismo nombre.** No hay que tocar código.
+- Los actuales los genera `Herramientas/Sonido/generar_sonidos.py` (síntesis con numpy). Si lo vuelves a ejecutar, pisa los `.wav`.
+- `GameAudio` se agrega solo al jugador:
+  - Disparos, golpes al traje y alarma con poca armadura.
+  - Propulsor, dash y turbo.
+  - Ambiente del lago y bajo el agua. Bajo el agua todo se oye apagado (filtro en el AudioListener).
+- El volumen general se guarda en PlayerPrefs (`Volumen`, `Sfx.Volume`).
 
 ### Otros
 - **Damageable** (cada pájaro): `Max Health` = Health del tipo × multiplicador de la oleada. `Destroy On Death` = ✘ (la muerte la maneja BirdAI).

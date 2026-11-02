@@ -852,6 +852,13 @@ public class PlayerController_Base : MonoBehaviour
         knockbackEndTime = Time.time + controlLossTime;
     }
 
+    // Corrientes (el remolino de un jefe): suma velocidad sin quitarle el control al jugador
+    public void AddCurrent(Vector3 velocityChange)
+    {
+        if (rb == null || rb.isKinematic || isDead) return;
+        rb.linearVelocity += velocityChange;
+    }
+
     // Lo usan las mejoras (Dash doble)
     public void SetDashCharges(int charges)
     {

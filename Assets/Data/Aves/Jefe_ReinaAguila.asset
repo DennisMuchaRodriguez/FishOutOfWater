@@ -17,15 +17,15 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 8ae83fe5dcdf4537ab1443956c0ae725, type: 3}
     modelRotation: {x: 0, y: 0, z: 0}
     modelOffset: {x: 0, y: 0, z: 0}
-    modelScale: 2.4
+    modelScale: 3.4
     materialOverride: {fileID: 2100000, guid: 554cdafa738247a0899aee9684a2c273, type: 2}
     animatorController: {fileID: 0}
     proceduralWingFlap: 1
     wingBones: L_wing,R_wing
     talonBones: LeftFoot,RightFoot
     catchPointOffset: {x: 0, y: -0.84, z: 0.12}
-    colliderRadius: 3.12
-    colliderCenter: {x: 0, y: 0, z: 0.168}
+    colliderRadius: 4.42
+    colliderCenter: {x: 0, y: 0, z: 0.238}
     health: 1400
     speedMultiplier: 1.2
     damage: 35

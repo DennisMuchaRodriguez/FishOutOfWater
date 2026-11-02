@@ -147,7 +147,8 @@ public class Projectile : MonoBehaviour
                 pierceCount--;
                 if (collision.rigidbody != null)
                 {
-                    collision.rigidbody.AddForceAtPosition(lastVelocity.normalized * 4f, contact.point, ForceMode.Impulse);
+                    float push = 4f * PushScale(collision.rigidbody);
+                    if (push > 0f) collision.rigidbody.AddForceAtPosition(lastVelocity.normalized * push, contact.point, ForceMode.Impulse);
                 }
                 FXFactory.SpawnOneShot(impactEffectPrefab, contact.point + contact.normal * 0.05f,
                                        Quaternion.LookRotation(contact.normal), 0.9f, 3f);
@@ -172,7 +173,8 @@ public class Projectile : MonoBehaviour
         Rigidbody other = collision.rigidbody;
         if (other != null && rb != null)
         {
-            other.AddForceAtPosition(rb.linearVelocity.normalized * (isCharged ? 8f : (isBubble ? 0.8f : 2f)), contact.point, ForceMode.Impulse);
+            float push = (isCharged ? 8f : (isBubble ? 0.8f : 2f)) * PushScale(other);
+            if (push > 0f) other.AddForceAtPosition(rb.linearVelocity.normalized * push, contact.point, ForceMode.Impulse);
         }
 
         FXFactory.SpawnOneShot(impactEffectPrefab, contact.point + contact.normal * 0.05f,
@@ -188,6 +190,13 @@ public class Projectile : MonoBehaviour
         }
 
         Destroy(gameObject);
+    }
+
+    // Las aves livianas salen volando con el impacto; las blindadas (garza, pelícano, jefes) ni se mueven
+    static float PushScale(Rigidbody target)
+    {
+        BirdAI bird = target.GetComponent<BirdAI>();
+        return bird != null ? bird.ProjectilePushScale : 1f;
     }
 
     void FixedUpdate()

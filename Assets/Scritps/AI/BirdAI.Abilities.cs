@@ -57,6 +57,7 @@ public partial class BirdAI
         get
         {
             if (BossType == BossKind.BottomlessPelican) return 5;
+            if (BossType == BossKind.CormorantKing) return 3;   // se lleva hasta 3 peces aturdidos por la onda
             if (Ability == BirdAbility.Scoop && Type != null) return Mathf.Max(1, Type.scoopCount);
             return 1;
         }
@@ -531,9 +532,15 @@ public partial class BirdAI
 
         if (!timeUp && IsAggro && player != null && !player.isDead && player.isInWater)
         {
-            // Persigue al jugador bajo el agua
+            // Persigue al jugador bajo el agua; de cerca, el cormorán se lanza como un torpedo
             goal = player.transform.position + Vector3.up * 0.3f;
-            if (attackTimer <= 0f && Vector3.Distance(transform.position, goal) < attackReach) HitPlayer();
+            float d = Vector3.Distance(transform.position, goal);
+            if (combatRole == CombatRole.Torpedo && attackTimer <= 0f && d < 9f)
+            {
+                swim = patrolSpeed * 2.4f;
+                burst = true;
+            }
+            if (attackTimer <= 0f && d < attackReach) HitPlayer();
         }
         else if (!timeUp && TargetFish != null && TargetFish.IsCatchable)
         {
@@ -553,10 +560,10 @@ public partial class BirdAI
         return BTStatus.Running;
     }
 
-    // Bajo el agua todo es más lento
+    // Bajo el agua todo es más lento (salvo el torpedo del cormorán)
     void KeepUnderwater(ref Vector3 v)
     {
-        float maxSpeed = patrolSpeed * 1.3f;
+        float maxSpeed = patrolSpeed * (burst ? 2.4f : 1.3f);
         if (v.sqrMagnitude > maxSpeed * maxSpeed) v = v.normalized * maxSpeed;
     }
 }

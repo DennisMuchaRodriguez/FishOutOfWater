@@ -71,6 +71,7 @@ public class BubbleShield : MonoBehaviour
             burst.Emit(40);
         }
         RaisePopped();
+        Sfx.Play2D(Sonido.Escudo, 1f);
         return true;
     }
 
@@ -117,6 +118,7 @@ public class BubbleShield : MonoBehaviour
                 Ready = true;
                 Recharge01 = 1f;
                 popFlash = 0.5f;   // destello suave: "escudo listo"
+                Sfx.Play2D(Sonido.EscudoListo, 0.6f);
             }
         }
         popFlash = Mathf.Max(0f, popFlash - dt * 2.5f);

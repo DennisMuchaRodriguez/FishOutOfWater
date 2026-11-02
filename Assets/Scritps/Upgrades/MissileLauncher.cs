@@ -110,6 +110,7 @@ public class MissileLauncher : MonoBehaviour
             Launch(target, i % 2 == 0 ? 1f : -1f);
             Loaded--;
             RaiseFired();
+            Sfx.Play(Sonido.Misil, transform.position, 0.8f, 1f, 4f);
             yield return new WaitForSeconds(salvoInterval);
         }
         firing = false;

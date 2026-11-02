@@ -615,6 +615,7 @@ public class WorkshopScene : MonoBehaviour
     IEnumerator Install(WorkshopOffer offer)
     {
         installing = true;
+        Sfx.Play2D(Sonido.Instalar, 0.9f);
         installButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(false);
         foreach (WorkshopCard c in cards)

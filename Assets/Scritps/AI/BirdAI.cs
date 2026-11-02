@@ -12,7 +12,8 @@ using FishGame.AI;
 //  5. Lleva peces               -> sube y se aleja; si nadie lo detiene, se los come
 //  6. Jefe: ataque fuerte       -> el patrón propio de cada jefe (BirdAI.Boss.cs)
 //  7. Bajo el agua              -> buceadores: persiguen peces (o al jugador) nadando y luego salen
-//  8. Pelear con el jugador     -> si lo ve cerca o si le disparó (aunque estuviera cazando)
+//  7b. Jefe: acoso              -> los jefes no cazan como las demás: se quedan cerca del jugador atacando
+//  8. Pelear con el jugador     -> si lo ve cerca o si le disparó; cada especie a su manera (BirdAI.Combat.cs)
 //  9. Recuperándose             -> remonta tras una picada fallida
 // 10. Caza especial             -> la reina roba presas, la garza se planta en la orilla
 // 11. Cazar peces               -> acechar sobre un pez y lanzarse (cada especie a su manera)
@@ -24,13 +25,13 @@ public partial class BirdAI : MonoBehaviour
     public static readonly List<BirdAI> All = new List<BirdAI>();
 
     [Header("Vuelo")]
-    public float arrivalSpeed = 22f;
-    public float patrolSpeed = 10f;
-    public float chaseSpeed = 15f;
-    public float diveSpeed = 24f;
-    public float carrySpeed = 8f;
-    public float acceleration = 18f;
-    public float turnSpeed = 4f;
+    public float arrivalSpeed = 24f;
+    public float patrolSpeed = 12f;
+    public float chaseSpeed = 18f;
+    public float diveSpeed = 28f;
+    public float carrySpeed = 9f;
+    public float acceleration = 26f;
+    public float turnSpeed = 5.5f;
     [Tooltip("Altura de patrulla sobre la superficie (min, max)")]
     public Vector2 patrolAltitude = new Vector2(12f, 20f);
     public float stalkAltitude = 9f;
@@ -59,7 +60,8 @@ public partial class BirdAI : MonoBehaviour
     public float damage = 15f;
     public float knockbackForce = 16f;
     public float knockbackUp = 6f;
-    public float stunDuration = 2.5f;
+    [Tooltip("Segundos que se queda aturdido después de embestirte (cada especie usa una parte)")]
+    public float stunDuration = 1.6f;
     [Tooltip("Si el jugador está más hondo que esto bajo el agua, no lo ve (los buceadores sí)")]
     public float playerHiddenDepth = 1.5f;
 
@@ -198,6 +200,7 @@ public partial class BirdAI : MonoBehaviour
         player = playerRef;
         arrivalPoint = point;
         arriving = true;
+        Call(IsBoss ? 1f : 0.7f);
         Vector3 dir = (point - transform.position).normalized;
         transform.rotation = Quaternion.LookRotation(dir);
         rb.linearVelocity = dir * arrivalSpeed;
@@ -215,7 +218,7 @@ public partial class BirdAI : MonoBehaviour
         diveSpeed *= speed;
         carrySpeed *= speed;
         damage = type.damage;
-        detectRange = type.detectRange;
+        detectRange = type.detectRange * 1.25f;
         carryTime = Mathf.Max(0.5f, type.carryTime);
         attackReach = Mathf.Max(0.5f, type.attackReach);
         catchRadius = Mathf.Max(0.5f, type.catchRadius);
@@ -232,6 +235,7 @@ public partial class BirdAI : MonoBehaviour
         Ability = type.ability;
         BossType = type.boss;
         ConfigureAbility();
+        ConfigureCombat();
         if (IsBoss) SetupBoss();
 
         // Si el modelo ya trae animación (controlador), no se pisa con el aleteo por código
@@ -312,12 +316,15 @@ public partial class BirdAI : MonoBehaviour
                 new BTSequence("AtaqueJefe",
                     new BTCondition("¿Ataque fuerte?", BossWantsAttack),
                     new BTAction("Ataque del jefe", BossAttackAct)),
+                new BTSequence("AcosoJefe",
+                    new BTCondition("¿Jefe en la pelea?", () => IsBoss && player != null && !player.isDead),
+                    new BTAction("Acosar al jugador", BossHarass)),
                 new BTSequence("BajoElAgua",
                     new BTCondition("¿Bajo el agua?", () => submerged),
                     new BTAction("Nadar bajo el agua", Underwater)),
                 new BTSequence("Combate",
                     new BTCondition("¿Pelear con el jugador?", () => !IsBoss && ShouldFightPlayer()),
-                    new BTAction("Perseguir y embestir", ChasePlayer)),
+                    new BTAction("Pelear", FightPlayer)),
                 new BTSequence("Remontar",
                     new BTCondition("¿Picada fallida?", () => recoverTimer > 0f),
                     new BTAction("Remontar vuelo", Climb)),
@@ -347,11 +354,14 @@ public partial class BirdAI : MonoBehaviour
         if (recoverTimer > 0f) recoverTimer -= dt;
         if (carried.Count > 0) carried.RemoveAll(NotHeld);
         TickAbilities(dt);
+        TickCombat(dt);
         if (IsBoss) TickBoss(dt);
 
         lookOverride = Vector3.zero;
         poseTarget = 0f;
         lowFlight = false;
+        burst = false;
+        windup = false;
         diveTicked = false;
         tree.Tick();
         // Si otra prioridad interrumpió la picada, se cancela limpia
@@ -548,6 +558,7 @@ public partial class BirdAI : MonoBehaviour
             FishEaten?.Invoke(this, fish);
             fish.Kill(true);
         }
+        if (carriedTemp.Count > 0) Sfx.Play(Sonido.Trago, transform.position, 1f, CallPitch, 10f);
         carriedTemp.Clear();
     }
 
@@ -742,7 +753,7 @@ public partial class BirdAI : MonoBehaviour
     void Move(float dt)
     {
         Vector3 v = rb.linearVelocity;
-        float accel = acceleration * (diving ? diveAccelMul : 1f);
+        float accel = acceleration * (diving ? diveAccelMul : 1f) * (burst ? 4f : 1f);
 
         // Separación entre pájaros
         Vector3 push = Vector3.zero;
@@ -823,7 +834,7 @@ public partial class BirdAI : MonoBehaviour
         if (diving) { amp = 6f; flapRate *= 0.5f; }
         else if (submerged) { amp = 10f; flapRate *= 0.6f; }
         else if (lurking) { amp = 5f; flapRate *= 0.4f; }
-        else if (hovering) flapRate *= 2.2f;
+        else if (hovering || windup) flapRate *= 2.2f;
         else if (carried.Count > 0 || stunTimer > 0f) flapRate *= 1.5f;
         if (dead) amp = 0f;
         flapPhase += dt * flapRate;
@@ -851,7 +862,8 @@ public partial class BirdAI : MonoBehaviour
 
     // ======================= JUGADOR =======================
 
-    void HitPlayer()
+    // stunScale: qué parte de stunDuration se queda quieto después (las embestidas rápidas casi no se detienen)
+    void HitPlayer(float damageMul = 1f, float knockMul = 1f, float stunScale = 1f)
     {
         if (player == null || player.isDead || stunTimer > 0f || dead) return;
         if (IsBoss)
@@ -863,13 +875,16 @@ public partial class BirdAI : MonoBehaviour
         dir.y = 0f;
         if (dir.sqrMagnitude < 0.01f) dir = transform.forward;
         dir.Normalize();
-        player.TakeHit(damage, dir * knockbackForce + Vector3.up * knockbackUp);
+        player.TakeHit(damage * damageMul, (dir * knockbackForce + Vector3.up * knockbackUp) * knockMul);
 
-        // Se queda quieto 2.5 s y luego vuelve a perseguir
-        stunTimer = stunDuration;
-        attackTimer = stunDuration + 0.5f;
+        // Se queda quieto un momento (tu oportunidad para dispararle) y luego vuelve al ataque
+        float stun = stunDuration * stunScale;
+        stunTimer = stun;
+        attackTimer = stun + 0.4f;
         rb.linearVelocity = -dir * 3f;
-        SetAggro(stunDuration + 5f);
+        SetAggro(stun + 5f);
+        combatPhase = 0;
+        combatTimer = 0f;
     }
 
     void OnCollisionEnter(Collision collision)
@@ -887,8 +902,9 @@ public partial class BirdAI : MonoBehaviour
     {
         // El daño extra de la pausa vulnerable no cuenta como otro disparo
         if (dead || applyingBonus) return;
-        hitPunch = 1f;
+        hitPunch = IsArmored ? 0.45f : 1f;
         FXFactory.SpawnOneShot(hitPrefab, point, Quaternion.identity, 0.8f, 2f);
+        Sfx.Play(IsArmored ? Sonido.GolpeBlindado : Sonido.GolpeAve, point, 0.9f, CallPitch, 6f, 0.1f, 0.06f);
 
         if (IsBoss)
         {
@@ -949,6 +965,7 @@ public partial class BirdAI : MonoBehaviour
         rb.constraints = RigidbodyConstraints.None;
         rb.AddTorque(Random.insideUnitSphere * 6f, ForceMode.VelocityChange);
         FXFactory.SpawnOneShot(deathPrefab, transform.position, Quaternion.identity, 1.2f, 3f);
+        Sfx.Play(IsBoss ? Sonido.RugidoJefe : Sonido.MuerteAve, transform.position, 1f, IsBoss ? 0.75f : CallPitch, IsBoss ? 25f : 8f);
 
         Died?.Invoke(this);
         Destroy(gameObject, 6f);
