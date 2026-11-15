@@ -17,21 +17,21 @@ MonoBehaviour:
     model: {fileID: 919132149155446097, guid: 92751d68f8a64786afc336e2f0fddab1, type: 3}
     modelRotation: {x: 0, y: 0, z: 0}
     modelOffset: {x: 0, y: 0, z: 0}
-    modelScale: 1
+    modelScale: 1.35
     materialOverride: {fileID: 2100000, guid: b77cfcf32fbc4c368dc428165aa90158, type: 2}
     animatorController: {fileID: 0}
     proceduralWingFlap: 1
     wingBones: L_wing,R_wing
     talonBones: LeftFoot,RightFoot
-    catchPointOffset: {x: 0, y: 0, z: 0.85}
-    colliderRadius: 0.7
-    colliderCenter: {x: 0, y: 0, z: 0.27}
-    health: 20
+    catchPointOffset: {x: 0, y: 0, z: 1.147}
+    colliderRadius: 0.945
+    colliderCenter: {x: 0, y: 0, z: 0.365}
+    health: 30
     speedMultiplier: 1.5
     damage: 8
     detectRange: 20
     carryTime: 2
-    attackReach: 2.4
+    attackReach: 2.76
     ability: 2
     catchRadius: 2
     catchDepth: 1.8

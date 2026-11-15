@@ -169,7 +169,7 @@ Cuando atrapan a un pez, este alerta a los peces a `Alarm Radius` metros. Si der
 **Pájaros** (árbol de `BirdAI`, por prioridad):
 1. Muerto → cae.
 2. Llegando → vuela al lago.
-3. Aturdido → se queda quieto `Stun Duration` s (2.5) después de embestirte.
+3. Aturdido → rebota hacia atrás y se queda quieto `Stun Duration` s (0.7) después de embestirte.
 4. Lleva un pez → sube y se aleja; en `Carry Time` s se lo come (dispárale para que lo suelte).
 5. Pelea contigo → si te ve a menos de `Detect Range` o si le disparaste (te recuerda `Aggro Memory` s). Te persigue y te embiste: te quita `Damage` de armadura y te empuja con `Knockback Force`.
 6. Picada fallida → remonta.
@@ -343,18 +343,18 @@ Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel 
 |---|---|---|---|
 | **Name** | "Ave" | Gaviota | Nombre (en los jefes, el de la barra de vida) |
 | **Model** | — | Ave_Gaviota.fbx | Tu modelo. Sin modelo se usa una cápsula de prueba |
-| **Model Rotation / Offset / Scale** | (0,0,0) / (0,0,0) / 1 | igual | Para que el pico mire hacia +Z, centrarlo y su tamaño (los jefes: 3 a 3.4) |
+| **Model Rotation / Offset / Scale** | (0,0,0) / (0,0,0) / 1 | (0,0,0) / (0,0,0) / 1.35 | Para que el pico mire hacia +Z, centrarlo y su tamaño (aves comunes: 1.35; jefes: 3 a 3.4). Si cambias la escala, cambia también Collider Radius / Center en la misma proporción |
 | **Material Override** | — | Ave_Gaviota | Material que reemplaza al del modelo |
 | **Animator Controller** | — | vacío | Animación de vuelo. Si lo pones, se apaga el aleteo por código |
 | **Procedural Wing Flap** | ✔ | ✔ | Aleteo por código rotando las alas |
 | **Wing Bones / Talon Bones** | … | L_wing,R_wing / LeftFoot,RightFoot | Alas que aletean y punto donde cuelga el pez atrapado |
-| **Collider Radius / Center** | 1.3 / (0,0.3,0) | 0.955 / (0,0,0.15) | Esfera del ave (para que la golpeen tus balas) |
-| **Health** | 40 | 30 | Vida (se multiplica por el `Health Multiplier` de la oleada; los jefes no) |
+| **Collider Radius / Center** | 1.3 / (0,0.3,0) | 1.289 / (0,0,0.203) | Esfera del ave (para que la golpeen tus balas) |
+| **Health** | 40 | 45 | Vida (se multiplica por el `Health Multiplier` de la oleada; los jefes no) |
 | **Speed Multiplier** | 1 | 1.1 | Multiplica todas sus velocidades |
 | **Damage** | 15 | 10 | Armadura que te quita al golpearte (sus proyectiles hacen una parte) |
 | **Detect Range** | 26 | 26 | Distancia a la que te ve y te ataca (× 1.25) |
 | **Carry Time** | 3.5 | 4 | Segundos que tarda en comerse un pez atrapado (el tiempo que tienes para rescatarlo) |
-| **Attack Reach** | 2.6 | 2.6 | Distancia a la que te golpea |
+| **Attack Reach** | 2.6 | 2.99 | Distancia a la que te golpea |
 | **Ability** | None | SurfaceSnatch | Cómo pesca **y cómo pelea** (ver [Cómo pelea cada ave](#cómo-pelea-cada-ave-birdaicombatcs)) |
 | **Catch Radius / Catch Depth / Stalk Altitude** | 2.4 / 2 / 9 | 2.4 / 1.2 / 6 | Alcance para atrapar, profundidad máxima y altura al acechar |
 | **Scoop Count / Underwater Time** | 3 / 4 | 1 / 4 | Pelícano: peces por bocado. Buceadores: segundos bajo el agua |
@@ -648,8 +648,13 @@ Las grietas y el filtro rojo de daño siguen saliendo de aquí.
 
 ### HelmetVisorHUD (en VistaInterior): vista desde el casco
 Construye el marco, el cristal, la retícula y los textos por código. **Durante la cinemática se apaga entero.**
-**El casco solo se ve en primera persona**: marco, munición (`VisorAmmoHUD`), propulsor y traje (`VisorStatusHUD`), textos y sonar.
-En tercera persona queda solo la retícula para apuntar. Si una gaviota te acierta en primera persona, el cristal se ensucia unos segundos.
+**El casco solo se ve en primera persona**: marco, munición (`VisorAmmoHUD`), propulsor y traje (`VisorStatusHUD`), misión (`VisorMissionHUD`), textos y sonar.
+En tercera persona queda la retícula y el panel de misión, pequeño, pegado al borde izquierdo de la pantalla.
+**Panel de misión (`VisorMissionHUD`, borde izquierdo del visor, el espejo de la munición):**
+- Arco de celdas: una por pez. Las encendidas son los peces a salvo y se apagan de arriba hacia abajo cuando cazan uno.
+- La **marca roja** del arco es el límite: si las celdas encendidas llegan ahí, pierdes el nivel.
+- Número grande de peces a salvo con "/ total". Cerca del límite se pone en rojo, parpadea y dice ¡CARDUMEN EN PELIGRO!
+- OLEADA 2 / 3 con un rombo por oleada, los depredadores vivos (o ZONA DESPEJADA) y la cuenta atrás de la próxima oleada. Si una gaviota te acierta en primera persona, el cristal se ensucia unos segundos.
 **Paleta azul eléctrico con destellos:**
 - El borde del visor respira.
 - Cada 4.6 s dos destellos recorren el marco: uno por arriba de izquierda a derecha y otro por abajo de derecha a izquierda.
@@ -686,7 +691,7 @@ Construye por código la pausa, la pantalla de "TRAJE DESTRUIDO" y la de resulta
 | **Death Screen Delay** | 1.5 | 1.5 | Segundos antes de mostrar "TRAJE DESTRUIDO" |
 
 ### GameHUD (se agrega solo al GameDirector al darle Play)
-Muestra los objetivos (oleada, depredadores, peces a salvo), los mensajes, las flechas a pájaros y cápsulas, y las barras de cine. Solo se edita en Play o agregándolo a mano al GameDirector:
+Muestra los mensajes, la barra del jefe, las flechas a pájaros y cápsulas, y las barras de cine. Sus objetivos de abajo a la derecha (oleada, depredadores, peces) solo aparecen si no hay casco: con el casco van dentro del visor (`VisorMissionHUD`). Solo se edita en Play o agregándolo a mano al GameDirector:
 | Campo | Defecto | Qué hace |
 |---|---|---|
 | **Pickup Marker Range** | 70 | Distancia a la que marca las cápsulas en pantalla |
@@ -752,7 +757,7 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
 | Attack Reach | 2.6 | Distancia para embestirte |
 | Damage | **por tipo** (15) | Armadura que te quita |
 | Knockback Force / Knockback Up | 16 / 6 | Empujón horizontal y vertical |
-| Stun Duration | 1.2 | Segundos quieto tras embestirte (las embestidas rápidas usan solo una parte) |
+| Stun Duration | 0.7 | Segundos quieto tras embestirte, después de rebotar hacia atrás (las embestidas rápidas usan solo una parte) |
 | Player Hidden Depth | 1.5 | Más hondo que esto bajo el agua, no te ve |
 | Visual / Procedural Flap / Wing y Talon Bone Names / Catch Point Offset | **por tipo** | Modelo, aleteo y garras |
 | Flap Speed / Flap Angle | 7 / 28 | Aleteo por código |
@@ -763,7 +768,7 @@ Además de su forma de pescar, cada especie te ataca a su manera:
 
 | Ave | Ataque | ¿La empujan tus disparos? |
 |---|---|---|
-| Gaviota | **Bombardera**: vuela encima de ti y suelta "regalos" (ensucian el visor) | Sí |
+| Gaviota | **Hostigadora**: rota entre una pasada de bombardeo, "regalos" lanzados en arco desde lejos y una picada en zigzag (los regalos ensucian el visor) | Sí |
 | Martín pescador | **Rayo**: se detiene, te apunta y cruza en línea recta a velocidad altísima | Mucho (es liviano) |
 | Charrán | **Enjambre**: embestidas rápidas; los de alrededor lo siguen uno tras otro | Mucho |
 | Garza | **Estocada** larga y fuerte después de levantar el pico | No (blindada) |
@@ -780,9 +785,30 @@ Los proyectiles de las aves (`EnemyProjectile`) los absorbe el Escudo de burbuja
   - Martín pescador: a veces rebota y repite el rayo.
   - Garza: a veces encadena una segunda estocada.
   - Serreta: alterna ráfagas de 3 con abanicos de 3 chorros.
-  - Gaviota: después de 3 bombas hace una pasada rasante.
+  - Gaviota: nunca repite la táctica anterior (pasada, desde lejos o picada en zigzag).
   - Águila pescadora: si te alcanza, te lanza por los aires.
   - Pelícano: si estás lejos, te lanza bolas de agua en arco.
+
+**Pelean como naves (`BirdAI.Evasion.cs`):**
+- **Esquivan tus disparos.** Si la bala va hacia ellas, reaccionan con un tonel (giro completo) y se apartan de la línea de fuego. Tienen recarga: con fuego seguido terminas acertando.
+- **Zigzag.** Si las sigues con la mira un rato, empiezan a zigzaguear. Las embestidas llegan zigzagueando, pero el zigzag se cierra al final para que el golpe conecte.
+- **Viraje.** Después de atacar se van hacia un costado (no siempre hacia arriba). Ahí es cuando menos se mueven.
+- **Huida.** Con poca vida (30 %), muchas escapan unos segundos al borde del lago soltando plumas y vuelven furiosas.
+- Cada especie tiene su **agilidad**: martín pescador y charrán esquivan mucho; garza y pelícano (blindados) casi nada.
+
+| Ave | Esquiva (prob. por disparo que le iba a dar) | Huye herida |
+|---|---|---|
+| Martín pescador | 59 % | 80 % |
+| Charrán | 55 % | 60 % |
+| Gaviota | 44 % | 70 % |
+| Serreta | 42 % | 60 % |
+| Águila pescadora | 38 % | 45 % |
+| Cormorán | 34 % | 50 % |
+| Garza | 17 % | 20 % |
+| Pelícano | 13 % | 25 % |
+
+**Tamaño y vida:** las aves comunes son 1.35 veces más grandes (modelo y esfera de impacto) y tienen 1.5 veces más vida
+(gaviota 45, martín pescador 30, charrán 25, serreta 50, cormorán 90, garza 135, águila pescadora 165, pelícano 210).
 
 #### Efecto al dispararles (`Assets/Scritps/FX/HitFX.cs`)
 Se crea solo y no tiene campos. Cada impacto en un ave hace:
@@ -801,6 +827,15 @@ hacen un **ataque fuerte** (después quedan vulnerables). Sus ataques son una am
 | Pelícano Saco Sin Fondo | Remolino (arrastra peces y se traga el centro) · Cañonazo de agua (explota y aturde peces) · Bocado (fase 2+) |
 | Cormorán Rey | Torpedos (2 a 4 seguidos, arriba y abajo del agua) · Onda expansiva submarina (aturde y se lleva peces) |
 | Reina Águila Marina | Picadas (1 a 3) · Ráfaga de plumas · Vendaval (te empuja y saca peces del agua; fase 2+) |
+
+**Entre ataques fuertes pelean como naves:**
+- Te rodean cambiando de sentido y de distancia.
+- Zigzaguean y esquivan tus disparos (menos que las aves comunes, y nunca durante un ataque fuerte ni en la pausa vulnerable).
+- La **Garza Gris** es la más rápida: ataca cada 1.1–1.8 s (más seguido en cada fase) y alterna:
+  - Dardos: 3 desde la fase 1 y 5 desde la fase 2.
+  - Una embestida rápida.
+  - Combos de 2 embestidas seguidas (3 en la fase 3).
+  - Su estocada fuerte avisa menos.
 
 Si te escondes en lo hondo y el jefe no bucea, ataca a los peces más seguido. Los peces **aturdidos** flotan panza arriba
 unos segundos (cualquier ave los atrapa fácil) y los **lanzados** pueden caer en la orilla: si no vuelven al agua, se asfixian.

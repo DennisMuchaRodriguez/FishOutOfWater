@@ -61,7 +61,7 @@ public partial class BirdAI : MonoBehaviour
     public float knockbackForce = 16f;
     public float knockbackUp = 6f;
     [Tooltip("Segundos que se queda aturdido después de embestirte (cada especie usa una parte)")]
-    public float stunDuration = 1.2f;
+    public float stunDuration = 0.7f;
     [Tooltip("Si el jugador está más hondo que esto bajo el agua, no lo ve (los buceadores sí)")]
     public float playerHiddenDepth = 1.5f;
 
@@ -199,6 +199,7 @@ public partial class BirdAI : MonoBehaviour
         }
         SetupVisual();
         BuildTree();
+        HookShots();
     }
 
     // Lo llama el GameDirector al crear el pájaro
@@ -337,6 +338,9 @@ public partial class BirdAI : MonoBehaviour
                 new BTSequence("BajoElAgua",
                     new BTCondition("¿Bajo el agua?", () => submerged),
                     new BTAction("Nadar bajo el agua", Underwater)),
+                new BTSequence("Huida",
+                    new BTCondition("¿Herida y asustada?", () => !IsBoss && fleeTimer > 0f && player != null),
+                    new BTAction("Huir herida", Flee)),
                 new BTSequence("Combate",
                     new BTCondition("¿Pelear con el jugador?", () => !IsBoss && ShouldFightPlayer()),
                     new BTAction("Pelear", FightPlayer)),
@@ -371,6 +375,7 @@ public partial class BirdAI : MonoBehaviour
         TickAbilities(dt);
         TickCombat(dt);
         if (IsBoss) TickBoss(dt);
+        TickEvasion(dt);
 
         lookOverride = Vector3.zero;
         poseTarget = 0f;
@@ -381,6 +386,8 @@ public partial class BirdAI : MonoBehaviour
         tree.Tick();
         // Si otra prioridad interrumpió la picada, se cancela limpia
         if (diving && !diveTicked) diving = false;
+        // Esquivas y zigzag encima de lo que pidió la acción (BirdAI.Evasion.cs)
+        ApplyEvasion(dt);
 
         if (!dead)
         {
@@ -588,6 +595,7 @@ public partial class BirdAI : MonoBehaviour
 
         Vector3 aim = lead;
         float speed = chaseSpeed;
+        bool charging = false;
         if (lead.y < minY)
         {
             if (IsDiver && surfaceCooldown <= 0f && lake.IsInsideXZ(lead, 1f))
@@ -607,9 +615,13 @@ public partial class BirdAI : MonoBehaviour
         else if (attackTimer <= 0f)
         {
             speed = chaseSpeed * 1.2f; // embestida
+            charging = true;
         }
 
-        desiredVelocity = (aim - transform.position).normalized * speed;
+        Vector3 dir = (aim - transform.position).normalized;
+        desiredVelocity = dir * speed;
+        // La embestida llega zigzagueando (se cierra al final para que el golpe conecte)
+        if (charging) desiredVelocity += AttackWeave(dir, Vector3.Distance(transform.position, ppos), 6f);
 
         // Golpe por proximidad (más fiable que esperar la colisión física)
         if (attackTimer <= 0f && Vector3.Distance(transform.position, ppos) < attackReach)
@@ -874,7 +886,8 @@ public partial class BirdAI : MonoBehaviour
         // Tambaleo al recibir un disparo (las aves blindadas apenas tiemblan)
         hitRollTime += dt;
         float roll = hitRollAmp * Mathf.Sin(hitRollTime * 26f) * Mathf.Exp(-hitRollTime * 6f);
-        visual.localRotation = Quaternion.AngleAxis(roll, Vector3.forward) * Quaternion.Euler(-posePitch, 0f, 0f) * visualBaseRot;
+        // + tonel al esquivar (giro completo sobre su eje)
+        visual.localRotation = Quaternion.AngleAxis(roll + dodgeRoll, Vector3.forward) * Quaternion.Euler(-posePitch, 0f, 0f) * visualBaseRot;
         UpdateFlash(dt);
     }
 
@@ -902,7 +915,9 @@ public partial class BirdAI : MonoBehaviour
         float stun = stunDuration * stunScale;
         stunTimer = stun;
         attackTimer = stun + 0.4f;
-        rb.linearVelocity = -dir * 3f;
+        // Rebota hacia atrás después del golpe (no se queda pegada)
+        rb.linearVelocity = -dir * 8f + Vector3.up * 3f;
+        NewBreakSide();
         SetAggro(stun + 5f);
         combatPhase = 0;
         combatTimer = 0f;
@@ -927,6 +942,8 @@ public partial class BirdAI : MonoBehaviour
         ShowHitEffect(amount, point);
         FXFactory.SpawnOneShot(hitPrefab, point, Quaternion.identity, 0.8f, 2f);
         Sfx.Play(IsArmored ? Sonido.GolpeBlindado : Sonido.GolpeAve, point, 0.9f, CallPitch, 6f, 0.1f, 0.06f);
+        // A veces rompe la línea de fuego para que el siguiente disparo no le dé
+        AfterHitEvasion();
 
         if (IsBoss)
         {
@@ -943,6 +960,8 @@ public partial class BirdAI : MonoBehaviour
 
         // Del susto suelta al pez (o a todos)
         if (carried.Count > 0) DropFish();
+        // Con poca vida, muchas escapan un rato soltando plumas y vuelven furiosas
+        MaybeFlee();
     }
 
     // ======================= EFECTO DEL DISPARO =======================

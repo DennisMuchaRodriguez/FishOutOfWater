@@ -70,6 +70,12 @@ public class HitFX : MonoBehaviour
         Get().ShowNumber(point + Vector3.up * 0.6f, text, color, 0.75f);
     }
 
+    // Plumas sueltas que va perdiendo un ave herida mientras huye (sin aro, destello ni número)
+    public static void FeatherTrail(Vector3 point, Vector3 flyDir, float size, Color featherColor)
+    {
+        Get().EmitFeathers(point, -flyDir, 1, size, featherColor, 1.5f);
+    }
+
     public static void BirdDeath(Vector3 point, float size, Color featherColor)
     {
         HitFX fx = Get();

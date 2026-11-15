@@ -76,6 +76,7 @@ public class HelmetVisorHUD : MonoBehaviour
     VisorAmmoHUD ammoHud;
     VisorStatusHUD statusHud;
     VisorSonarHUD sonarHud;
+    VisorMissionHUD missionHud;
     readonly List<Droplet> droplets = new List<Droplet>();
     RectTransform dropletRoot;
 
@@ -130,7 +131,8 @@ public class HelmetVisorHUD : MonoBehaviour
         BuildSwayRoot();
         BuildOverlay();
 
-        // Munición (arco del borde derecho), propulsor y traje (arriba) y sonar, dentro del visor
+        // Munición (arco del borde derecho), propulsor y traje (arriba), misión (arco del borde izquierdo)
+        // y sonar, dentro del visor
         ammoHud = gameObject.AddComponent<VisorAmmoHUD>();
         ammoHud.visor = this;
         ammoHud.player = player;
@@ -144,6 +146,11 @@ public class HelmetVisorHUD : MonoBehaviour
         sonarHud = gameObject.AddComponent<VisorSonarHUD>();
         sonarHud.player = player;
         sonarHud.Build(overlayRoot, accent);
+        // Misión (borde izquierdo, espejo de la munición): peces a salvo, oleada, depredadores y cuenta atrás
+        missionHud = gameObject.AddComponent<VisorMissionHUD>();
+        missionHud.visor = this;
+        missionHud.player = player;
+        missionHud.Build(swayRoot, overlayRoot, accent, dangerColor);
 
         if (player != null)
         {

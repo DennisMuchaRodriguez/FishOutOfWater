@@ -93,6 +93,18 @@ public class PlayerShooting : MonoBehaviour
     public event System.Action<bool> OnShot;          // bool = cargado
     public event System.Action<bool> OnTargetHit;     // bool = objetivo destruido
     public event System.Action<int> OnAmmoPickup;
+    // Cada disparo del jugador (origen, dirección y velocidad): las aves lo usan para esquivar
+    public static event System.Action<Vector3, Vector3, float> ShotFired;
+
+    // Hacia dónde apunta ahora el jugador (rayo desde la cámara por el puntero): las aves notan que las siguen
+    public Ray AimRay
+    {
+        get
+        {
+            if (playerCamera == null) return new Ray(transform.position, transform.forward);
+            return playerCamera.ScreenPointToRay(Input.mousePosition);
+        }
+    }
 
     private float nextFireTime = 0f;
     private float ammoRechargeTimer = 0f;
@@ -364,12 +376,14 @@ public class PlayerShooting : MonoBehaviour
         }
 
         // PASO 4: Darle velocidad en esa dirección
+        float shotSpeed = shootForce * (charged ? chargedSpeedMultiplier : (bubble ? bubbleSpeedMultiplier : 1f));
         Rigidbody rb = projectile.GetComponent<Rigidbody>();
         if (rb != null)
         {
             rb.useGravity = false;
-            rb.linearVelocity = direction * shootForce * (charged ? chargedSpeedMultiplier : (bubble ? bubbleSpeedMultiplier : 1f));
+            rb.linearVelocity = direction * shotSpeed;
         }
+        ShotFired?.Invoke(firePoint.position, direction, shotSpeed);
 
         // Ignorar colisión con el jugador
         Collider projectileCollider = projectile.GetComponent<Collider>();

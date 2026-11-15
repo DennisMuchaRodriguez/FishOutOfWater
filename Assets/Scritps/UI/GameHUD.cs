@@ -4,7 +4,8 @@ using UnityEngine.UI;
 using TMPro;
 
 // HUD de la partida (mismo estilo cian del visor):
-//  - Objetivos abajo a la derecha: oleada, depredadores, peces a salvo (+ barra con el límite de pérdida)
+//  - Objetivos abajo a la derecha: oleada, depredadores, peces a salvo (+ barra con el límite de pérdida).
+//    Solo de respaldo: con el casco (HelmetVisorHUD) se muestran dentro del visor (VisorMissionHUD)
 //  - Anuncios grandes (oleadas, victoria) y avisos cortos (pez cazado, munición...)
 //  - Barras de cine durante la cinemática
 //  - Marcadores sobre los pájaros (rojo; parpadea si lleva un pez) y sobre las cápsulas de munición
@@ -275,8 +276,10 @@ public class GameHUD : MonoBehaviour
 
     void UpdateObjectives(bool cinematic)
     {
-        objectives.gameObject.SetActive(!cinematic && director != null);
-        if (director == null || cinematic) return;
+        // Con el casco puesto, los objetivos van dentro del visor (VisorMissionHUD): aquí solo quedan de respaldo
+        bool show = !cinematic && director != null && !VisorMissionHUD.IsShowing;
+        if (objectives.gameObject.activeSelf != show) objectives.gameObject.SetActive(show);
+        if (!show) return;
 
         waveText.text = director.CurrentWave > 0
             ? "OLEADA " + director.CurrentWave + " / " + director.TotalWaves

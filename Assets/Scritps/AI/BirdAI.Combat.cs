@@ -2,7 +2,8 @@ using UnityEngine;
 using FishGame.AI;
 
 // Cómo pelea cada especie contra el jugador (además de cómo pesca, en BirdAI.Abilities.cs):
-//  - Gaviota        BOMBARDERA: vuela encima de ti y suelta "regalos"; si te dan en primera persona ensucian el visor.
+//  - Gaviota        HOSTIGADORA: rota entre pasadas de bombardeo, "regalos" lanzados desde lejos y picadas en
+//                   zigzag; si te dan en primera persona ensucian el visor.
 //  - Martín pesc.   RAYO: se detiene, te apunta y cruza en línea recta a velocidad altísima.
 //  - Charrán        ENJAMBRE: embestidas rápidas; cuando uno se lanza, los de alrededor lo siguen uno tras otro.
 //  - Garza          ESTOCADA: se acerca, levanta el pico y lanza una estocada larga. Blindada: los disparos no la empujan.
@@ -11,6 +12,7 @@ using FishGame.AI;
 //  - Pelícano       APLASTADOR: embestida pesada que empuja mucho. Blindado: los disparos no lo empujan.
 //  - Águila pesc.   PICADA: sube muy alto sobre ti y cae en picada, rapidísima.
 // Las aves livianas (martín pescador, charrán) salen volando con cada disparo; las pesadas ni se mueven.
+// Además todas esquivan, zigzaguean, viran de lado y huyen heridas (BirdAI.Evasion.cs).
 public partial class BirdAI
 {
     enum CombatRole { Embestida, Bombardero, Rayo, Enjambre, Estocada, Torpedo, Escupidor, Aplastador, Picado }
@@ -31,6 +33,10 @@ public partial class BirdAI
     float cannonTimer = 3f;     // pelícano: bolas de agua desde lejos
     float alertCooldown;        // no avisa a la bandada a cada rato
     bool windup;                // preparando un ataque: aletea nervioso
+    int gullTactic = -1, lastGullTactic = -1;   // gaviota: táctica en curso
+    Vector3 passDir;            // gaviota: dirección de la pasada de bombardeo
+    float strafeFlipTimer = 2f; // serreta: cambia el sentido en que te rodea
+    float diveHeight = 16f;     // águila: altura de la próxima picada
 
     // Cuánto lo empujan los disparos (0 = nada, blindado)
     public float ProjectilePushScale { get; private set; } = 1f;
@@ -133,6 +139,7 @@ public partial class BirdAI
     {
         combatPhase = 1;
         combatTimer = 0f;
+        NewBreakSide();
     }
 
     // ---- Rayo / Enjambre / Torpedo: colocarse, avisar y cruzar en línea recta ----
@@ -151,7 +158,8 @@ public partial class BirdAI
             away.Normalize();
             Vector3 goal = ppos + away * DashDistance + Vector3.up * 1.5f;
             goal.y = Mathf.Max(goal.y, lake.SurfaceY + 1.2f);
-            desiredVelocity = (goal - transform.position).normalized * chaseSpeed;
+            // Se coloca zigzagueando (no se queda quieta para que le apunten)
+            desiredVelocity = (goal - transform.position).normalized * chaseSpeed + Weave(to.normalized, 5f, 3.5f);
             lookOverride = to;
             float d = to.magnitude;
             if (combatCooldown <= 0f && attackTimer <= 0f && d < DashDistance + 4f && d > 3f && chainDelay <= 0f) StartWindup();
@@ -180,6 +188,9 @@ public partial class BirdAI
             burst = true;
             float mul = combatRole == CombatRole.Rayo ? 3f : (combatRole == CombatRole.Enjambre ? 2.4f : 2.6f);
             desiredVelocity = attackDir * chaseSpeed * mul;
+            // El rayo cruza recto; el charrán y el cormorán llegan zigzagueando
+            if (combatRole != CombatRole.Rayo)
+                desiredVelocity += AttackWeave(attackDir, Vector3.Distance(transform.position, ppos), combatRole == CombatRole.Enjambre ? 7f : 5f);
             poseTarget = -10f;
             if (attackTimer <= 0f && Vector3.Distance(transform.position, ppos) < attackReach + 0.4f)
                 HitPlayer(1f, 1f, 0.8f);
@@ -192,8 +203,8 @@ public partial class BirdAI
         }
         else
         {
-            // Remonta y vuelve a colocarse. El martín pescador a veces rebota y vuelve a cruzar enseguida
-            desiredVelocity = (attackDir * 0.5f + Vector3.up * 0.6f).normalized * patrolSpeed;
+            // Vira hacia un costado y vuelve a colocarse. El martín pescador a veces rebota y vuelve a cruzar enseguida
+            desiredVelocity = BreakAway(attackDir, chaseSpeed);
             if (combatRole == CombatRole.Rayo && !comboUsed && combatTimer > 0.25f && Random.value < 0.5f)
             {
                 comboUsed = true;
@@ -255,7 +266,8 @@ public partial class BirdAI
         combatTimer += dt;
         Vector3 to = ppos - transform.position;
         Vector3 flat = new Vector3(to.x, 0f, to.z);
-        float reach = attackReach * Mathf.Max(1f, visualScale);
+        // El alcance ya viene del archivo Ave (agrandado junto con el modelo): aquí no se vuelve a multiplicar
+        float reach = attackReach * Mathf.Max(1f, visualScale * 0.75f);
         lookOverride = flat;
 
         if (combatPhase == 0)
@@ -320,11 +332,18 @@ public partial class BirdAI
         Vector3 to = ppos - transform.position;
         Vector3 flat = new Vector3(to.x, 0f, to.z);
         float d = flat.magnitude;
-        orbitAngle += Time.fixedDeltaTime * 0.5f * orbitDirection;
+        // Cambia el sentido en que te rodea cada pocos segundos (como un caza que no se deja fijar)
+        strafeFlipTimer -= Time.fixedDeltaTime;
+        if (strafeFlipTimer <= 0f)
+        {
+            strafeFlipTimer = Random.Range(1.8f, 3.6f);
+            orbitDirection = -orbitDirection;
+        }
+        orbitAngle += Time.fixedDeltaTime * 0.6f * orbitDirection;
         float range = d < 7f ? 16f : 14f;   // demasiado cerca: se aleja
         Vector3 goal = new Vector3(ppos.x + Mathf.Cos(orbitAngle) * range, Mathf.Max(ppos.y + 3f, lake.SurfaceY + 2.5f),
                                    ppos.z + Mathf.Sin(orbitAngle) * range);
-        desiredVelocity = (goal - transform.position).normalized * chaseSpeed * 0.9f;
+        desiredVelocity = (goal - transform.position).normalized * chaseSpeed * 0.9f + Weave(to.normalized, 5f, 3f);
         lookOverride = to;
 
         if (shotTimer <= 0f)
@@ -351,57 +370,158 @@ public partial class BirdAI
         return BTStatus.Running;
     }
 
-    // ---- Gaviota: bombardeo desde arriba ----
+    // ---- Gaviota: hostigadora. Rota entre tres tácticas (nunca repite la anterior) ----
+    //  0 PASADA: cruza por encima en línea recta soltando hasta 3 "regalos" y vira hacia un costado
+    //  1 DESDE LEJOS: te rodea a media distancia zigzagueando y te lanza "regalos" en arco
+    //  2 PICADA EN ZIGZAG: avisa, se lanza zigzagueando a picotearte y se aleja de lado
     BTStatus BomberAttack(Vector3 ppos)
     {
-        tree.MarkActive("Bombardear desde arriba");
-        const float height = 7f;
-        float fall = Mathf.Sqrt(2f * height / EnemyProjectile.GravityOf(EnemyProjectile.Kind.Caca));
-        Vector3 myVel = rb.linearVelocity;
-        // Se coloca para que la caída (que hereda parte de su velocidad) caiga donde va a estar el jugador
-        orbitAngle += Time.fixedDeltaTime * 1.6f * orbitDirection;
-        Vector3 wobble = new Vector3(Mathf.Cos(orbitAngle), 0f, Mathf.Sin(orbitAngle)) * 2.5f;
-        Vector3 goal = ppos + player.Velocity * fall - new Vector3(myVel.x, 0f, myVel.z) * 0.6f * fall + Vector3.up * height + wobble;
-        desiredVelocity = (goal - transform.position).normalized * chaseSpeed * 1.1f;
+        float dt = Time.fixedDeltaTime;
+        combatTimer += dt;
+        Vector3 to = ppos - transform.position;
+        Vector3 flat = new Vector3(to.x, 0f, to.z);
+        Vector3 flatDir = flat.sqrMagnitude > 0.01f ? flat.normalized : transform.forward;
+        float d = to.magnitude;
 
-        // Después de tres "regalos" se lanza en picada a picotearte
-        if (combatPhase == 2)
+        if (combatPhase == 0)
         {
-            combatTimer += Time.fixedDeltaTime;
-            burst = true;
-            desiredVelocity = attackDir * chaseSpeed * 2.2f;
-            if (attackTimer <= 0f && Vector3.Distance(transform.position, ppos) < attackReach + 0.4f) HitPlayer(1f, 1f, 0.6f);
-            if (combatTimer > 0.7f || Vector3.Dot(transform.position - ppos, attackDir) > 3f)
+            // Se reacomoda alrededor del jugador, a media distancia y zigzagueando, y elige la próxima táctica
+            tree.MarkActive("Hostigar: reacomodarse");
+            orbitAngle += dt * 0.9f * orbitDirection;
+            Vector3 goal = new Vector3(ppos.x + Mathf.Cos(orbitAngle) * 13f, Mathf.Max(ppos.y, lake.SurfaceY) + 5f,
+                                       ppos.z + Mathf.Sin(orbitAngle) * 13f);
+            desiredVelocity = (goal - transform.position).normalized * chaseSpeed + Weave(flatDir, 5f, 3.5f);
+            lookOverride = to;
+            if (combatCooldown <= 0f && combatTimer > 0.35f) StartGullTactic(to, flatDir);
+        }
+        else if (combatPhase == 3)
+        {
+            // Viraje lateral después de cada táctica
+            tree.MarkActive("Virar de lado");
+            desiredVelocity = BreakAway(attackDir, chaseSpeed * 1.1f);
+            if (combatTimer > 0.55f)
             {
                 combatPhase = 0;
                 combatTimer = 0f;
-                shotsLeft = 0;
+                combatCooldown = Random.Range(0.2f, 0.6f);
             }
-            return BTStatus.Running;
         }
+        else if (gullTactic == 0) GullPass(ppos);
+        else if (gullTactic == 1) GullLob(ppos, to, d, flatDir);
+        else GullZigzag(ppos, to, d);
 
-        Vector3 flat = ppos - transform.position;
-        float above = -flat.y;
-        flat.y = 0f;
-        if (shotTimer <= 0f && flat.magnitude < 4f && above > 3f)
+        // Si te le pegas, picotazo
+        if (combatPhase != 2 && attackTimer <= 0f && d < attackReach) HitPlayer(0.8f, 0.8f, 0.5f);
+        return BTStatus.Running;
+    }
+
+    void StartGullTactic(Vector3 to, Vector3 flatDir)
+    {
+        int t = Random.Range(0, 3);
+        if (t == lastGullTactic) t = (t + 1 + Random.Range(0, 2)) % 3;
+        gullTactic = t;
+        lastGullTactic = t;
+        combatPhase = 1;
+        combatTimer = 0f;
+        shotsLeft = 0;
+        shotTimer = 0f;
+        passDir = flatDir;
+        attackDir = to.normalized;
+        NewBreakSide();
+        if (t == 1 && Random.value < 0.5f) orbitDirection = -orbitDirection;
+    }
+
+    void GullEnd()
+    {
+        combatPhase = 3;
+        combatTimer = 0f;
+    }
+
+    // Pasada en línea recta por encima: apunta más allá del jugador y suelta cuando la caída coincide con él
+    void GullPass(Vector3 ppos)
+    {
+        tree.MarkActive("Pasada de bombardeo");
+        Vector3 goal = ppos + passDir * 22f + Vector3.up * 6.5f;
+        desiredVelocity = (goal - transform.position).normalized * chaseSpeed * 1.35f;
+        attackDir = passDir;
+
+        float height = transform.position.y - ppos.y;
+        if (height > 2.5f && shotsLeft < 3 && shotTimer <= 0f)
         {
-            Vector3 v = new Vector3(myVel.x, 0f, myVel.z) * 0.6f;
-            EnemyProjectile.Fire(EnemyProjectile.Kind.Caca, transform.position + Vector3.down * 0.5f, v, damage * 0.7f, player);
-            Sfx.Play(Sonido.Caca, transform.position, 0.7f, 1f, 5f);
-            if (Random.value < 0.35f) Call(0.9f);
-            shotTimer = Random.Range(0.5f, 0.9f);
+            float fall = Mathf.Sqrt(2f * height / EnemyProjectile.GravityOf(EnemyProjectile.Kind.Caca));
+            Vector3 v = rb.linearVelocity;
+            Vector3 inherit = new Vector3(v.x, 0f, v.z) * 0.6f;
+            Vector3 land = transform.position + inherit * fall;
+            Vector3 target = ppos + player.Velocity * fall;
+            if (new Vector2(land.x - target.x, land.z - target.z).magnitude < 3.5f)
+            {
+                EnemyProjectile.Fire(EnemyProjectile.Kind.Caca, transform.position + Vector3.down * 0.5f, inherit, damage * 0.7f, player);
+                Sfx.Play(Sonido.Caca, transform.position, 0.7f, 1f, 5f);
+                shotsLeft++;
+                shotTimer = 0.16f;
+            }
+        }
+        if (Vector3.Dot(transform.position - ppos, passDir) > 14f || combatTimer > 4f)
+        {
+            if (shotsLeft > 0 && Random.value < 0.4f) Call(0.9f);
+            GullEnd();
+        }
+    }
+
+    // Te rodea a media distancia, zigzagueando, y lanza "regalos" en arco hacia donde vas a estar
+    void GullLob(Vector3 ppos, Vector3 to, float d, Vector3 flatDir)
+    {
+        tree.MarkActive("Lanzar regalos desde lejos");
+        float dt = Time.fixedDeltaTime;
+        orbitAngle += dt * 0.85f * orbitDirection;
+        float r = d < 8f ? 16f : 14f;
+        Vector3 goal = new Vector3(ppos.x + Mathf.Cos(orbitAngle) * r, Mathf.Max(ppos.y, lake.SurfaceY) + 4.5f,
+                                   ppos.z + Mathf.Sin(orbitAngle) * r);
+        desiredVelocity = (goal - transform.position).normalized * chaseSpeed + Weave(flatDir, 6f, 4f);
+        lookOverride = to;
+        attackDir = to.normalized;
+
+        if (shotTimer <= 0f && d > 6f)
+        {
+            Vector3 from = transform.position + transform.forward * (bodyRadius * 0.6f);
+            float flight = Mathf.Clamp(d / 16f, 0.6f, 1.1f);
+            Vector3 aim = player.transform.position + player.Velocity * flight;
+            Vector3 vel = EnemyProjectile.ArcVelocity(from, aim, flight, EnemyProjectile.GravityOf(EnemyProjectile.Kind.Caca));
+            EnemyProjectile.Fire(EnemyProjectile.Kind.Caca, from, vel, damage * 0.6f, player);
+            Sfx.Play(Sonido.Caca, transform.position, 0.7f, 1.15f, 6f);
             shotsLeft++;
-            if (shotsLeft >= 3)
+            shotTimer = 0.45f;
+        }
+        if (shotsLeft >= 4 || combatTimer > 3.4f) GullEnd();
+    }
+
+    // Aviso corto y picada zigzagueando; el zigzag se cierra al llegar para que el picotazo conecte
+    void GullZigzag(Vector3 ppos, Vector3 to, float d)
+    {
+        if (combatPhase == 1)
+        {
+            tree.MarkActive("Preparar picada en zigzag");
+            windup = true;
+            desiredVelocity = Vector3.ClampMagnitude(-to.normalized * 2f, 2f);
+            lookOverride = to;
+            poseTarget = 14f;
+            if (combatTimer >= 0.28f)
             {
                 combatPhase = 2;
                 combatTimer = 0f;
                 attackDir = (ppos + player.Velocity * 0.2f - transform.position).normalized;
                 Sfx.Play(Sonido.Embestida, transform.position, 0.9f, CallPitch, 6f);
             }
+            return;
         }
-        // Si te le acercas mucho, picotazo
-        if (attackTimer <= 0f && Vector3.Distance(transform.position, ppos) < attackReach) HitPlayer(0.8f, 0.8f, 1f);
-        return BTStatus.Running;
+        tree.MarkActive("Picada en zigzag");
+        burst = true;
+        Vector3 lead = ppos + player.Velocity * 0.2f;
+        Vector3 dir = (lead - transform.position).normalized;
+        desiredVelocity = dir * chaseSpeed * 2.1f + AttackWeave(dir, d, 9f);
+        poseTarget = -12f;
+        if (attackTimer <= 0f && d < attackReach + 0.4f) HitPlayer(1f, 1f, 0.5f);
+        if (Vector3.Dot(transform.position - ppos, attackDir) > 3f || combatTimer > 1.4f) GullEnd();
     }
 
     // ---- Águila pescadora: picada desde muy alto ----
@@ -413,7 +533,7 @@ public partial class BirdAI
         if (combatPhase == 0)
         {
             orbitAngle += dt * 0.7f * orbitDirection;
-            Vector3 goal = new Vector3(ppos.x + Mathf.Cos(orbitAngle) * 8f, Mathf.Max(ppos.y, lake.SurfaceY) + 16f,
+            Vector3 goal = new Vector3(ppos.x + Mathf.Cos(orbitAngle) * 8f, Mathf.Max(ppos.y, lake.SurfaceY) + diveHeight,
                                        ppos.z + Mathf.Sin(orbitAngle) * 8f);
             desiredVelocity = (goal - transform.position).normalized * patrolSpeed * 1.4f;
             if (combatCooldown <= 0f && attackTimer <= 0f && ((goal - transform.position).magnitude < 4f || combatTimer > 5f)) StartWindup();
@@ -453,12 +573,14 @@ public partial class BirdAI
         }
         else
         {
-            desiredVelocity = (transform.forward * 0.4f + Vector3.up).normalized * patrolSpeed * 1.3f;
+            // Sale de la picada virando hacia un costado (y vuelve a subir a una altura distinta)
+            desiredVelocity = (BreakAway(transform.forward, 1f) + Vector3.up * 0.8f).normalized * patrolSpeed * 1.3f;
             if (combatTimer > 1f)
             {
                 combatPhase = 0;
                 combatTimer = 0f;
-                combatCooldown = Random.Range(1.4f, 2.2f);
+                combatCooldown = Random.Range(1.2f, 2f);
+                diveHeight = Random.Range(10f, 17f);
             }
         }
         return BTStatus.Running;

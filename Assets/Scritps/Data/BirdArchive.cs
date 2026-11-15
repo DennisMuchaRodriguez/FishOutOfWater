@@ -36,7 +36,7 @@ public static class BirdArchive
         public int Kills { get { return SaveSystem.GetBirdKills(Species); } }
 
         // Estadísticas de 0 a 1 para las barras (los jefes se comparan entre jefes)
-        public float Health01 { get { return Mathf.Clamp01(type.health / (isBoss ? 1400f : 140f)); } }
+        public float Health01 { get { return Mathf.Clamp01(type.health / (isBoss ? 1400f : 210f)); } }
         public float Speed01 { get { return Mathf.Clamp01(type.speedMultiplier / 1.5f); } }
         public float Damage01 { get { return Mathf.Clamp01(type.damage / 35f); } }
         public float Sight01 { get { return Mathf.Clamp01(type.detectRange / 40f); } }
@@ -111,11 +111,11 @@ public static class BirdArchive
         switch (e.type.ability)
         {
             case BirdAbility.SurfaceSnatch:
-                e.role = "BOMBARDERA";
+                e.role = "HOSTIGADORA";
                 e.hunt = "Pasa rasante y rápida sobre el lago y roba los peces que nadan cerca de la superficie.";
-                e.fight = "Vuela encima de ti y suelta \"regalos\". Después de tres bombas se lanza en una pasada rasante. Si te aciertan en primera persona, ensucian el visor del casco.";
-                e.tip = "Muévete sin parar: si te quedas quieto, sus bombas no fallan.";
-                e.tags = new[] { "AÉREA", "BOMBAS", "AVISA A LA BANDADA" };
+                e.fight = "Nunca repite el ataque: cruza por encima soltando \"regalos\", te los lanza en arco desde lejos o se tira en zigzag a picotearte. Esquiva tus disparos y, si está herida, huye y vuelve furiosa.";
+                e.tip = "Dispárale cuando vire de lado después de atacar: es cuando menos se mueve.";
+                e.tags = new[] { "A DISTANCIA", "BOMBAS", "ZIGZAG" };
                 break;
             case BirdAbility.HoverDive:
                 e.role = "RAYO";
@@ -187,7 +187,7 @@ public static class BirdArchive
             case BossKind.GiantHeron:
                 e.role = "SEÑORA DE LA ORILLA";
                 e.hunt = "No caza como las demás: domina la orilla y convierte el agua en una trampa para el cardumen.";
-                e.fight = "Te acosa a pocos metros con ataques rápidos y cada pocos segundos lanza uno de sus ataques fuertes.";
+                e.fight = "La más rápida en el acoso: te rodea cambiando de sentido, esquiva tus disparos, te lanza dardos y encadena dos o tres embestidas seguidas.";
                 e.tags = new[] { "JEFE", "3 FASES", "BLINDADA" };
                 e.attacks = new[]
                 {
