@@ -3,7 +3,8 @@ using System.IO;
 using UnityEngine;
 
 // Progreso del jugador en un archivo JSON (Application.persistentDataPath/progreso.json):
-// niveles desbloqueados, estrellas por nivel, cómics ya vistos, mejoras del traje y visitas al Taller.
+// niveles desbloqueados, estrellas por nivel, cómics ya vistos, mejoras del traje, visitas al Taller
+// y el Archivo de aves (especies vistas, fichas abiertas y aves derribadas).
 [System.Serializable]
 public class SaveData
 {
@@ -16,6 +17,12 @@ public class SaveData
     public List<string> upgrades = new List<string>();
     [Tooltip("Niveles (índice del catálogo) cuya visita al Taller ya se usó")]
     public List<int> workshopsUsed = new List<int>();
+    [Tooltip("Especies de ave vistas en combate (nombre de la especie)")]
+    public List<string> birdsSeen = new List<string>();
+    [Tooltip("Especies cuya ficha del Archivo ya se abrió")]
+    public List<string> birdsViewed = new List<string>();
+    [Tooltip("Aves derribadas por especie, como \"Nombre:cantidad\"")]
+    public List<string> birdKills = new List<string>();
 }
 
 public static class SaveSystem
@@ -50,6 +57,9 @@ public static class SaveSystem
         if (data.comicsSeen == null) data.comicsSeen = new List<string>();
         if (data.upgrades == null) data.upgrades = new List<string>();
         if (data.workshopsUsed == null) data.workshopsUsed = new List<int>();
+        if (data.birdsSeen == null) data.birdsSeen = new List<string>();
+        if (data.birdsViewed == null) data.birdsViewed = new List<string>();
+        if (data.birdKills == null) data.birdKills = new List<string>();
         if (data.unlockedLevels < 1) data.unlockedLevels = 1;
     }
 
@@ -142,6 +152,68 @@ public static class SaveSystem
         if (levelIndex < 0 || Data.workshopsUsed.Contains(levelIndex)) return;
         Data.workshopsUsed.Add(levelIndex);
         Save();
+    }
+
+    // ---- Archivo de aves ----
+
+    public static bool IsBirdSeen(string species)
+    {
+        return !string.IsNullOrEmpty(species) && Data.birdsSeen.Contains(species);
+    }
+
+    // Devuelve true si la especie no se había visto nunca (y la guarda)
+    public static bool MarkBirdSeen(string species)
+    {
+        if (string.IsNullOrEmpty(species) || Data.birdsSeen.Contains(species)) return false;
+        Data.birdsSeen.Add(species);
+        Save();
+        return true;
+    }
+
+    // Vista pero con la ficha aún sin abrir en el Archivo
+    public static bool IsBirdNew(string species)
+    {
+        return IsBirdSeen(species) && !Data.birdsViewed.Contains(species);
+    }
+
+    public static void MarkBirdViewed(string species)
+    {
+        if (!IsBirdSeen(species) || Data.birdsViewed.Contains(species)) return;
+        Data.birdsViewed.Add(species);
+        Save();
+    }
+
+    public static int NewBirdCount
+    {
+        get
+        {
+            int n = 0;
+            foreach (string s in Data.birdsSeen) if (!Data.birdsViewed.Contains(s)) n++;
+            return n;
+        }
+    }
+
+    public static int GetBirdKills(string species)
+    {
+        if (string.IsNullOrEmpty(species)) return 0;
+        string prefix = species + ":";
+        foreach (string entry in Data.birdKills)
+        {
+            if (!entry.StartsWith(prefix)) continue;
+            int n;
+            if (int.TryParse(entry.Substring(prefix.Length), out n)) return Mathf.Max(0, n);
+        }
+        return 0;
+    }
+
+    // Solo cambia la memoria: el archivo se escribe al terminar la partida (GameDirector.EndGame)
+    public static void AddBirdKill(string species)
+    {
+        if (string.IsNullOrEmpty(species)) return;
+        int n = GetBirdKills(species) + 1;
+        string prefix = species + ":";
+        Data.birdKills.RemoveAll(e => e.StartsWith(prefix));
+        Data.birdKills.Add(prefix + n);
     }
 
     // ---- Pruebas ----

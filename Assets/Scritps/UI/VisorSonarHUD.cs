@@ -16,7 +16,7 @@ public class VisorSonarHUD : MonoBehaviour
 
     [HideInInspector] public PlayerController_Base player;
 
-    Color accent = new Color(0.41f, 0.87f, 0.9f, 1f);
+    Color accent = new Color(0.25f, 0.72f, 1f, 1f);
     static readonly Color Warning = new Color(1f, 0.62f, 0.2f, 1f);
 
     RectTransform root;

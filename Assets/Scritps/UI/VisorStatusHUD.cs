@@ -26,12 +26,22 @@ public class VisorStatusHUD : MonoBehaviour
     const float NumSize = 22f, LabelSize = 7.5f;
     const float Low = 0.25f;
 
-    static readonly Color Navy = new Color(0.01f, 0.035f, 0.06f, 1f);
+    static readonly Color Navy = new Color(0.006f, 0.02f, 0.06f, 1f);
+    static readonly Color Shine = new Color(0.82f, 0.95f, 1f, 1f);   // destello (casi blanco azulado)
+
+    // Destello que recorre las celdas encendidas cada pocos segundos (desfasado en cada medidor)
+    static float ShineAt(int i, float offset)
+    {
+        float k = Mathf.Repeat(Time.time + offset, 3.8f) / 0.7f;
+        if (k >= 1f) return 0f;
+        float pos = Mathf.Lerp(-3f, Cells + 3f, k);
+        return Mathf.Exp(-(i - pos) * (i - pos) * 0.2f);
+    }
 
     [HideInInspector] public HelmetVisorHUD visor;
     [HideInInspector] public PlayerController_Base player;
 
-    Color accent = new Color(0.41f, 0.87f, 0.9f, 1f);
+    Color accent = new Color(0.25f, 0.72f, 1f, 1f);
     Color danger = new Color(1f, 0.15f, 0.1f, 1f);
     Color suitColor = new Color(0.33f, 0.89f, 0.61f, 1f);
 
@@ -141,6 +151,7 @@ public class VisorStatusHUD : MonoBehaviour
                 float a = blinkOn ? 0.35f + 0.6f * fill : 0.3f;
                 c = new Color(baseC.r, baseC.g, baseC.b, a);
                 if (recharging) c = Color.Lerp(c, Color.white, Mathf.Exp(-(i - sweep) * (i - sweep) * 0.35f) * 0.55f);
+                else if (!low) c = Color.Lerp(c, Shine, ShineAt(i, 0f) * 0.7f);
                 if (burning && i == front) c.a *= 0.55f + 0.45f * Mathf.PerlinNoise(Time.time * 18f, 0.3f);
             }
             else
@@ -184,6 +195,7 @@ public class VisorStatusHUD : MonoBehaviour
                 float a = blinkOn ? 0.35f + 0.6f * fill : 0.3f;
                 c = new Color(baseC.r, baseC.g, baseC.b, a);
                 if (g.heal > 0f) c = Color.Lerp(c, Color.white, g.heal * 0.35f);
+                if (!low) c = Color.Lerp(c, Shine, ShineAt(i, 1.9f) * 0.7f);
             }
             else if (i < ghostLit)
             {

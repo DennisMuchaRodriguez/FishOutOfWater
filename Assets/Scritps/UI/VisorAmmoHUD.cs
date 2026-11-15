@@ -33,13 +33,14 @@ public class VisorAmmoHUD : MonoBehaviour
     const float ShdX = -44f, ShdY = -72f, ShdSize = 16f;
     const float FpMargin = 14f, TpInset = 16f, YOff = 18f;
 
-    static readonly Color Navy = new Color(0.01f, 0.035f, 0.06f, 1f);
+    static readonly Color Navy = new Color(0.006f, 0.02f, 0.06f, 1f);
+    static readonly Color Shine = new Color(0.82f, 0.95f, 1f, 1f);   // destello (casi blanco azulado)
 
     [HideInInspector] public HelmetVisorHUD visor;
     [HideInInspector] public PlayerController_Base player;
     [HideInInspector] public PlayerShooting shooting;
 
-    Color accent = new Color(0.41f, 0.87f, 0.9f, 1f);
+    Color accent = new Color(0.25f, 0.72f, 1f, 1f);
     Color danger = new Color(1f, 0.15f, 0.1f, 1f);
 
     RectTransform root, cellRoot, tickRoot;
@@ -231,8 +232,10 @@ public class VisorAmmoHUD : MonoBehaviour
         bool full = charge >= 1f;
         laneFill.color = full ? Color.Lerp(accent, Color.white, Mathf.Sin(Time.time * 25f) * 0.5f + 0.5f) : new Color(accent.r, accent.g, accent.b, 0.95f);
 
-        // Celdas: se apagan de arriba hacia abajo
+        // Celdas: se apagan de arriba hacia abajo. Cada pocos segundos un destello las recorre de abajo arriba
         int n = cells.Count;
+        float sweepK = Mathf.Repeat(Time.time, 3.4f) / 0.75f;
+        float sweepPos = sweepK < 1f ? Mathf.Lerp(-3f, n + 3f, sweepK) : -100f;
         int top = Mathf.CeilToInt(ammo / (float)bulletsPerCell) - 1;
         int costCells = Mathf.CeilToInt(Mathf.Max(1, shooting.chargedAmmoCost) / (float)bulletsPerCell);
         int spentCells = lastShotCharged ? costCells : 1;
@@ -246,6 +249,8 @@ public class VisorAmmoHUD : MonoBehaviour
                 c = new Color(baseC.r, baseC.g, baseC.b, a);
                 if (charging && i > top - costCells) c = new Color(0.85f, 1f, 1f, a);
                 if (pick > 0f) c = Color.Lerp(c, Color.white, pick * 0.5f);
+                float shine = Mathf.Exp(-(i - sweepPos) * (i - sweepPos) * 0.18f);
+                if (shine > 0.01f && !low) c = Color.Lerp(c, Shine, shine * 0.7f);
             }
             else
             {
@@ -264,6 +269,9 @@ public class VisorAmmoHUD : MonoBehaviour
         }
         Color numC = low ? danger : accent;
         numberText.color = new Color(numC.r, numC.g, numC.b, blinkOn ? 1f : 0.35f);
+        // El número brilla cuando el destello llega arriba
+        float numShine = Mathf.Exp(-(n - sweepPos) * (n - sweepPos) * 0.08f);
+        if (!low && numShine > 0.01f) numberText.color = Color.Lerp(numberText.color, Shine, numShine * 0.6f);
         numberText.rectTransform.localScale = Vector3.one * (1f + pick * 0.12f);
         numberGlow.color = new Color(numC.r, numC.g, numC.b, 0.16f + 0.2f * pick);
 

@@ -24,7 +24,6 @@ public class PlayerUpgrades : MonoBehaviour
     PlayerShooting shooting;
     MissileLauncher missiles;
     BubbleShield shield;
-    SuitUpgradeVisuals visuals;
 
     // Valores originales (los del Inspector)
     float baseMaxFuel, baseTurboDrain, baseTurboSwimDrain, baseWaterRecharge, baseMaxArmor;
@@ -55,8 +54,6 @@ public class PlayerUpgrades : MonoBehaviour
         if (missiles == null) missiles = gameObject.AddComponent<MissileLauncher>();
         shield = GetComponent<BubbleShield>();
         if (shield == null) shield = gameObject.AddComponent<BubbleShield>();
-        visuals = GetComponent<SuitUpgradeVisuals>();
-        if (visuals == null) visuals = gameObject.AddComponent<SuitUpgradeVisuals>();
 
         if (player != null)
         {
@@ -138,7 +135,6 @@ public class PlayerUpgrades : MonoBehaviour
         AmmoPickup.MagnetMultiplier = Upgrades.Has(UpgradeId.PickupMagnet) ? 2.5f : 1f;
         if (missiles != null) missiles.Configure(Upgrades.Level(UpgradeId.HomingMissiles));
         if (shield != null) shield.Configure(Upgrades.Level(UpgradeId.BubbleShield));
-        if (visuals != null) visuals.Refresh();
     }
 
 #if UNITY_EDITOR

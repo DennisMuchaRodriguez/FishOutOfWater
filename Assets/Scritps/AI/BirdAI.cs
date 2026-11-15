@@ -40,14 +40,14 @@ public partial class BirdAI : MonoBehaviour
     [Header("Caza")]
     public float huntRange = 75f;
     [Tooltip("Segundos acechando antes de lanzarse (min, max)")]
-    public Vector2 stalkTime = new Vector2(1.5f, 3f);
+    public Vector2 stalkTime = new Vector2(1f, 2f);
     public float maxDiveDistance = 22f;
     public float catchRadius = 2.4f;
     [Tooltip("Profundidad máxima a la que alcanza a atrapar un pez")]
     public float catchDepth = 2f;
     [Tooltip("Segundos que tarda en comerse el pez (tiempo para rescatarlo)")]
     public float carryTime = 3.5f;
-    public Vector2 diveCooldown = new Vector2(2.5f, 4.5f);
+    public Vector2 diveCooldown = new Vector2(1.8f, 3.2f);
 
     [Header("Jugador")]
     [Tooltip("Si el jugador está a esta distancia y lo ve, lo ataca")]
@@ -61,7 +61,7 @@ public partial class BirdAI : MonoBehaviour
     public float knockbackForce = 16f;
     public float knockbackUp = 6f;
     [Tooltip("Segundos que se queda aturdido después de embestirte (cada especie usa una parte)")]
-    public float stunDuration = 1.6f;
+    public float stunDuration = 1.2f;
     [Tooltip("Si el jugador está más hondo que esto bajo el agua, no lo ve (los buceadores sí)")]
     public float playerHiddenDepth = 1.5f;
 
@@ -161,6 +161,14 @@ public partial class BirdAI : MonoBehaviour
     Quaternion visualBaseRot = Quaternion.identity;
     float posePitch;
     float hitPunch;
+    // Destello del cuerpo y tambaleo al recibir un disparo
+    readonly List<Renderer> bodyRenderers = new List<Renderer>();
+    MaterialPropertyBlock flashBlock;
+    float flashTimer;
+    Color flashColor = Color.white;
+    float hitRollAmp, hitRollTime = 10f;
+    bool armorLabelShown;
+    static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
     void Awake()
     {
@@ -271,6 +279,13 @@ public partial class BirdAI : MonoBehaviour
                 float side = Vector3.Dot(t.position - transform.position, transform.right);
                 wingSide.Add(side < 0f ? -1f : 1f);
             }
+        }
+
+        // Renderers del modelo (para el destello al recibir un disparo)
+        foreach (Renderer r in visual.GetComponentsInChildren<Renderer>(true))
+        {
+            if (r is ParticleSystemRenderer || r is TrailRenderer) continue;
+            bodyRenderers.Add(r);
         }
 
         // Garras: punto medio de los huesos indicados, o el punto configurado
@@ -388,10 +403,12 @@ public partial class BirdAI : MonoBehaviour
             sightTimer = 0.25f;
         }
 
-        // Lo ve dentro del rango: ataca (y lo sigue mientras siga cerca)
+        // Lo ve dentro del rango: ataca (y lo sigue mientras siga cerca); al empezar, avisa a la bandada
         if (dist < detectRange && canSeePlayer)
         {
+            bool wasAggro = IsAggro;
             SetAggro(4f);
+            if (!wasAggro) AlertFlock();
         }
         else if (IsAggro && dist < detectRange * 1.6f && canSeePlayer)
         {
@@ -854,7 +871,11 @@ public partial class BirdAI : MonoBehaviour
 
         // Postura (levantar el pico, mirar abajo antes de una picada...): cabeceo de todo el modelo
         posePitch = Mathf.MoveTowards(posePitch, dead ? 0f : poseTarget, dt * 140f);
-        visual.localRotation = Quaternion.Euler(-posePitch, 0f, 0f) * visualBaseRot;
+        // Tambaleo al recibir un disparo (las aves blindadas apenas tiemblan)
+        hitRollTime += dt;
+        float roll = hitRollAmp * Mathf.Sin(hitRollTime * 26f) * Mathf.Exp(-hitRollTime * 6f);
+        visual.localRotation = Quaternion.AngleAxis(roll, Vector3.forward) * Quaternion.Euler(-posePitch, 0f, 0f) * visualBaseRot;
+        UpdateFlash(dt);
     }
 
     float visualScale = 1f;
@@ -903,6 +924,7 @@ public partial class BirdAI : MonoBehaviour
         // El daño extra de la pausa vulnerable no cuenta como otro disparo
         if (dead || applyingBonus) return;
         hitPunch = IsArmored ? 0.45f : 1f;
+        ShowHitEffect(amount, point);
         FXFactory.SpawnOneShot(hitPrefab, point, Quaternion.identity, 0.8f, 2f);
         Sfx.Play(IsArmored ? Sonido.GolpeBlindado : Sonido.GolpeAve, point, 0.9f, CallPitch, 6f, 0.1f, 0.06f);
 
@@ -912,14 +934,98 @@ public partial class BirdAI : MonoBehaviour
             return;
         }
 
-        // Si le disparan, va por el jugador (aunque estuviera cazando)
+        // Si le disparan, va por el jugador (aunque estuviera cazando) y llama a las de alrededor
         arriving = false;
         aggroUntil = Time.time + aggroMemory;
+        AlertFlock();
         ReleaseTarget();
         CancelSpecialHunt();
 
         // Del susto suelta al pez (o a todos)
         if (carried.Count > 0) DropFish();
+    }
+
+    // ======================= EFECTO DEL DISPARO =======================
+
+    void ShowHitEffect(int amount, Vector3 point)
+    {
+        bool bonus = IsBoss && vulnerableTimer > 0f && Type != null && Type.vulnerableDamageMultiplier > 1f;
+        int shown = bonus ? Mathf.RoundToInt(amount * Type.vulnerableDamageMultiplier) : amount;
+        bool strong = amount >= 20;
+        // Los disparos seguidos (metralleta de burbujas) se suman en un solo número
+        pendingNumber += shown;
+        int number = 0;
+        if (strong || bonus || Time.time - lastNumberTime >= 0.15f)
+        {
+            number = pendingNumber;
+            pendingNumber = 0;
+            lastNumberTime = Time.time;
+        }
+        Vector3 from = player != null ? player.transform.position + Vector3.up * 0.5f : point - transform.forward;
+        HitFX.BirdHit(point, from, amount, number, bodyRadius * 0.9f, FeatherColor, strong, bonus, IsArmored);
+        if (IsArmored && !IsBoss && !armorLabelShown)
+        {
+            armorLabelShown = true;
+            HitFX.BirdLabel(point, "BLINDADA", new Color(0.75f, 0.93f, 1f, 1f));
+        }
+        // Destello: blanco; azul si está blindada; naranja si el jefe está vulnerable
+        Color c = bonus ? new Color(2.8f, 1.6f, 0.7f, 1f) : (IsArmored ? new Color(1.4f, 1.9f, 2.8f, 1f) : new Color(2.4f, 2.4f, 2.6f, 1f));
+        Flash(c, strong ? 0.16f : 0.1f);
+        // Tambaleo: más fuerte en las aves livianas
+        hitRollAmp = (Random.value < 0.5f ? -1f : 1f) * Mathf.Lerp(4f, 28f, Mathf.Clamp01(ProjectilePushScale / 1.8f)) * (strong ? 1.4f : 1f);
+        hitRollTime = 0f;
+    }
+
+    void Flash(Color color, float duration)
+    {
+        flashColor = color;
+        flashTimer = duration;
+        flashDuration = duration;
+    }
+
+    float flashDuration = 0.1f;
+    int pendingNumber;
+    float lastNumberTime = -10f;
+
+    void UpdateFlash(float dt)
+    {
+        if (flashTimer <= 0f || bodyRenderers.Count == 0) return;
+        if (flashBlock == null) flashBlock = new MaterialPropertyBlock();
+        flashTimer -= dt;
+        if (flashTimer <= 0f)
+        {
+            foreach (Renderer r in bodyRenderers) if (r != null) r.SetPropertyBlock(null);
+            return;
+        }
+        float k = flashTimer / Mathf.Max(0.01f, flashDuration);
+        Color c = Color.Lerp(Color.white, flashColor, k);
+        foreach (Renderer r in bodyRenderers)
+        {
+            if (r == null) continue;
+            r.GetPropertyBlock(flashBlock);
+            flashBlock.SetColor(BaseColorId, c);
+            r.SetPropertyBlock(flashBlock);
+        }
+    }
+
+    // Color de las plumas que saltan con cada disparo (según la especie)
+    Color FeatherColor
+    {
+        get
+        {
+            switch (Ability)
+            {
+                case BirdAbility.SurfaceSnatch: return new Color(0.93f, 0.94f, 0.95f);
+                case BirdAbility.HoverDive: return new Color(0.2f, 0.55f, 0.95f);
+                case BirdAbility.ChainDive: return new Color(0.95f, 0.96f, 0.97f);
+                case BirdAbility.ShoreSpear: return new Color(0.62f, 0.66f, 0.72f);
+                case BirdAbility.UnderwaterHunter: return new Color(0.16f, 0.17f, 0.2f);
+                case BirdAbility.GroupDive: return new Color(0.6f, 0.34f, 0.22f);
+                case BirdAbility.Scoop: return new Color(0.92f, 0.9f, 0.86f);
+                case BirdAbility.HighDive: return new Color(0.45f, 0.32f, 0.22f);
+            }
+            return new Color(0.8f, 0.8f, 0.82f);
+        }
     }
 
     void DropFish()
@@ -966,6 +1072,8 @@ public partial class BirdAI : MonoBehaviour
         rb.AddTorque(Random.insideUnitSphere * 6f, ForceMode.VelocityChange);
         FXFactory.SpawnOneShot(deathPrefab, transform.position, Quaternion.identity, 1.2f, 3f);
         Sfx.Play(IsBoss ? Sonido.RugidoJefe : Sonido.MuerteAve, transform.position, 1f, IsBoss ? 0.75f : CallPitch, IsBoss ? 25f : 8f);
+        HitFX.BirdDeath(transform.position, bodyRadius * 0.9f, FeatherColor);
+        Flash(new Color(2.6f, 2.6f, 2.9f, 1f), 0.15f);
 
         Died?.Invoke(this);
         Destroy(gameObject, 6f);

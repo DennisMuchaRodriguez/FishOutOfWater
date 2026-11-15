@@ -15,27 +15,29 @@ using System.Collections.Generic;
 public static class MenuUI
 {
     // ---------- Paleta (la del traje) ----------
-    public static readonly Color Ink = new Color(0.01f, 0.035f, 0.06f, 1f);        // azul marino del casco
-    public static readonly Color Glass = new Color(0.02f, 0.075f, 0.115f, 0.86f);  // cristal de los paneles
+    public static readonly Color Ink = new Color(0.006f, 0.02f, 0.06f, 1f);        // azul marino del casco
+    public static readonly Color Glass = new Color(0.012f, 0.05f, 0.13f, 0.86f);   // cristal de los paneles
     public static readonly Color Orange = new Color32(255, 122, 47, 255);          // acción principal (cuerpo del pez)
     public static readonly Color OrangeDark = new Color32(206, 74, 22, 255);
-    public static readonly Color Blue = new Color32(72, 190, 228, 255);            // holograma
-    public static readonly Color BlueDark = new Color32(22, 74, 104, 255);         // holograma apagado (VOLVER, SALIR)
-    public static readonly Color Accent = new Color(0.41f, 0.87f, 0.9f, 1f);       // cian del HUD
-    public static readonly Color Cream = new Color32(228, 244, 246, 255);          // texto claro
-    public static readonly Color TextDim = new Color32(150, 186, 196, 255);        // texto secundario
+    public static readonly Color Blue = new Color32(64, 156, 255, 255);            // holograma
+    public static readonly Color BlueDark = new Color32(18, 52, 118, 255);         // holograma apagado (VOLVER, SALIR)
+    public static readonly Color Accent = new Color(0.25f, 0.72f, 1f, 1f);         // azul eléctrico del casco
+    public static readonly Color AccentGlow = new Color(0.72f, 0.92f, 1f, 1f);     // destello (casi blanco azulado)
+    public static readonly Color AccentDeep = new Color(0.13f, 0.38f, 1f, 1f);     // azul profundo (halos, degradados)
+    public static readonly Color Cream = new Color32(232, 244, 255, 255);          // texto claro
+    public static readonly Color TextDim = new Color32(150, 178, 214, 255);        // texto secundario
     public static readonly Color Paper = new Color32(255, 246, 225, 255);          // papel de las viñetas
     public static readonly Color Yellow = new Color32(255, 200, 64, 255);          // estrellas y novedades
-    public static readonly Color Green = new Color32(84, 226, 156, 255);
+    public static readonly Color Green = new Color32(70, 235, 190, 255);
     public static readonly Color GreenDark = new Color32(28, 112, 84, 255);
     public static readonly Color Red = new Color(1f, 0.2f, 0.14f, 1f);             // peligro y jefes
     public static readonly Color Purple = new Color32(150, 120, 240, 255);
-    public static readonly Color Locked = new Color32(84, 104, 122, 255);
+    public static readonly Color Locked = new Color32(78, 94, 124, 255);
     public static readonly Color Dark = new Color(0.01f, 0.035f, 0.06f, 0.92f);
 
     // Colores para <color=...> en textos
     public const string HexOrange = "#FF8A4C";
-    public const string HexAccent = "#69DEE6";
+    public const string HexAccent = "#40B8FF";
     public const string HexYellow = "#FFC840";
 
     // ---------- Fuentes ----------

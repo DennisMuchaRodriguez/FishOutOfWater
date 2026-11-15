@@ -13,9 +13,11 @@ using System.Collections.Generic;
 //  3. Mapa:     los niveles del LevelCatalog, que se desbloquean de uno en uno.
 //               Clic en un nivel = ficha con estrellas, detalles, JUGAR, VER CÓMIC e IR AL TALLER.
 //               Calavera = nivel de jefe; llave inglesa = después se visita el Taller.
+//               Botón ARCHIVO DE AVES (arriba a la derecha) = pantalla 5.
 //  4. Controles.
+//  5. Archivo de aves (MainMenu.Archive.cs): fichas de las especies vistas, con bocetos holográficos.
 // Atajos de prueba en el mapa: F9 desbloquea todos los niveles.
-public class MainMenu : MonoBehaviour
+public partial class MainMenu : MonoBehaviour
 {
     [Header("Protagonista flotando (opcional)")]
     [Tooltip("Modelo que flota junto al título (por ejemplo PESCAO.fbx)")]
@@ -99,7 +101,8 @@ public class MainMenu : MonoBehaviour
         modesScreen = BuildModesScreen();
         mapScreen = BuildMapScreen();
         controlsScreen = BuildControlsScreen();
-        foreach (CanvasGroup g in new[] { titleScreen, modesScreen, mapScreen, controlsScreen }) Hide(g);
+        archiveScreen = BuildArchiveScreen();
+        foreach (CanvasGroup g in new[] { titleScreen, modesScreen, mapScreen, controlsScreen, archiveScreen }) Hide(g);
 
         fade = MenuUI.Panel("Fundido", root, MenuUI.Ink);
         fade.raycastTarget = false;
@@ -394,6 +397,9 @@ public class MainMenu : MonoBehaviour
         totalStarsText = MenuUI.Text("TotalEstrellas", s, "", 32f, new Vector2(1f, 1f), new Vector2(-90f, -50f), new Vector2(150f, 50f), MenuUI.Cream, true);
         totalStarsText.alignment = TextAlignmentOptions.MidlineLeft;
 
+        // Archivo de aves (con aviso de especies nuevas)
+        BuildArchiveButton(s);
+
         // El lago visto como en el sonar del traje: cristal, rejilla hexagonal y curvas de nivel
         RectTransform map = MenuUI.HoloPanel("Lago", s, new Vector2(0.5f, 0.5f), new Vector2(-210f, -24f), new Vector2(820f, 548f),
                                              MenuUI.Glass, MenuUI.WithAlpha(MenuUI.Accent, 0.9f), MenuUI.WithAlpha(MenuUI.Accent, 0.16f),
@@ -485,6 +491,7 @@ public class MainMenu : MonoBehaviour
 
         if (selectedLevel < 0 || selectedLevel >= count) selectedLevel = currentLevel;
         SelectLevel(selectedLevel);
+        RefreshArchiveBadge();
     }
 
     void BuildNode(int index, bool unlocked, bool isCurrent)
@@ -722,7 +729,14 @@ public class MainMenu : MonoBehaviour
     void Go(CanvasGroup target)
     {
         if (busy || target == current) return;
-        if (target == mapScreen) { selectedLevel = -1; mapScreen.gameObject.SetActive(true); RebuildMap(); }
+        if (target == mapScreen)
+        {
+            // Al volver del Archivo se conserva el nivel elegido
+            if (current != archiveScreen) selectedLevel = -1;
+            mapScreen.gameObject.SetActive(true);
+            RebuildMap();
+        }
+        if (target == archiveScreen) { archiveScreen.gameObject.SetActive(true); RefreshArchive(); }
         if (target == modesScreen) target = RebuildModes();
         StartCoroutine(SwitchTo(target));
     }
@@ -777,7 +791,7 @@ public class MainMenu : MonoBehaviour
         g.blocksRaycasts = true;
         heroTarget = g == titleScreen ? 1f : 0f;
         Button first = g.GetComponentInChildren<Button>();
-        if (first != null && g != mapScreen) first.Select();
+        if (first != null && g != mapScreen && g != archiveScreen) first.Select();
     }
 
     static void Hide(CanvasGroup g)
@@ -853,12 +867,15 @@ public class MainMenu : MonoBehaviour
                 RebuildMap();
                 ShowMapMessage("Todos los niveles desbloqueados (prueba)");
             }
+            UpdateArchiveBadge(time);
         }
+        if (current == archiveScreen) UpdateArchive(dt, time);
 
         if (busy || ComicViewer.IsShowing || Time.frameCount == ComicViewer.ClosedFrame) return;
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (current == mapScreen) Go(modesScreen);
+            if (current == archiveScreen) Go(mapScreen);
+            else if (current == mapScreen) Go(modesScreen);
             else if (current == modesScreen || current == controlsScreen) Go(titleScreen);
         }
     }

@@ -20,7 +20,7 @@ public class HelmetVisorHUD : MonoBehaviour
     public RectTransform hudPanel;
 
     [Header("Colores (mismo estilo que el HUD)")]
-    public Color accent = new Color(0.41f, 0.87f, 0.9f, 1f);
+    public Color accent = new Color(0.25f, 0.72f, 1f, 1f);
     public Color frameColor = new Color(0.01f, 0.035f, 0.06f, 1f);
     public Color dangerColor = new Color(1f, 0.15f, 0.1f, 1f);
     public Color waterTint = new Color(0.05f, 0.45f, 0.55f, 1f);
@@ -62,6 +62,10 @@ public class HelmetVisorHUD : MonoBehaviour
     RectTransform canvasRect;
     RectTransform frameRoot, swayRoot, overlayRoot;
     RawImage frameImage, scanlines, reflection, glassTint, bootLine;
+    // Destellos del borde: línea brillante que respira y dos chispas que recorren el borde del visor
+    RawImage rimSheen;
+    readonly RawImage[] glints = new RawImage[2];
+    static readonly Color GlintColor = new Color(0.72f, 0.92f, 1f, 1f);
     CanvasGroup hudGroup;
     RectTransform reticleRoot;
     RawImage reticleRing, reticleDot;
@@ -216,6 +220,12 @@ public class HelmetVisorHUD : MonoBehaviour
         dropletRoot = CreateRect("Droplets", frameRoot, true);
 
         frameImage = CreateRaw("HelmetFrame", frameRoot, MakeFrameTexture(), Color.white, true);
+        rimSheen = CreateRaw("RimSheen", frameRoot, MakeRimTexture(), new Color(GlintColor.r, GlintColor.g, GlintColor.b, 0.35f), true);
+        for (int i = 0; i < glints.Length; i++)
+        {
+            glints[i] = CreateRaw("Destello" + i, frameRoot, FXFactory.Streak, GlintColor, false);
+            glints[i].rectTransform.sizeDelta = new Vector2(7f, 110f);
+        }
     }
 
     void BuildSwayRoot()
@@ -442,6 +452,7 @@ public class HelmetVisorHUD : MonoBehaviour
         UpdateBoot(dt);
         UpdateSway(dt, firstPerson);
         UpdateGlass(dt);
+        UpdateShine();
         UpdateDamage(dt);
         UpdateReticle(dt);
         UpdateTexts();
@@ -495,6 +506,86 @@ public class HelmetVisorHUD : MonoBehaviour
         if (player.IsJetting) scale = 1.012f;
         if (player.IsDashing || player.IsTurbo) scale = 1.025f;
         swayRoot.localScale = Vector3.Lerp(swayRoot.localScale, Vector3.one * scale, 1f - Mathf.Exp(-8f * dt));
+    }
+
+    // El borde respira y, cada pocos segundos, una chispa recorre el borde de arriba y otra el de abajo
+    void UpdateShine()
+    {
+        if (rimSheen == null || canvasRect == null) return;
+        float time = Time.unscaledTime;
+        float breathe = 0.28f + 0.14f * Mathf.Sin(time * 2.1f) + 0.06f * Mathf.Sin(time * 5.3f);
+        rimSheen.color = new Color(GlintColor.r, GlintColor.g, GlintColor.b, Mathf.Clamp01(breathe));
+
+        Rect r = canvasRect.rect;
+        float hw = r.width * 0.5f, hh = r.height * 0.5f;
+        const float cycle = 4.6f, travel = 1.15f;
+        for (int i = 0; i < glints.Length; i++)
+        {
+            float local = Mathf.Repeat(time + i * cycle * 0.5f, cycle);
+            float k = local / travel;
+            RawImage g = glints[i];
+            if (k >= 1f)
+            {
+                if (g.gameObject.activeSelf) g.gameObject.SetActive(false);
+                continue;
+            }
+            if (!g.gameObject.activeSelf) g.gameObject.SetActive(true);
+            // La de arriba va de izquierda a derecha; la de abajo al revés
+            float u = Mathf.Lerp(-0.9f, 0.9f, Mathf.SmoothStep(0f, 1f, k)) * (i == 0 ? 1f : -1f);
+            float side = i == 0 ? 1f : -1f;
+            Vector2 p = RimPoint(u, side, hw, hh);
+            Vector2 q = RimPoint(u + 0.01f, side, hw, hh);
+            Vector2 tan = (q - p).normalized;
+            RectTransform rt = g.rectTransform;
+            rt.anchoredPosition = p;
+            rt.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(tan.y, tan.x) * Mathf.Rad2Deg - 90f);
+            float a = Mathf.Sin(k * Mathf.PI);
+            g.color = new Color(GlintColor.r, GlintColor.g, GlintColor.b, 0.95f * a);
+            rt.localScale = new Vector3(1f + a * 0.6f, 0.7f + a * 0.6f, 1f);
+        }
+    }
+
+    // Punto del borde del visor (la misma superelipse que el marco), en unidades del canvas. side: +1 arriba, -1 abajo
+    Vector2 RimPoint(float u, float side, float hw, float hh)
+    {
+        float au = Mathf.Clamp01(Mathf.Abs(u) / visorSize);
+        float v = (visorSize - 0.02f) * Mathf.Pow(Mathf.Max(0f, 1f - Mathf.Pow(au, 5f)), 0.25f);
+        float dip = side > 0f ? 0.07f * Mathf.Exp(-(u * u) / (0.22f * 0.22f)) : 0.10f * Mathf.Exp(-(u * u) / (0.16f * 0.16f));
+        v *= 1f - dip;
+        return new Vector2(u * hw, side * v * hh);
+    }
+
+    // Solo la línea del borde del visor (brillante, para el destello)
+    Texture2D MakeRimTexture()
+    {
+        int w = 640, h = 360;
+        Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        Color32[] px = new Color32[w * h];
+        for (int y = 0; y < h; y++)
+        {
+            float v = (y + 0.5f) / h * 2f - 1f;
+            for (int x = 0; x < w; x++)
+            {
+                float u = (x + 0.5f) / w * 2f - 1f;
+                float au = Mathf.Abs(u) / visorSize;
+                float av = Mathf.Abs(v) / (visorSize - 0.02f);
+                float d = Mathf.Pow(Mathf.Pow(au, 5f) + Mathf.Pow(av, 4f), 1f / 5f);
+                float threshold = 1f;
+                if (v > 0f) threshold -= 0.07f * Mathf.Exp(-(u * u) / (0.22f * 0.22f)) * Mathf.Clamp01(v * 1.4f);
+                else threshold -= 0.10f * Mathf.Exp(-(u * u) / (0.16f * 0.16f)) * Mathf.Clamp01(-v * 1.4f);
+                if (v < 0f) threshold -= 0.05f * Mathf.Clamp01(Mathf.Abs(u) - 0.55f) * Mathf.Clamp01(-v);
+                float edge = d - threshold;
+                float line = Mathf.Exp(-(edge * edge) / (0.0035f * 0.0035f));
+                float halo = Mathf.Exp(-((edge + 0.01f) * (edge + 0.01f)) / (0.018f * 0.018f)) * 0.35f;
+                byte a = (byte)Mathf.RoundToInt(255f * Mathf.Clamp01(line + halo));
+                px[y * w + x] = new Color32(255, 255, 255, a);
+            }
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        tex.name = "FX_BordeVisor";
+        return tex;
     }
 
     void UpdateGlass(float dt)

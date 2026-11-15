@@ -2350,8 +2350,8 @@ MonoBehaviour:
   player: {fileID: 405605802}
   shooting: {fileID: 405605805}
   hudPanel: {fileID: 1477706645}
-  accent: {r: 0.41, g: 0.87, b: 0.9, a: 1}
-  frameColor: {r: 0.01, g: 0.035, b: 0.06, a: 1}
+  accent: {r: 0.25, g: 0.72, b: 1, a: 1}
+  frameColor: {r: 0.006, g: 0.02, b: 0.06, a: 1}
   dangerColor: {r: 1, g: 0.15, b: 0.1, a: 1}
   waterTint: {r: 0.05, g: 0.45, b: 0.55, a: 1}
   frameOpacity: 0.92

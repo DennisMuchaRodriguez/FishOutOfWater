@@ -26,6 +26,10 @@ public partial class BirdAI
     float callTimer;
     Vector3 attackDir;
     bool burst;                 // embestida: acelera de golpe
+    bool comboUsed;             // ya encadenó su segundo ataque
+    int volley;                 // serreta: alterna ráfaga y abanico
+    float cannonTimer = 3f;     // pelícano: bolas de agua desde lejos
+    float alertCooldown;        // no avisa a la bandada a cada rato
     bool windup;                // preparando un ataque: aletea nervioso
 
     // Cuánto lo empujan los disparos (0 = nada, blindado)
@@ -63,6 +67,8 @@ public partial class BirdAI
     void TickCombat(float dt)
     {
         if (combatCooldown > 0f) combatCooldown -= dt;
+        if (alertCooldown > 0f) alertCooldown -= dt;
+        if (cannonTimer > 0f) cannonTimer -= dt;
         if (shotTimer > 0f) shotTimer -= dt;
         if (chainDelay > 0f)
         {
@@ -93,6 +99,17 @@ public partial class BirdAI
         // Si nada en la superficie, cada especie sigue atacando a su manera
         Vector3 ppos = player.transform.position + Vector3.up * 0.4f;
         if (player.isInWater && lake.SurfaceY - (player.transform.position.y + 0.5f) > 1f) return ChasePlayer();
+
+        // Pelícano: de lejos te lanza bolas de agua en arco (y de cerca te aplasta)
+        if (combatRole == CombatRole.Aplastador && cannonTimer <= 0f && Vector3.Distance(transform.position, ppos) > 10f)
+        {
+            cannonTimer = Random.Range(2.5f, 3.5f);
+            Vector3 from = transform.position + transform.forward * bodyRadius;
+            Vector3 aim = player.transform.position + player.Velocity * 1f;
+            EnemyProjectile.Fire(EnemyProjectile.Kind.BolaDeAgua, from,
+                EnemyProjectile.ArcVelocity(from, aim, 1f, EnemyProjectile.GravityOf(EnemyProjectile.Kind.BolaDeAgua)), damage * 0.7f, player);
+            Sfx.Play(Sonido.Escupitajo, transform.position, 1f, 0.6f, 10f);
+        }
 
         switch (combatRole)
         {
@@ -175,16 +192,41 @@ public partial class BirdAI
         }
         else
         {
-            // Remonta y vuelve a colocarse
+            // Remonta y vuelve a colocarse. El martín pescador a veces rebota y vuelve a cruzar enseguida
             desiredVelocity = (attackDir * 0.5f + Vector3.up * 0.6f).normalized * patrolSpeed;
-            if (combatTimer > 0.6f)
+            if (combatRole == CombatRole.Rayo && !comboUsed && combatTimer > 0.25f && Random.value < 0.5f)
+            {
+                comboUsed = true;
+                combatPhase = 1;
+                combatTimer = 0.25f;   // aviso más corto
+                return BTStatus.Running;
+            }
+            if (combatTimer > 0.45f)
             {
                 combatPhase = 0;
                 combatTimer = 0f;
-                combatCooldown = combatRole == CombatRole.Rayo ? Random.Range(1.2f, 2f) : Random.Range(1.6f, 2.6f);
+                comboUsed = false;
+                combatCooldown = combatRole == CombatRole.Rayo ? Random.Range(0.8f, 1.4f) : Random.Range(1f, 1.8f);
             }
         }
         return BTStatus.Running;
+    }
+
+    // Avisa a las aves cercanas (que no lleven peces) para que se sumen al ataque
+    public void AlertFlock()
+    {
+        if (alertCooldown > 0f || IsBoss) return;
+        alertCooldown = 4f;
+        int k = 0;
+        foreach (BirdAI b in All)
+        {
+            if (b == this || !b.IsAlive || b.IsBoss || b.arriving || b.carried.Count > 0 || b.IsAggro) continue;
+            if (Vector3.Distance(b.transform.position, transform.position) > 30f) continue;
+            b.SetAggro(5f);
+            b.alertCooldown = 4f;   // no reenvía el aviso: así no se suma todo el lago
+            if (++k >= 3) break;
+        }
+        if (k > 0) Call(1f);
     }
 
     // Charrán: los compañeros cercanos siguen la embestida, uno detrás de otro
@@ -252,11 +294,20 @@ public partial class BirdAI
         else
         {
             desiredVelocity = -attackDir * patrolSpeed * 0.6f + Vector3.up * 2f;
-            if (combatTimer > 0.8f)
+            // A veces encadena una segunda estocada casi sin aviso
+            if (!comboUsed && combatTimer > 0.3f && Random.value < 0.4f)
+            {
+                comboUsed = true;
+                combatPhase = 1;
+                combatTimer = 0.35f;
+                return BTStatus.Running;
+            }
+            if (combatTimer > 0.6f)
             {
                 combatPhase = 0;
                 combatTimer = 0f;
-                combatCooldown = Random.Range(1.2f, 2f);
+                comboUsed = false;
+                combatCooldown = Random.Range(0.8f, 1.4f);
             }
         }
         return BTStatus.Running;
@@ -278,11 +329,24 @@ public partial class BirdAI
 
         if (shotTimer <= 0f)
         {
-            if (shotsLeft <= 0) shotsLeft = 2;
-            FireAtPlayer(EnemyProjectile.Kind.Escupitajo, 26f, damage * 0.8f);
+            if (shotsLeft <= 0)
+            {
+                shotsLeft = 3;
+                volley++;
+            }
+            if (volley % 2 == 0)
+            {
+                // Abanico: tres chorros a la vez
+                for (int i = -1; i <= 1; i++) FireAtPlayer(EnemyProjectile.Kind.Escupitajo, 26f, damage * 0.6f, i * 9f);
+                shotsLeft = 0;
+            }
+            else
+            {
+                FireAtPlayer(EnemyProjectile.Kind.Escupitajo, 28f, damage * 0.8f);
+                shotsLeft--;
+            }
             Sfx.Play(Sonido.Escupitajo, transform.position, 0.85f, CallPitch, 6f);
-            shotsLeft--;
-            shotTimer = shotsLeft > 0 ? 0.2f : Random.Range(1.4f, 2f);
+            shotTimer = shotsLeft > 0 ? 0.18f : Random.Range(1f, 1.4f);
         }
         return BTStatus.Running;
     }
@@ -300,6 +364,22 @@ public partial class BirdAI
         Vector3 goal = ppos + player.Velocity * fall - new Vector3(myVel.x, 0f, myVel.z) * 0.6f * fall + Vector3.up * height + wobble;
         desiredVelocity = (goal - transform.position).normalized * chaseSpeed * 1.1f;
 
+        // Después de tres "regalos" se lanza en picada a picotearte
+        if (combatPhase == 2)
+        {
+            combatTimer += Time.fixedDeltaTime;
+            burst = true;
+            desiredVelocity = attackDir * chaseSpeed * 2.2f;
+            if (attackTimer <= 0f && Vector3.Distance(transform.position, ppos) < attackReach + 0.4f) HitPlayer(1f, 1f, 0.6f);
+            if (combatTimer > 0.7f || Vector3.Dot(transform.position - ppos, attackDir) > 3f)
+            {
+                combatPhase = 0;
+                combatTimer = 0f;
+                shotsLeft = 0;
+            }
+            return BTStatus.Running;
+        }
+
         Vector3 flat = ppos - transform.position;
         float above = -flat.y;
         flat.y = 0f;
@@ -309,7 +389,15 @@ public partial class BirdAI
             EnemyProjectile.Fire(EnemyProjectile.Kind.Caca, transform.position + Vector3.down * 0.5f, v, damage * 0.7f, player);
             Sfx.Play(Sonido.Caca, transform.position, 0.7f, 1f, 5f);
             if (Random.value < 0.35f) Call(0.9f);
-            shotTimer = Random.Range(0.7f, 1.2f);
+            shotTimer = Random.Range(0.5f, 0.9f);
+            shotsLeft++;
+            if (shotsLeft >= 3)
+            {
+                combatPhase = 2;
+                combatTimer = 0f;
+                attackDir = (ppos + player.Velocity * 0.2f - transform.position).normalized;
+                Sfx.Play(Sonido.Embestida, transform.position, 0.9f, CallPitch, 6f);
+            }
         }
         // Si te le acercas mucho, picotazo
         if (attackTimer <= 0f && Vector3.Distance(transform.position, ppos) < attackReach) HitPlayer(0.8f, 0.8f, 1f);
@@ -351,7 +439,11 @@ public partial class BirdAI
             desiredVelocity = (lead - transform.position).normalized * diveSpeed * 1.5f;
             poseTarget = -30f;
             if (attackTimer <= 0f && Vector3.Distance(transform.position, ppos) < attackReach + 0.6f)
-                HitPlayer(1.4f, 1.5f, 1f);
+            {
+                HitPlayer(1.4f, 1f, 1f);
+                // Te atrapa con las garras y te lanza por los aires
+                if (!player.isDead) player.ApplyKnockback(Vector3.up * 17f + attackDir * 6f, 0.8f);
+            }
             bool passed = transform.position.y < ppos.y - 1.5f || transform.position.y < lake.SurfaceY + 0.8f;
             if (passed || combatTimer > 2.2f)
             {
@@ -366,7 +458,7 @@ public partial class BirdAI
             {
                 combatPhase = 0;
                 combatTimer = 0f;
-                combatCooldown = Random.Range(2f, 3f);
+                combatCooldown = Random.Range(1.4f, 2.2f);
             }
         }
         return BTStatus.Running;

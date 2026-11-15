@@ -79,7 +79,7 @@ public class GameDirector : MonoBehaviour
     public event System.Action<string, Color> Toast;
     public event System.Action<bool> Letterbox;
 
-    public static readonly Color Cyan = new Color(0.41f, 0.87f, 0.9f, 1f);
+    public static readonly Color Cyan = new Color(0.25f, 0.72f, 1f, 1f);   // azul eléctrico del casco
     public static readonly Color Danger = new Color(1f, 0.3f, 0.25f, 1f);
 
     readonly List<BirdAI> birds = new List<BirdAI>();
@@ -254,6 +254,8 @@ public class GameDirector : MonoBehaviour
         // Progreso del modo Historia: guarda estrellas y desbloquea el siguiente nivel
         if (victory && GameSession.CurrentMode == GameSession.Mode.Historia && GameSession.LevelIndex >= 0)
             SaveSystem.RecordVictory(GameSession.LevelIndex, Stars);
+        else
+            SaveSystem.Save(); // aves derribadas del Archivo
 
         string title = victory ? "¡LAGO A SALVO!" : "LOS PECES FUERON CAZADOS";
         string sub = victory
@@ -462,6 +464,9 @@ public class GameDirector : MonoBehaviour
         bird.visual = CreateVisual(type.model, go.transform, type.modelScale, type.modelRotation, type.modelOffset,
                                    type.animatorController, type.materialOverride, go.layer);
         bird.ApplyType(type);
+        // Archivo de aves: la primera vez que aparece una especie queda registrada
+        if (SaveSystem.MarkBirdSeen(type.name))
+            Toast?.Invoke("NUEVA AVE EN EL ARCHIVO:  " + type.name.ToUpperInvariant(), Cyan);
         WaterInteractor bw = go.AddComponent<WaterInteractor>();
         bw.size = 1.5f;
         bw.wakeMinSpeed = 4f;
@@ -508,6 +513,7 @@ public class GameDirector : MonoBehaviour
     void OnBirdDied(BirdAI bird)
     {
         BirdsKilled++;
+        if (bird != null && bird.Type != null) SaveSystem.AddBirdKill(bird.Type.name);
         int left = AliveBirds();
         Toast?.Invoke(left > 0 ? "DEPREDADOR ABATIDO  //  quedan " + left : "DEPREDADOR ABATIDO", Cyan);
     }

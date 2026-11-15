@@ -230,7 +230,7 @@ public class WorkshopScene : MonoBehaviour
     // Rayos de luz que bajan desde la entrada de la cueva
     void BuildRays(Transform env)
     {
-        Material rayMat = WorkshopKit.Glow(fxMaterialTemplate, WorkshopKit.BeamTexture(), new Color(0.6f, 0.95f, 1f, 0.16f));
+        Material rayMat = WorkshopKit.Glow(fxMaterialTemplate, WorkshopKit.BeamTexture(), new Color(0.55f, 0.85f, 1f, 0.16f));
         Mesh beam = WorkshopKit.BeamMesh();
         for (int i = 0; i < 4; i++)
         {
@@ -317,7 +317,7 @@ public class WorkshopScene : MonoBehaviour
     void BuildSuit(Transform env)
     {
         Material metal = WorkshopKit.Lit(new Color(0.25f, 0.3f, 0.34f), null, 0.6f, "Taller_Soporte");
-        Material holo = WorkshopKit.Glow(fxMaterialTemplate, FXFactory.White, new Color(0.41f, 0.87f, 0.9f, 0.5f));
+        Material holo = WorkshopKit.Glow(fxMaterialTemplate, FXFactory.White, new Color(0.25f, 0.72f, 1f, 0.5f));
 
         suitRoot = new GameObject("Soporte").transform;
         suitRoot.SetParent(env, false);
@@ -556,9 +556,7 @@ public class WorkshopScene : MonoBehaviour
         FitText(MenuUI.Text("Descripcion", card, desc, 15f, top, new Vector2(0f, -194f), new Vector2(262f, 46f), MenuUI.TextDim));
         string what = def != null ? def.LevelText(offer.level) : "";
         if (offer.level >= 2 && def != null) what = "Nivel II: " + what;
-        FitText(MenuUI.Text("Efecto", card, "<color=" + MenuUI.HexAccent + ">+</color> " + what, 15f, top, new Vector2(0f, -246f), new Vector2(262f, 54f), MenuUI.Cream));
-        if (def != null && !string.IsNullOrEmpty(def.suitPart))
-            FitText(MenuUI.Text("Pieza", card, "En el traje: " + def.suitPart, 12f, top, new Vector2(0f, -290f), new Vector2(262f, 18f), MenuUI.WithAlpha(MenuUI.TextDim, 0.8f)), 10f);
+        FitText(MenuUI.Text("Efecto", card, "<color=" + MenuUI.HexAccent + ">+</color> " + what, 15f, top, new Vector2(0f, -256f), new Vector2(262f, 74f), MenuUI.Cream));
 
         WorkshopCard wc = card.gameObject.AddComponent<WorkshopCard>();
         wc.index = index;

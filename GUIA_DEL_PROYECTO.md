@@ -189,6 +189,19 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
    - Solo puedes jugar los niveles **desbloqueados**: al principio solo el 1, y cada victoria desbloquea el siguiente (de uno en uno).
    - Cada nivel muestra su número, sus estrellas, un candado si está bloqueado y las etiquetas **JEFE** y **TALLER**.
    - El nivel que te toca jugar late y tiene un anillo. Al hacer clic en uno, la ficha de la derecha muestra nombre, descripción, estrellas, peces, oleadas y aves, con los botones **JUGAR** y **VER CÓMIC** (si tiene cómic antes).
+   - **ARCHIVO DE AVES** (arriba a la derecha): abre el Archivo. Un aviso amarillo muestra cuántas especies nuevas no has abierto.
+   - **Archivo de aves** (`MainMenu.Archive.cs` + `BirdArchive.cs`): una ficha por cada especie que aparece en el catálogo de niveles, en el orden en que te las encuentras.
+     - Una especie se **registra sola la primera vez que aparece en combate** (aviso "NUEVA AVE EN EL ARCHIVO" en el juego).
+     - Las no vistas salen como **???** con el nivel donde aparecen y el boceto apagado.
+     - Cada ficha tiene:
+       - El **boceto holográfico** del ave, que se dibuja con una línea de escaneo.
+       - Barras de **vida, velocidad, daño y vista**, sacadas del archivo Ave.
+       - El **estilo de combate** y etiquetas (BLINDADA, A DISTANCIA, BUCEA, EN GRUPO…).
+       - Cómo caza, cómo pelea y un consejo.
+       - En los jefes, sus **ataques fuertes**.
+       - Cuántas has derribado.
+     - Flechas arriba/abajo para recorrer la lista; Esc vuelve al mapa.
+     - Los textos de cada especie están en `Assets/Scritps/Data/BirdArchive.cs` (según la habilidad o el tipo de jefe del Ave).
 4. **Cómic de antes** (`Comic Before`): solo la primera vez que juegas ese nivel, ya sea desde el mapa o con SIGUIENTE NIVEL. Después se puede ver con "VER CÓMIC".
 5. **El lago** (SampleScene) con los datos del nivel elegido.
 6. **Resultado**:
@@ -206,9 +219,14 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 - `unlockedLevels`: cuántos niveles están desbloqueados.
 - `stars`: la mejor cantidad de estrellas de cada nivel (nunca baja si repites y sacas menos).
 - `comicsSeen`: los cómics que ya viste (para no repetirlos solos).
+- `upgrades` y `workshopsUsed`: mejoras del traje instaladas y visitas al Taller ya usadas.
+- `birdsSeen`: especies de ave que ya viste en combate (por su nombre, el campo `Name` del Ave).
+- `birdsViewed`: especies cuya ficha del Archivo ya abriste (las demás salen como NUEVO).
+- `birdKills`: aves derribadas por especie, como `"Gaviota:12"`. Se escribe al terminar cada partida.
 
 **Atajos para probar:**
 - **F9** en el mapa: desbloquea todos los niveles.
+- **F9** en el Archivo de aves: registra todas las especies (para ver todas las fichas).
 - **BORRAR PROGRESO** (abajo a la izquierda del mapa): pulsa dos veces para confirmar. Deja todo como nuevo.
 - Para probar un nivel sin pasar por el menú: ponlo en **Test Level** del GameDirector y dale Play en SampleScene (no guarda progreso si no está en el catálogo).
 
@@ -632,12 +650,16 @@ Las grietas y el filtro rojo de daño siguen saliendo de aquí.
 Construye el marco, el cristal, la retícula y los textos por código. **Durante la cinemática se apaga entero.**
 **El casco solo se ve en primera persona**: marco, munición (`VisorAmmoHUD`), propulsor y traje (`VisorStatusHUD`), textos y sonar.
 En tercera persona queda solo la retícula para apuntar. Si una gaviota te acierta en primera persona, el cristal se ensucia unos segundos.
+**Paleta azul eléctrico con destellos:**
+- El borde del visor respira.
+- Cada 4.6 s dos destellos recorren el marco: uno por arriba de izquierda a derecha y otro por abajo de derecha a izquierda.
+- En las celdas de munición y en las barras de propulsor y traje pasa un brillo casi blanco cada pocos segundos (no pasa si la barra está en rojo).
 
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
 | **Player** / **Shooting** | — | PlayerBase | De dónde lee el estado |
 | **Hud Panel** | — | panel del HUD | Panel que se mueve con la inercia del casco |
-| **Accent / Frame Color / Danger Color / Water Tint** | cian / azul oscuro / rojo / verde agua | igual | Colores del casco |
+| **Accent / Frame Color / Danger Color / Water Tint** | azul eléctrico (0.25, 0.72, 1) / azul marino casi negro / rojo / verde agua | igual | Colores del casco |
 | **Frame Opacity** | 0.92 | 0.92 | Opacidad del marco |
 | **Rim Glow** | 0.65 | 0.65 | Brillo del borde del visor |
 | **Visor Size** | 0.97 | 0.97 | Qué tanto invade el marco (más alto = casco más cerrado) |
@@ -671,7 +693,7 @@ Muestra los objetivos (oleada, depredadores, peces a salvo), los mensajes, las f
 | **Low Ammo For Arrow** | 8 | Con estas balas o menos, muestra la flecha a la cápsula más cercana |
 
 ### MainMenu (escena MainMenu)
-Construye todo por código: el fondo del lago (degradado, rayos de luz, algas, rocas y burbujas), el pez flotando y las pantallas Título, Modos, Mapa y Controles. Los niveles los lee de `Resources/LevelCatalog`.
+Construye todo por código: el fondo del lago (degradado, rayos de luz, algas, rocas y burbujas), el pez flotando y las pantallas Título, Modos, Mapa, Controles y Archivo de aves. Los niveles los lee de `Resources/LevelCatalog`; los bocetos del Archivo, de `Resources/Archivo`.
 
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
@@ -681,7 +703,7 @@ Construye todo por código: el fondo del lago (degradado, rayos de luz, algas, r
 | **Title Line 1** / **Title Line 2** | FISH OUT / OF WATER | igual | Las dos líneas del título |
 | **Subtitle** | UN PEZ. UN TRAJE. NADA DE AGUA. | igual | Texto bajo el título |
 
-Estilo: el mismo del visor del casco (holograma cian con detalles naranja). Fuentes **Oxanium** (títulos) y **Rajdhani** (textos), en `Resources/Fonts` (licencia OFL en `LICENCIAS.txt`). Todo eso está en `MenuUI`, que también usan la pausa, el resultado, el Taller y el visor de cómics.
+Estilo: el mismo del visor del casco (holograma azul eléctrico con destellos casi blancos y detalles naranja). Fuentes **Oxanium** (títulos) y **Rajdhani** (textos), en `Resources/Fonts` (licencia OFL en `LICENCIAS.txt`). Todo eso está en `MenuUI`, que también usan la pausa, el resultado, el Taller y el visor de cómics.
 
 ### ComicViewer (se crea solo)
 No tiene campos: lo abren el mapa (cómic de antes) y el resultado (cómic de después). Los cómics se editan en `Data/Comics` (ver [Campos de un Cómic](#archivos-de-datos-niveles-aves-peces-y-cómics)).
@@ -719,18 +741,18 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
 | Stalk Altitude | 9 | Altura al acechar un pez |
 | Min Altitude Above Ground | 3 | Altura mínima sobre el terreno |
 | Hunt Range | 75 | Distancia máxima a la que elige presa |
-| Stalk Time | (1.5, 3) | Segundos acechando antes de lanzarse |
+| Stalk Time | (1, 2) | Segundos acechando antes de lanzarse |
 | Max Dive Distance | 22 | Distancia máxima para lanzarse en picada |
 | Catch Radius / Catch Depth | 2.4 / 2 | Alcance y profundidad máxima para atrapar |
 | Carry Time | **por tipo** (3.5) | Segundos hasta comerse el pez (tiempo para rescatarlo) |
-| Dive Cooldown | (2.5, 4.5) | Espera entre picadas |
+| Dive Cooldown | (1.8, 3.2) | Espera entre picadas |
 | Detect Range | **por tipo** (26) × 1.25 | Distancia a la que te ve |
 | Lose Range | 80 | Si te alejas más, pierde el interés |
 | Aggro Memory | 10 | Segundos que te persigue después de que le dispares |
 | Attack Reach | 2.6 | Distancia para embestirte |
 | Damage | **por tipo** (15) | Armadura que te quita |
 | Knockback Force / Knockback Up | 16 / 6 | Empujón horizontal y vertical |
-| Stun Duration | 1.6 | Segundos quieto tras embestirte (las embestidas rápidas usan solo una parte) |
+| Stun Duration | 1.2 | Segundos quieto tras embestirte (las embestidas rápidas usan solo una parte) |
 | Player Hidden Depth | 1.5 | Más hondo que esto bajo el agua, no te ve |
 | Visual / Procedural Flap / Wing y Talon Bone Names / Catch Point Offset | **por tipo** | Modelo, aleteo y garras |
 | Flap Speed / Flap Angle | 7 / 28 | Aleteo por código |
@@ -751,6 +773,23 @@ Además de su forma de pescar, cada especie te ataca a su manera:
 | Águila pescadora | **Picada** desde muy alto | Poco |
 
 Los proyectiles de las aves (`EnemyProjectile`) los absorbe el Escudo de burbuja como cualquier golpe.
+
+**Más agresivas:**
+- Cuando un ave empieza a pelear contigo o recibe un disparo, **avisa a la bandada**: hasta 3 aves a menos de 30 m se suman al ataque (cada una avisa como mucho cada 4 s).
+- Cada especie tiene además un segundo ataque:
+  - Martín pescador: a veces rebota y repite el rayo.
+  - Garza: a veces encadena una segunda estocada.
+  - Serreta: alterna ráfagas de 3 con abanicos de 3 chorros.
+  - Gaviota: después de 3 bombas hace una pasada rasante.
+  - Águila pescadora: si te alcanza, te lanza por los aires.
+  - Pelícano: si estás lejos, te lanza bolas de agua en arco.
+
+#### Efecto al dispararles (`Assets/Scritps/FX/HitFX.cs`)
+Se crea solo y no tiene campos. Cada impacto en un ave hace:
+- **Destello** del cuerpo del ave (blanco; azul si es blindada; naranja si es un jefe vulnerable) y un pequeño **bamboleo**.
+- **Plumas** del color de la especie, un **aro** y un **fogonazo** en el punto del impacto.
+- **Número de daño** que sube y se desvanece (los impactos seguidos se suman). En un jefe vulnerable sale con "x2".
+- Al primer impacto en un ave blindada sale "BLINDADA". Al morir, una explosión de plumas.
 
 #### Jefes (`BirdAI.Boss.cs`)
 Los jefes son más grandes y **no cazan como las demás aves**: te rodean a pocos metros con ataques rápidos y cada pocos segundos
@@ -776,6 +815,14 @@ unos segundos (cualquier ave los atrapa fácil) y los **lanzados** pueden caer e
   - Propulsor, dash y turbo.
   - Ambiente del lago y bajo el agua. Bajo el agua todo se oye apagado (filtro en el AudioListener).
 - El volumen general se guarda en PlayerPrefs (`Volumen`, `Sfx.Volume`).
+
+### Archivo de aves: bocetos (`Herramientas/Archivo`)
+Los dibujos del Archivo (`Assets/Resources/Archivo/<archivo del Ave>.png`, 512×512 con transparencia) son bocetos holográficos hechos a partir de los modelos de las aves, en dos pasos:
+1. `render_aves.py` (Blender como módulo `bpy`, Cycles en CPU): renderiza cada modelo de `Assets/Models/Aves` de 3/4 en dos pasadas (luz y normales).
+   `python render_aves.py <carpeta_de_salida>`
+2. `bocetos.py` (numpy + Pillow): convierte esos renders en boceto azul eléctrico (contornos dobles, sombreado a rayas, círculo de construcción, brillo y líneas de escaneo) y escribe los `.png` con su `.meta`.
+   `python bocetos.py <carpeta_de_los_renders>`
+**Para usar un dibujo propio**, reemplaza el `.png` con el mismo nombre que el archivo del Ave (por ejemplo `Ave_Gaviota.png`). Si un Ave no tiene dibujo, su ficha sale sin boceto.
 
 ### Otros
 - **Damageable** (cada pájaro): `Max Health` = Health del tipo × multiplicador de la oleada. `Destroy On Death` = ✘ (la muerte la maneja BirdAI).

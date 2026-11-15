@@ -23,14 +23,14 @@ public class UpgradeDefinition : ScriptableObject
     [TextArea(1, 3)] public string levelOne;
     [Tooltip("Qué cambia el nivel II (vacío si no tiene)")]
     [TextArea(1, 3)] public string levelTwo;
-    [Tooltip("Qué pieza nueva se ve en el traje")]
+    [Tooltip("Solo informativo: el traje ya no cambia de aspecto con las mejoras")]
     public string suitPart;
 
     [Header("Aspecto")]
     [Tooltip("Dibujo del plano (se genera por código)")]
     public UpgradeIcon icon;
     [Tooltip("Color del holograma")]
-    public Color accent = new Color(0.41f, 0.87f, 0.9f, 1f);
+    public Color accent = new Color(0.3f, 0.78f, 1f, 1f);
     [Tooltip("Solo para el modo cooperativo (todavía no se usa)")]
     public bool coopOnly;
 
@@ -61,7 +61,7 @@ public class UpgradeDefinition : ScriptableObject
         {
             case UpgradeCategory.PrimaryWeapon: return new Color(1f, 0.55f, 0.2f, 1f);
             case UpgradeCategory.SecondaryWeapon: return new Color(1f, 0.36f, 0.26f, 1f);
-            case UpgradeCategory.Mobility: return new Color(0.41f, 0.87f, 0.9f, 1f);
+            case UpgradeCategory.Mobility: return new Color(0.3f, 0.78f, 1f, 1f);
             case UpgradeCategory.Defense: return new Color(0.42f, 0.92f, 0.55f, 1f);
             default: return new Color(1f, 0.82f, 0.3f, 1f);
         }
