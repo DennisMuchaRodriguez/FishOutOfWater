@@ -283,6 +283,27 @@
    "png": "786027503c4f47d686f740ec4fc47c7f",
    "mat": "4f4310c8ae0b4513935a97c7a3b514cc",
    "folder_meta": "9d8292289cd642e69498fa5118d65ba0"
+  },
+  "Sauce": {
+   "folder": "Assets/Models/Entorno/Sauce",
+   "fbx": "54191a6b5507431b9d121df33229cae6",
+   "png": "e2126acff360456087292b9cc121b5ff",
+   "mat": "ae1f84c8eaff4bee81d75a3e3a82b9e6",
+   "folder_meta": "c59dc94c54ca4abeafe3a011a2f6a856"
+  },
+  "Abedul": {
+   "folder": "Assets/Models/Entorno/Abedul",
+   "fbx": "e531b81c48ee48549c6b4770972c5b54",
+   "png": "353f302b16ab4520854e7981692c4057",
+   "mat": "350f41525a684f8ba44e00687621be20",
+   "folder_meta": "86700701b4ef49338cec9b4d7ed455ec"
+  },
+  "Helecho": {
+   "folder": "Assets/Models/Entorno/Helecho",
+   "fbx": "7d8ee29043734f2e99921fb2364bd58f",
+   "png": "f4df752d1bc343feb4ee4c87f1cb4fb3",
+   "mat": "894a67815b584126838cfb142a66e593",
+   "folder_meta": "7886854ab3644e9793eab8d0fb0f64ad"
   }
  },
  "scripts": {},

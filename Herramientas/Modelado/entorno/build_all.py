@@ -7,7 +7,8 @@ Necesita Python con el módulo bpy (o Blender: blender -b --python <script>)."""
 import os, sys, subprocess, time
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
-TODOS = ['Pino_A', 'Pino_B', 'Abeto', 'Arbol_Hoja', 'Arbusto', 'Hierba', 'Flores', 'Juncos', 'Totora', 'Nenufar',
+TODOS = ['Pino_A', 'Pino_B', 'Abeto', 'Arbol_Hoja', 'Abedul', 'Sauce', 'Arbusto', 'Helecho', 'Hierba', 'Flores',
+         'Juncos', 'Totora', 'Nenufar',
          'Roca_A', 'Piedras_Fondo', 'Tronco_Hundido', 'Alga_A', 'Alga_B', 'Alga_Brillante', 'Lata', 'Bateria',
          'Rueda_Bici']
 

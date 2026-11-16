@@ -62,7 +62,8 @@ Datos del juego (fuera de las escenas):
 - `Assets/Data/Niveles`: los 20 niveles (Nivel_01 a Nivel_20).
 - `Assets/Data/Aves`: las 8 aves (Gaviota, Martín pescador, Charrán, Garza, Cormorán, Serreta, Pelícano, Águila pescadora) y los 4 jefes (Garza Gris, Pelícano Saco, Cormorán Rey, Reina Águila).
 - `Assets/Data/Mejoras` y `Assets/Resources/TallerPlan`: las mejoras del traje y qué ofrece el Taller en cada visita.
-- `Assets/Resources/Decoracion/Decoracion_Lago`: qué decoración se reparte en el lago (algas, piedras, troncos, chatarra).
+- `Assets/Resources/Decoracion/Decoracion_Lago`: qué decoración se reparte alrededor y dentro del lago (bosque, orilla, plantas acuáticas, algas, piedras, chatarra). Ver [Vegetación y ambiente del lago](#vegetación-y-ambiente-del-lago).
+- `Assets/Resources/Ambiente/Cielo_Lago` y `Assets/Ambiente/CieloEstilizado.shader`: el cielo del lago.
 - `Assets/Resources/Sonidos`: los sonidos (ver [Sonido](#sonido-assetsscritpsaudio)).
 - `Assets/Data/Peces`: Pez_Naranja, Pez_Dorado y Pez_Rosa.
 - `Assets/Data/Comics`: los cómics de la historia (viñetas en blanco por ahora).
@@ -858,6 +859,53 @@ Los dibujos del Archivo (`Assets/Resources/Archivo/<archivo del Ave>.png`, 512×
 2. `bocetos.py` (numpy + Pillow): convierte esos renders en boceto azul eléctrico (contornos dobles, sombreado a rayas, círculo de construcción, brillo y líneas de escaneo) y escribe los `.png` con su `.meta`.
    `python bocetos.py <carpeta_de_los_renders>`
 **Para usar un dibujo propio**, reemplaza el `.png` con el mismo nombre que el archivo del Ave (por ejemplo `Ave_Gaviota.png`). Si un Ave no tiene dibujo, su ficha sale sin boceto.
+
+### Vegetación y ambiente del lago
+Todo se agrega solo al darle Play en la escena del lago (`LakeDecorator` y `LakeAmbience`), sin tocar la escena.
+
+**Vegetación por zonas** (`Decoracion_Lago`). Sigue cómo crecen las plantas en un lago de verdad: del agua hacia afuera,
+plantas sumergidas → hojas flotantes → plantas emergentes en el agua baja → franja leñosa de la orilla → pradera → bosque.
+
+| Zona | Distancia a la orilla | Qué hay |
+|---|---|---|
+| Fondo del lago | dentro del agua | Algas (altas, tupidas y brillantes), piedras, troncos y chatarra |
+| Superficie | 2–25 m hacia dentro | Nenúfares en grupos (nunca en el centro, que queda libre para jugar) |
+| Agua baja (hasta 1,4 m de profundidad) | 0–12 m hacia dentro | Juncos y totoras |
+| Orilla | −3 a 8 m | Hierba alta y juncos |
+| Pradera | 2–60 m | Sauces llorones en los primeros metros, hierba, flores y arbustos sueltos |
+| Borde del bosque | 15–120 m | Abedules (tronco blanco, copa verde amarilla), árboles de hoja ancha, arbustos y helechos |
+| Bosque | 45–250 m | Pinos, pinos esbeltos y abetos en grupos, con helechos al pie |
+
+- Los árboles tienen colisión en el tronco (el jugador choca y las aves los esquivan). Las plantas chicas no tienen colisión ni proyectan sombra, y desaparecen de lejos (`Cull Screen Size`).
+- Junto a la orilla nada alto pasa de 12 m sobre el agua (espacio para las aves). El centro del lago y la salida del jugador quedan libres.
+- Hierba, flores, juncos, totoras, helechos y árboles se mecen con el viento. Los nenúfares flotan y giran despacio.
+- **Para cambiar cuánto hay de cada cosa**, edita la entrada en `Decoracion_Lago` (`Count`, distancias, escala...). Cambia `Seed` para otro reparto.
+- Si alguna vez generaste la decoración en el editor y la guardaste en la escena, presiona **Generar ahora** en `LakeDecorator` (o marca `Regenerate On Play`) para que aparezcan las plantas nuevas.
+
+**Modelos** (`Assets/Models/Entorno`, mismo estilo de plastilina que el pez y las aves; se generan con
+`Herramientas/Modelado/entorno/build_all.py`): Pino_A, Pino_B, Abeto, Abedul, Arbol_Hoja, Sauce, Arbusto, Helecho, Hierba,
+Flores, Juncos, Totora y Nenufar (más los del fondo). Cada uno es un script en esa carpeta; se cambia y se vuelve a ejecutar.
+
+**Cielo, niebla, luz y viento** (`LakeAmbience`, se crea solo como "AmbienteLago"):
+- **Cielo estilizado** (`Cielo_Lago`): degradado azul, sol con halo cálido y nubes pintadas (lado iluminado y sombra en bloques) que se mueven con el viento. Todos sus colores y la cantidad de nubes se ajustan en el material.
+- **Niebla de distancia** del color del horizonte (exponencial al cuadrado, densidad 0.0026): de cerca no se nota; a 150 m un 14 % y lo muy lejano se funde con el cielo. Da profundidad sin tapar la pelea.
+- **Luz ambiente** en degradado (cielo / horizonte / suelo) y un tono cálido de media mañana en el sol (no cambia su intensidad ni dirección).
+- **Viento con ráfagas**: cambia la fuerza del vaivén de las plantas, la velocidad de las nubes y la cantidad de hojas que caen. Su dirección gira un poco con el tiempo.
+- **Para volver al cielo anterior**: agrega `LakeAmbience` a mano a la escena y desmarca `Use Stylized Sky` (lo mismo con la niebla, la luz o el sol).
+
+| Campo de LakeAmbience | Defecto | Qué hace |
+|---|---|---|
+| Use Stylized Sky / Sky Material | ✔ / vacío (= Cielo_Lago) | Cielo del juego |
+| Fog / Fog From Sky / Fog Color / Fog Density | ✔ / ✔ / celeste / 0.0026 | Niebla de distancia (del color del horizonte) |
+| Set Ambient / Ambient Sky, Equator, Ground | ✔ / azul, verde gris, tierra | Luz ambiente en degradado |
+| Tint Sun / Sun Color | ✔ / blanco cálido | Tono del sol |
+| Wind Direction / Wind Strength / Gust Strength / Gust Period / Cloud Drift | (0.94, 0, 0.34) / 1 / 0.6 / 9 s / 0.01 | Viento y ráfagas |
+| Ambient Effects | ✔ | Hojas, polen y niebla baja (`AmbientParticles`) |
+
+**Efectos ambientales** (`AmbientParticles`, siguen a la cámara y no se emiten bajo el agua):
+- **Hojas** que caen de los abedules, sauces y árboles de hoja cercanos (hasta 55 m). Giran en el aire, el viento las lleva y las que llegan al agua se quedan flotando hasta desvanecerse. Colores de verde a naranja; caen más con las ráfagas.
+- **Polen y motas de luz** cálidas flotando despacio alrededor de la cámara.
+- **Niebla baja** sobre el agua: velos suaves que se mueven con el viento, siempre a más de 14 m de la cámara.
 
 ### Otros
 - **Damageable** (cada pájaro): `Max Health` = Health del tipo × multiplicador de la oleada. `Destroy On Death` = ✘ (la muerte la maneja BirdAI).

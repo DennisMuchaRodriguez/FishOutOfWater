@@ -25,8 +25,8 @@ MonoBehaviour:
   spotsPerGroup: 3
   spotRadius: 7
   spotSeparation: 45
-  swayDistance: 70
-  swayBudget: 300
+  swayDistance: 55
+  swayBudget: 1200
   maxPerEntry: 1500
   entries:
   - name: Algas altas
@@ -263,3 +263,445 @@ MonoBehaviour:
     cullScreenSize: 0.02
     sway: 0
     swayAmount: 4
+  - name: Pinos del bosque
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: f5fe476a35bf42da8bfc510b28313aaf, type: 3}
+    zone: 0
+    count: 340
+    densityPer100m2: 0
+    clusterSize: 4
+    clusterRadius: 9
+    minSpacing: 4.5
+    spotGroup: 0
+    distanceRange: {x: 45, y: 250}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 32}
+    scaleRange: {x: 0.85, y: 1.35}
+    randomYaw: 1
+    alignToNormal: 0
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 1
+    colliderRadius: 0.45
+    castShadows: 1
+    cullScreenSize: 0.008
+    sway: 1
+    swayAmount: 0.6
+  - name: Pinos esbeltos
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: ef3587e91ad4430daee8f4ec8fa313fd, type: 3}
+    zone: 0
+    count: 260
+    densityPer100m2: 0
+    clusterSize: 3
+    clusterRadius: 8
+    minSpacing: 4.5
+    spotGroup: 0
+    distanceRange: {x: 45, y: 250}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 32}
+    scaleRange: {x: 0.85, y: 1.3}
+    randomYaw: 1
+    alignToNormal: 0
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 1
+    colliderRadius: 0.4
+    castShadows: 1
+    cullScreenSize: 0.008
+    sway: 1
+    swayAmount: 0.6
+  - name: Abetos
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: 28377273edad49a0b851f212a571942d, type: 3}
+    zone: 0
+    count: 240
+    densityPer100m2: 0
+    clusterSize: 3
+    clusterRadius: 8
+    minSpacing: 5
+    spotGroup: 0
+    distanceRange: {x: 60, y: 250}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 34}
+    scaleRange: {x: 0.9, y: 1.35}
+    randomYaw: 1
+    alignToNormal: 0
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 1
+    colliderRadius: 0.45
+    castShadows: 1
+    cullScreenSize: 0.008
+    sway: 1
+    swayAmount: 0.5
+  - name: Helechos del bosque
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: 7d8ee29043734f2e99921fb2364bd58f, type: 3}
+    zone: 0
+    count: 420
+    densityPer100m2: 0
+    clusterSize: 5
+    clusterRadius: 4
+    minSpacing: 0.9
+    spotGroup: 0
+    distanceRange: {x: 40, y: 200}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 30}
+    scaleRange: {x: 0.8, y: 1.4}
+    randomYaw: 1
+    alignToNormal: 0.6
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 0
+    colliderRadius: 0
+    castShadows: 0
+    cullScreenSize: 0.025
+    sway: 1
+    swayAmount: 3
+  - name: Abedules
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: e531b81c48ee48549c6b4770972c5b54, type: 3}
+    zone: 1
+    count: 110
+    densityPer100m2: 0
+    clusterSize: 3
+    clusterRadius: 6
+    minSpacing: 3.5
+    spotGroup: 0
+    distanceRange: {x: 22, y: 95}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 28}
+    scaleRange: {x: 0.85, y: 1.2}
+    randomYaw: 1
+    alignToNormal: 0
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 1
+    colliderRadius: 0.3
+    castShadows: 1
+    cullScreenSize: 0.01
+    sway: 1
+    swayAmount: 1
+  - name: Arboles de hoja
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: 2f18567342a24ea5b2ca073818da92e1, type: 3}
+    zone: 1
+    count: 80
+    densityPer100m2: 0
+    clusterSize: 2
+    clusterRadius: 8
+    minSpacing: 6
+    spotGroup: 0
+    distanceRange: {x: 25, y: 110}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 26}
+    scaleRange: {x: 0.8, y: 1.25}
+    randomYaw: 1
+    alignToNormal: 0
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 1
+    colliderRadius: 0.55
+    castShadows: 1
+    cullScreenSize: 0.01
+    sway: 1
+    swayAmount: 0.8
+  - name: Arbustos del borde
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: 373673fad04946f5aff4e4cb9d1fb1b1, type: 3}
+    zone: 1
+    count: 220
+    densityPer100m2: 0
+    clusterSize: 3
+    clusterRadius: 4
+    minSpacing: 1.8
+    spotGroup: 0
+    distanceRange: {x: 15, y: 120}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 30}
+    scaleRange: {x: 0.8, y: 1.35}
+    randomYaw: 1
+    alignToNormal: 0.4
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 0
+    colliderRadius: 0
+    castShadows: 1
+    cullScreenSize: 0.018
+    sway: 1
+    swayAmount: 1.5
+  - name: Helechos del borde
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: 7d8ee29043734f2e99921fb2364bd58f, type: 3}
+    zone: 1
+    count: 260
+    densityPer100m2: 0
+    clusterSize: 4
+    clusterRadius: 3
+    minSpacing: 0.9
+    spotGroup: 0
+    distanceRange: {x: 18, y: 90}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 28}
+    scaleRange: {x: 0.8, y: 1.3}
+    randomYaw: 1
+    alignToNormal: 0.6
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 0
+    colliderRadius: 0
+    castShadows: 0
+    cullScreenSize: 0.025
+    sway: 1
+    swayAmount: 3
+  - name: Sauces de orilla
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: 54191a6b5507431b9d121df33229cae6, type: 3}
+    zone: 2
+    count: 24
+    densityPer100m2: 0
+    clusterSize: 1
+    clusterRadius: 0
+    minSpacing: 10
+    spotGroup: 0
+    distanceRange: {x: 2.5, y: 12}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 26}
+    scaleRange: {x: 0.85, y: 1.15}
+    randomYaw: 1
+    alignToNormal: 0
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 1
+    colliderRadius: 0.5
+    castShadows: 1
+    cullScreenSize: 0.01
+    sway: 1
+    swayAmount: 1.2
+  - name: Arbustos de pradera
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: 373673fad04946f5aff4e4cb9d1fb1b1, type: 3}
+    zone: 2
+    count: 80
+    densityPer100m2: 0
+    clusterSize: 2
+    clusterRadius: 3
+    minSpacing: 2.5
+    spotGroup: 0
+    distanceRange: {x: 6, y: 55}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 24}
+    scaleRange: {x: 0.7, y: 1.15}
+    randomYaw: 1
+    alignToNormal: 0.4
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 0
+    colliderRadius: 0
+    castShadows: 1
+    cullScreenSize: 0.018
+    sway: 1
+    swayAmount: 1.5
+  - name: Hierba de pradera
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: 10987d8d8a234d3d9f052c6162f2edf7, type: 3}
+    zone: 2
+    count: 1450
+    densityPer100m2: 0
+    clusterSize: 8
+    clusterRadius: 2.5
+    minSpacing: 0.35
+    spotGroup: 0
+    distanceRange: {x: 1.5, y: 60}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 28}
+    scaleRange: {x: 0.8, y: 1.5}
+    randomYaw: 1
+    alignToNormal: 0.7
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 0
+    colliderRadius: 0
+    castShadows: 0
+    cullScreenSize: 0.03
+    sway: 1
+    swayAmount: 7
+  - name: Flores
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: 678d0d34d91b4851a84b49cdb0561629, type: 3}
+    zone: 2
+    count: 600
+    densityPer100m2: 0
+    clusterSize: 7
+    clusterRadius: 2.5
+    minSpacing: 0.45
+    spotGroup: 0
+    distanceRange: {x: 3, y: 45}
+    depthRange: {x: 0, y: 0}
+    slopeRange: {x: 0, y: 24}
+    scaleRange: {x: 0.8, y: 1.3}
+    randomYaw: 1
+    alignToNormal: 0.7
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 0
+    colliderRadius: 0
+    castShadows: 0
+    cullScreenSize: 0.03
+    sway: 1
+    swayAmount: 6
+  - name: Hierba de orilla
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: 10987d8d8a234d3d9f052c6162f2edf7, type: 3}
+    zone: 3
+    count: 500
+    densityPer100m2: 0
+    clusterSize: 6
+    clusterRadius: 2
+    minSpacing: 0.4
+    spotGroup: 0
+    distanceRange: {x: -1, y: 8}
+    depthRange: {x: 0, y: 0.4}
+    slopeRange: {x: 0, y: 45}
+    scaleRange: {x: 1.1, y: 1.8}
+    randomYaw: 1
+    alignToNormal: 0.6
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 0
+    colliderRadius: 0
+    castShadows: 0
+    cullScreenSize: 0.03
+    sway: 1
+    swayAmount: 8
+  - name: Juncos de orilla
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: d37f66f7a4fb48ad8b5510991aa304b7, type: 3}
+    zone: 3
+    count: 200
+    densityPer100m2: 0
+    clusterSize: 5
+    clusterRadius: 2
+    minSpacing: 0.6
+    spotGroup: 0
+    distanceRange: {x: -3, y: 6}
+    depthRange: {x: 0, y: 0.8}
+    slopeRange: {x: 0, y: 50}
+    scaleRange: {x: 0.8, y: 1.2}
+    randomYaw: 1
+    alignToNormal: 0
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 0
+    colliderRadius: 0
+    castShadows: 0
+    cullScreenSize: 0.02
+    sway: 1
+    swayAmount: 5
+  - name: Juncos en el agua
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: d37f66f7a4fb48ad8b5510991aa304b7, type: 3}
+    zone: 4
+    count: 380
+    densityPer100m2: 0
+    clusterSize: 6
+    clusterRadius: 2.5
+    minSpacing: 0.6
+    spotGroup: 0
+    distanceRange: {x: -8, y: 0.5}
+    depthRange: {x: 0.05, y: 1.0}
+    slopeRange: {x: 0, y: 55}
+    scaleRange: {x: 0.8, y: 1.3}
+    randomYaw: 1
+    alignToNormal: 0
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 0
+    colliderRadius: 0
+    castShadows: 0
+    cullScreenSize: 0.02
+    sway: 1
+    swayAmount: 5
+  - name: Totoras
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: c631c7c09c864b3d91b8af3e5f4d150e, type: 3}
+    zone: 4
+    count: 260
+    densityPer100m2: 0
+    clusterSize: 5
+    clusterRadius: 2.5
+    minSpacing: 0.8
+    spotGroup: 0
+    distanceRange: {x: -12, y: -0.5}
+    depthRange: {x: 0.2, y: 1.4}
+    slopeRange: {x: 0, y: 55}
+    scaleRange: {x: 0.85, y: 1.3}
+    randomYaw: 1
+    alignToNormal: 0
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 0
+    colliderRadius: 0
+    castShadows: 0
+    cullScreenSize: 0.02
+    sway: 1
+    swayAmount: 5
+  - name: Nenufares
+    enabled: 1
+    prefab: {fileID: 919132149155446097, guid: e6007e3dfe7b4f468503a87065bcb69e, type: 3}
+    zone: 5
+    count: 140
+    densityPer100m2: 0
+    clusterSize: 6
+    clusterRadius: 4
+    minSpacing: 1.6
+    spotGroup: 0
+    distanceRange: {x: -25, y: -2}
+    depthRange: {x: 0.6, y: 4}
+    slopeRange: {x: 0, y: 90}
+    scaleRange: {x: 0.8, y: 1.2}
+    randomYaw: 1
+    alignToNormal: 0
+    randomTilt: 0
+    sinkOffset: 0
+    modelRotation: {x: 0, y: 0, z: 0}
+    modelScale: 1
+    colliderType: 0
+    colliderRadius: 0
+    castShadows: 0
+    cullScreenSize: 0.02
+    sway: 3
+    swayAmount: 3
