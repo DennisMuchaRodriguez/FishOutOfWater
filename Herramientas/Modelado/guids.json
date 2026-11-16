@@ -304,6 +304,13 @@
    "png": "f4df752d1bc343feb4ee4c87f1cb4fb3",
    "mat": "894a67815b584126838cfb142a66e593",
    "folder_meta": "7886854ab3644e9793eab8d0fb0f64ad"
+  },
+  "Pasto_Acuatico": {
+   "folder": "Assets/Models/Entorno/Pasto_Acuatico",
+   "fbx": "da249187ac354884aaf22ae5c2bc4d97",
+   "png": "331af67fbe6640c7b6e74c5d07177ad4",
+   "mat": "7383719bcdc74be4a560f8975625af5e",
+   "folder_meta": "5090a85bca574a97a85f0dacf9a3833c"
   }
  },
  "scripts": {},

@@ -8,7 +8,7 @@ import os, sys, subprocess, time
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 TODOS = ['Pino_A', 'Pino_B', 'Abeto', 'Arbol_Hoja', 'Abedul', 'Sauce', 'Arbusto', 'Helecho', 'Hierba', 'Flores',
-         'Juncos', 'Totora', 'Nenufar',
+         'Juncos', 'Totora', 'Nenufar', 'Pasto_Acuatico',
          'Roca_A', 'Piedras_Fondo', 'Tronco_Hundido', 'Alga_A', 'Alga_B', 'Alga_Brillante', 'Lata', 'Bateria',
          'Rueda_Bici']
 

@@ -813,7 +813,7 @@ Los proyectiles de las aves (`EnemyProjectile`) los absorbe el Escudo de burbuja
 
 #### Efecto al dispararles (`Assets/Scritps/FX/HitFX.cs`)
 Se crea solo y no tiene campos. Cada impacto en un ave hace:
-- **Destello** del cuerpo del ave (blanco; azul si es blindada; naranja si es un jefe vulnerable) y un pequeño **bamboleo**.
+- **Parpadeo** del cuerpo del ave: un destello fuerte y dos o tres encendidos cortos que se apagan (blanco; azul si es blindada; naranja si es un jefe vulnerable). Usa la emisión del material, así se ve también a la sombra. Además un pequeño **bamboleo**.
 - **Plumas** del color de la especie, un **aro** y un **fogonazo** en el punto del impacto.
 - **Número de daño** que sube y se desvanece (los impactos seguidos se suman). En un jefe vulnerable sale con "x2".
 - Al primer impacto en un ave blindada sale "BLINDADA". Al morir, una explosión de plumas.
@@ -837,6 +837,9 @@ hacen un **ataque fuerte** (después quedan vulnerables). Sus ataques son una am
   - Una embestida rápida.
   - Combos de 2 embestidas seguidas (3 en la fase 3).
   - Su estocada fuerte avisa menos.
+
+**Pausa vulnerable**: después de cada ataque fuerte baja cerca del agua jadeando, te mira y retrocede despacio (la Garza Gris, 2,2 s).
+Ningún ave se queda con la cabeza clavada hacia abajo salvo cuando de verdad se lanza en picada.
 
 Si te escondes en lo hondo y el jefe no bucea, ataca a los peces más seguido. Los peces **aturdidos** flotan panza arriba
 unos segundos (cualquier ave los atrapa fácil) y los **lanzados** pueden caer en la orilla: si no vuelven al agua, se asfixian.
@@ -868,29 +871,37 @@ plantas sumergidas → hojas flotantes → plantas emergentes en el agua baja �
 
 | Zona | Distancia a la orilla | Qué hay |
 |---|---|---|
-| Fondo del lago | dentro del agua | Algas (altas, tupidas y brillantes), piedras, troncos y chatarra |
+| Fondo del lago | dentro del agua | Pradera de pasto acuático, algas (altas, tupidas y brillantes), piedras, troncos y chatarra |
 | Superficie | 2–25 m hacia dentro | Nenúfares en grupos (nunca en el centro, que queda libre para jugar) |
-| Agua baja (hasta 1,4 m de profundidad) | 0–12 m hacia dentro | Juncos y totoras |
+| Agua baja (hasta 1,6 m de profundidad) | 0–13 m hacia dentro | Juncos y totoras (unos 3 m de alto) |
 | Orilla | −3 a 8 m | Hierba alta y juncos |
-| Pradera | 2–60 m | Sauces llorones en los primeros metros, hierba, flores y arbustos sueltos |
-| Borde del bosque | 15–120 m | Abedules (tronco blanco, copa verde amarilla), árboles de hoja ancha, arbustos y helechos |
-| Bosque | 45–250 m | Pinos, pinos esbeltos y abetos en grupos, con helechos al pie |
+| Pradera | 2–60 m | Sauces llorones (unos 16 m) en los primeros metros, hierba, flores y arbustos sueltos |
+| Borde del bosque | 12–120 m | Abedules (tronco blanco, copa verde amarilla), árboles de hoja ancha (unos 20 m), arbustos y helechos |
+| Bosque cercano | 45–120 m | Pinos, pinos esbeltos y abetos (17–25 m) en grupos, con helechos al pie: lo que se ve desde el lago, más tupido |
+| Bosque lejano | 120–250 m | Más pinos y abetos, en grupos más grandes |
+
+- **Tamaño**: el pez mide unos 2 m; los árboles se colocan a 1,7–2,6 veces el tamaño del modelo (pinos de 17 a 25 m), los
+  arbustos y la hierba a 1,3–2,6 veces y las plantas del agua a 1,1–1,9 veces (`Scale Range` de cada entrada).
+- **Reparto parejo**: cada grupo se coloca en una casilla distinta de una rejilla que cubre toda su zona (en orden al azar),
+  así no quedan claros grandes ni montones. Con `Seed` cambia el reparto.
 
 - Los árboles tienen colisión en el tronco (el jugador choca y las aves los esquivan). Las plantas chicas no tienen colisión ni proyectan sombra, y desaparecen de lejos (`Cull Screen Size`).
-- Junto a la orilla nada alto pasa de 12 m sobre el agua (espacio para las aves). El centro del lago y la salida del jugador quedan libres.
+- Junto a la orilla nada alto pasa de 20 m sobre el agua (`Max Top Above Water`, más 1 m por cada metro que se aleja): espacio para las aves. El centro del lago y la salida del jugador quedan libres.
+- En total son unos 12.400 objetos. Si el juego va lento, baja primero `Count` de la hierba, las flores, los helechos y el pasto acuático.
 - Hierba, flores, juncos, totoras, helechos y árboles se mecen con el viento. Los nenúfares flotan y giran despacio.
 - **Para cambiar cuánto hay de cada cosa**, edita la entrada en `Decoracion_Lago` (`Count`, distancias, escala...). Cambia `Seed` para otro reparto.
 - Si alguna vez generaste la decoración en el editor y la guardaste en la escena, presiona **Generar ahora** en `LakeDecorator` (o marca `Regenerate On Play`) para que aparezcan las plantas nuevas.
 
 **Modelos** (`Assets/Models/Entorno`, mismo estilo de plastilina que el pez y las aves; se generan con
 `Herramientas/Modelado/entorno/build_all.py`): Pino_A, Pino_B, Abeto, Abedul, Arbol_Hoja, Sauce, Arbusto, Helecho, Hierba,
-Flores, Juncos, Totora y Nenufar (más los del fondo). Cada uno es un script en esa carpeta; se cambia y se vuelve a ejecutar.
+Flores, Juncos, Totora, Nenufar y Pasto_Acuatico (más los del fondo). Cada uno es un script en esa carpeta; se cambia y se vuelve a ejecutar.
 
 **Cielo, niebla, luz y viento** (`LakeAmbience`, se crea solo como "AmbienteLago"):
 - **Cielo estilizado** (`Cielo_Lago`): degradado azul, sol con halo cálido y nubes pintadas (lado iluminado y sombra en bloques) que se mueven con el viento. Todos sus colores y la cantidad de nubes se ajustan en el material.
 - **Niebla de distancia** del color del horizonte (exponencial al cuadrado, densidad 0.0026): de cerca no se nota; a 150 m un 14 % y lo muy lejano se funde con el cielo. Da profundidad sin tapar la pelea.
 - **Luz ambiente** en degradado (cielo / horizonte / suelo) y un tono cálido de media mañana en el sol (no cambia su intensidad ni dirección).
 - **Viento con ráfagas**: cambia la fuerza del vaivén de las plantas, la velocidad de las nubes y la cantidad de hojas que caen. Su dirección gira un poco con el tiempo.
+- **Bajo el agua**: con la cámara bajo la superficie la niebla cambia al instante por una densa del color del agua (más oscura en lo hondo): de cerca se ve bien, a 10 m un 30 % borroso, a 20 m un 76 % y a 30 m casi nada. Al salir vuelve la niebla de aire en un instante. Se suma al filtro azul del `Underwater Volume`.
 - **Para volver al cielo anterior**: agrega `LakeAmbience` a mano a la escena y desmarca `Use Stylized Sky` (lo mismo con la niebla, la luz o el sol).
 
 | Campo de LakeAmbience | Defecto | Qué hace |
@@ -900,12 +911,14 @@ Flores, Juncos, Totora y Nenufar (más los del fondo). Cada uno es un script en 
 | Set Ambient / Ambient Sky, Equator, Ground | ✔ / azul, verde gris, tierra | Luz ambiente en degradado |
 | Tint Sun / Sun Color | ✔ / blanco cálido | Tono del sol |
 | Wind Direction / Wind Strength / Gust Strength / Gust Period / Cloud Drift | (0.94, 0, 0.34) / 1 / 0.6 / 9 s / 0.01 | Viento y ráfagas |
-| Ambient Effects | ✔ | Hojas, polen y niebla baja (`AmbientParticles`) |
+| Underwater Fog / Water Fog Shallow, Deep / Water Dark Depth / Water Fog Density / Water Fog Fade Out | ✔ / verde azulado claro, oscuro / 8 m / 0.06 / 6 | Visibilidad bajo el agua |
+| Ambient Effects | ✔ | Hojas, polen, niebla baja y efectos bajo el agua (`AmbientParticles`) |
 
 **Efectos ambientales** (`AmbientParticles`, siguen a la cámara y no se emiten bajo el agua):
 - **Hojas** que caen de los abedules, sauces y árboles de hoja cercanos (hasta 55 m). Giran en el aire, el viento las lleva y las que llegan al agua se quedan flotando hasta desvanecerse. Colores de verde a naranja; caen más con las ráfagas.
 - **Polen y motas de luz** cálidas flotando despacio alrededor de la cámara.
 - **Niebla baja** sobre el agua: velos suaves que se mueven con el viento, siempre a más de 14 m de la cámara.
+- **Bajo el agua**: partículas en suspensión flotando alrededor de la cámara, rayos de luz que bajan desde la superficie (más fuertes cerca de ella) y burbujas que suben.
 
 ### Otros
 - **Damageable** (cada pájaro): `Max Health` = Health del tipo × multiplicador de la oleada. `Destroy On Death` = ✘ (la muerte la maneja BirdAI).

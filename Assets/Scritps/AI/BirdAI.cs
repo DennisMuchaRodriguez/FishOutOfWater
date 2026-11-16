@@ -169,6 +169,8 @@ public partial class BirdAI : MonoBehaviour
     float hitRollAmp, hitRollTime = 10f;
     bool armorLabelShown;
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+    static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
+    readonly List<Material> ownMaterials = new List<Material>();
 
     void Awake()
     {
@@ -187,6 +189,13 @@ public partial class BirdAI : MonoBehaviour
 
     void OnEnable() { All.Add(this); }
     void OnDisable() { All.Remove(this); }
+
+    // Las copias de material del destello son de esta ave: se liberan con ella
+    void OnDestroy()
+    {
+        foreach (Material m in ownMaterials) if (m != null) Destroy(m);
+        ownMaterials.Clear();
+    }
 
     void Start()
     {
@@ -282,11 +291,22 @@ public partial class BirdAI : MonoBehaviour
             }
         }
 
-        // Renderers del modelo (para el destello al recibir un disparo)
+        // Renderers del modelo (para el destello al recibir un disparo). Cada ave usa su propia copia del material
+        // con la emisión encendida (en negro: se ve igual que antes); el destello la sube por un instante.
+        // La emisión se ve brillar también a la sombra (el color base solo se aclara con luz)
         foreach (Renderer r in visual.GetComponentsInChildren<Renderer>(true))
         {
             if (r is ParticleSystemRenderer || r is TrailRenderer) continue;
             bodyRenderers.Add(r);
+            foreach (Material m in r.materials)
+            {
+                if (m == null) continue;
+                ownMaterials.Add(m);
+                if (!m.HasProperty(EmissionColorId)) continue;
+                m.EnableKeyword("_EMISSION");
+                m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+                m.SetColor(EmissionColorId, Color.black);
+            }
         }
 
         // Garras: punto medio de los huesos indicados, o el punto configurado
@@ -830,6 +850,14 @@ public partial class BirdAI : MonoBehaviour
         // Mirar hacia donde vuela (o al jugador si está aturdido), con alabeo en las curvas
         Vector3 look = stunTimer > 0f && player != null ? (player.transform.position - transform.position)
                      : (lookOverride.sqrMagnitude > 0.01f ? lookOverride : v);
+        // Si no está en picada ni buceando, nunca se queda con la cabeza clavada hacia abajo (o hacia arriba)
+        // al subir o bajar en vertical: mira al frente con algo de inclinación
+        if (!diving && !submerged && look.y * look.y > 0.5f * look.sqrMagnitude)
+        {
+            Vector3 flat = new Vector3(look.x, 0f, look.z);
+            if (flat.sqrMagnitude < 0.01f) flat = new Vector3(transform.forward.x, 0f, transform.forward.z);
+            if (flat.sqrMagnitude > 0.0001f) look = flat.normalized * Mathf.Abs(look.y) + Vector3.up * look.y * 0.35f;
+        }
         if (look.sqrMagnitude > 0.1f)
         {
             Quaternion targetRot = Quaternion.LookRotation(look.normalized);
@@ -987,9 +1015,9 @@ public partial class BirdAI : MonoBehaviour
             armorLabelShown = true;
             HitFX.BirdLabel(point, "BLINDADA", new Color(0.75f, 0.93f, 1f, 1f));
         }
-        // Destello: blanco; azul si está blindada; naranja si el jefe está vulnerable
-        Color c = bonus ? new Color(2.8f, 1.6f, 0.7f, 1f) : (IsArmored ? new Color(1.4f, 1.9f, 2.8f, 1f) : new Color(2.4f, 2.4f, 2.6f, 1f));
-        Flash(c, strong ? 0.16f : 0.1f);
+        // Parpadeo: blanco; azul si está blindada; naranja si el jefe está vulnerable (color de emisión HDR)
+        Color c = bonus ? new Color(3.4f, 1.8f, 0.5f, 1f) : (IsArmored ? new Color(1.2f, 2.1f, 3.6f, 1f) : new Color(2.8f, 2.8f, 3.1f, 1f));
+        Flash(c, strong ? 0.38f : 0.28f);
         // Tambaleo: más fuerte en las aves livianas
         hitRollAmp = (Random.value < 0.5f ? -1f : 1f) * Mathf.Lerp(4f, 28f, Mathf.Clamp01(ProjectilePushScale / 1.8f)) * (strong ? 1.4f : 1f);
         hitRollTime = 0f;
@@ -1006,6 +1034,8 @@ public partial class BirdAI : MonoBehaviour
     int pendingNumber;
     float lastNumberTime = -10f;
 
+    // Parpadeo al recibir un disparo: un destello fuerte y después dos o tres encendidos cortos que se apagan
+    // (como el parpadeo de daño de los juegos clásicos). Usa la emisión del material y aclara el color base
     void UpdateFlash(float dt)
     {
         if (flashTimer <= 0f || bodyRenderers.Count == 0) return;
@@ -1016,13 +1046,20 @@ public partial class BirdAI : MonoBehaviour
             foreach (Renderer r in bodyRenderers) if (r != null) r.SetPropertyBlock(null);
             return;
         }
-        float k = flashTimer / Mathf.Max(0.01f, flashDuration);
-        Color c = Color.Lerp(Color.white, flashColor, k);
+        float dur = Mathf.Max(0.01f, flashDuration);
+        float elapsed = dur - flashTimer;
+        float k = flashTimer / dur;                       // 1 al empezar, 0 al terminar
+        const float First = 0.06f, Blink = 0.045f;
+        bool on = elapsed < First || ((int)((elapsed - First) / Blink)) % 2 == 1;
+        float amount = on ? (elapsed < First ? 1f : 0.3f + 0.6f * k) : 0.04f * k;
+        Color emission = new Color(flashColor.r * amount, flashColor.g * amount, flashColor.b * amount, 1f);
+        Color tint = Color.Lerp(Color.white, new Color(1.5f, 1.5f, 1.55f, 1f), on ? amount : 0f);
         foreach (Renderer r in bodyRenderers)
         {
             if (r == null) continue;
             r.GetPropertyBlock(flashBlock);
-            flashBlock.SetColor(BaseColorId, c);
+            flashBlock.SetColor(EmissionColorId, emission);
+            flashBlock.SetColor(BaseColorId, tint);
             r.SetPropertyBlock(flashBlock);
         }
     }
@@ -1092,7 +1129,7 @@ public partial class BirdAI : MonoBehaviour
         FXFactory.SpawnOneShot(deathPrefab, transform.position, Quaternion.identity, 1.2f, 3f);
         Sfx.Play(IsBoss ? Sonido.RugidoJefe : Sonido.MuerteAve, transform.position, 1f, IsBoss ? 0.75f : CallPitch, IsBoss ? 25f : 8f);
         HitFX.BirdDeath(transform.position, bodyRadius * 0.9f, FeatherColor);
-        Flash(new Color(2.6f, 2.6f, 2.9f, 1f), 0.15f);
+        Flash(new Color(3.2f, 3.2f, 3.5f, 1f), 0.3f);
 
         Died?.Invoke(this);
         Destroy(gameObject, 6f);

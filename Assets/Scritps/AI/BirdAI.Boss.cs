@@ -148,10 +148,24 @@ public partial class BirdAI
     BTStatus BossVulnerablePause()
     {
         tree.MarkActive("Pausa vulnerable");
-        // Agotado: baja cerca del agua y se queda casi quieto, jadeando
+        // Agotado: baja cerca del agua jadeando, MIRANDO AL JUGADOR y retrocediendo despacio.
+        // (Antes solo bajaba en vertical y, como mira hacia donde se mueve, se quedaba de cara al lago como
+        // si fuera a lanzarse en picada, sin hacer nada)
         float y = Mathf.Max(lake.SurfaceY + hoverHeight + 1f, groundCacheY + hoverHeight);
-        desiredVelocity = new Vector3(0f, (y - transform.position.y) * 1.5f, 0f) + Vector3.up * Mathf.Sin(Time.time * 4f) * 0.5f;
-        poseTarget = -15f;
+        Vector3 back = Vector3.zero;
+        Vector3 toPlayer = transform.forward;
+        if (player != null)
+        {
+            toPlayer = player.transform.position - transform.position;
+            toPlayer.y = 0f;
+            if (toPlayer.sqrMagnitude < 0.01f) toPlayer = transform.forward;
+            back = -toPlayer.normalized * 1.6f;
+        }
+        desiredVelocity = new Vector3(back.x, Mathf.Clamp((y - transform.position.y) * 1.5f, -6f, 6f), back.z)
+                          + Vector3.up * Mathf.Sin(Time.time * 4f) * 0.5f;
+        lookOverride = new Vector3(toPlayer.x, 0f, toPlayer.z);
+        // Cabecea al jadear (no se queda con el pico clavado hacia abajo)
+        poseTarget = -6f + Mathf.Sin(Time.time * 5f) * 9f;
         return BTStatus.Running;
     }
 

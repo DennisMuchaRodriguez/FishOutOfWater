@@ -506,6 +506,11 @@ public class LakeDecorator : MonoBehaviour
 
         int cluster = Mathf.Max(1, e.clusterSize);
         int tries = cluster > 1 ? 3 : 1;
+        // Reparto parejo: el centro de cada grupo sale de una casilla de una rejilla gruesa (una casilla por grupo),
+        // recorridas en orden aleatorio. Así cubren toda la zona, sin claros grandes ni montones (con sorteos
+        // sueltos quedaban huecos y, como el anillo del bosque crece con la distancia, casi todo iba lejos)
+        List<List<int>> buckets = spots == null ? BuildBuckets(c, cand, Mathf.CeilToInt(target / (float)cluster), rng) : null;
+        int bucketCursor = 0;
         int maxAttempts = (target / cluster + 1) * 15 + 30;
         int placed = 0, attempts = 0;
         while (placed < target && attempts < maxAttempts)
@@ -518,7 +523,19 @@ public class LakeDecorator : MonoBehaviour
             }
             else
             {
-                center = CellCenter(c, cand[rng.Next(cand.Count)]);
+                int cellIdx;
+                if (buckets != null && buckets.Count > 0)
+                {
+                    if (bucketCursor >= buckets.Count)
+                    {
+                        Shuffle(buckets, rng);
+                        bucketCursor = 0;
+                    }
+                    List<int> bucket = buckets[bucketCursor++];
+                    cellIdx = bucket[rng.Next(bucket.Count)];
+                }
+                else cellIdx = cand[rng.Next(cand.Count)];
+                center = CellCenter(c, cellIdx);
                 center.x += (Rand(rng, 0f, 1f) - 0.5f) * c.cell;
                 center.y += (Rand(rng, 0f, 1f) - 0.5f) * c.cell;
             }
@@ -535,6 +552,40 @@ public class LakeDecorator : MonoBehaviour
             }
         }
         return placed;
+    }
+
+    // Agrupa las celdas válidas en casillas de una rejilla gruesa: tantas casillas como grupos a colocar
+    List<List<int>> BuildBuckets(Ctx c, List<int> cand, int groups, System.Random rng)
+    {
+        float area = cand.Count * c.cell * c.cell;
+        float size = Mathf.Max(c.cell, Mathf.Sqrt(area / Mathf.Max(1, groups)));
+        Dictionary<long, List<int>> map = new Dictionary<long, List<int>>();
+        foreach (int idx in cand)
+        {
+            Vector2 p = CellCenter(c, idx);
+            long key = ((long)Mathf.FloorToInt(p.x / size) << 32) ^ (uint)Mathf.FloorToInt(p.y / size);
+            List<int> list;
+            if (!map.TryGetValue(key, out list))
+            {
+                list = new List<int>();
+                map[key] = list;
+            }
+            list.Add(idx);
+        }
+        List<List<int>> buckets = new List<List<int>>(map.Values);
+        Shuffle(buckets, rng);
+        return buckets;
+    }
+
+    static void Shuffle<T>(List<T> list, System.Random rng)
+    {
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            T tmp = list[i];
+            list[i] = list[j];
+            list[j] = tmp;
+        }
     }
 
     bool TryPlace(Ctx c, DecorationEntry e, ModelInfo info, float x, float z, System.Random rng, Transform parent)

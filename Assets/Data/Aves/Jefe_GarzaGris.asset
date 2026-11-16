@@ -39,7 +39,7 @@ MonoBehaviour:
     scoopCount: 1
     underwaterTime: 4
     boss: 1
-    vulnerableTime: 3
+    vulnerableTime: 2.2
     vulnerableDamageMultiplier: 2
     reinforcements: {fileID: 0}
     reinforcementCount: 0

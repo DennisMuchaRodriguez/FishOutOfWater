@@ -6,7 +6,10 @@ using UnityEngine;
 //    el viento las lleva y las que llegan al agua se quedan flotando un rato.
 //  - POLEN: motas de luz cálida que flotan despacio alrededor de la cámara.
 //  - NIEBLA BAJA: velos suaves sobre el agua, siempre a unos metros de la cámara (no tapan la acción).
-// Con la cámara bajo el agua no se emiten (allí manda el filtro submarino).
+// Con la cámara BAJO EL AGUA cambian por los del agua:
+//  - PARTÍCULAS EN SUSPENSIÓN: puntitos claros que flotan despacio alrededor de la cámara (dan volumen al agua).
+//  - RAYOS DE LUZ: haces suaves que bajan desde la superficie y se mecen.
+//  - BURBUJAS: algunas suben desde abajo hasta la superficie.
 [DisallowMultipleComponent]
 public class AmbientParticles : MonoBehaviour
 {
@@ -39,7 +42,18 @@ public class AmbientParticles : MonoBehaviour
     public float mistMinDistance = 14f;
     [Range(0f, 0.3f)] public float mistOpacity = 0.09f;
 
-    ParticleSystem leafPS, pollenPS, mistPS;
+    [Header("Bajo el agua")]
+    public bool underwater = true;
+    [Tooltip("Partículas en suspensión por segundo")]
+    public float specksPerSecond = 26f;
+    [Tooltip("Rayos de luz por segundo")]
+    public float raysPerSecond = 1.4f;
+    [Range(0f, 0.3f)] public float rayOpacity = 0.07f;
+    [Tooltip("Burbujas por segundo")]
+    public float bubblesPerSecond = 3f;
+
+    ParticleSystem leafPS, pollenPS, mistPS, specksPS, raysPS, bubblesPS;
+    float speckAcc, rayAcc, bubbleAcc;
     Camera cam;
     float camTimer;
     LakeVolume lake;
@@ -60,6 +74,7 @@ public class AmbientParticles : MonoBehaviour
         BuildLeaves(template);
         BuildPollen(template);
         BuildMist(template);
+        BuildUnderwater(template);
     }
 
     // ======================= CONSTRUCCIÓN =======================
@@ -151,6 +166,119 @@ public class AmbientParticles : MonoBehaviour
         mistPS.Play();
     }
 
+    void BuildUnderwater(Material template)
+    {
+        // Partículas en suspensión
+        specksPS = FXFactory.CreateParticleSystem("Suspension", transform, FXFactory.ParticleMaterialAlpha(template, FXFactory.SoftDot, Color.white));
+        var sm = specksPS.main;
+        sm.maxParticles = 400;
+        var se = specksPS.emission;
+        se.enabled = false;
+        var sn = specksPS.noise;
+        sn.enabled = true;
+        sn.strength = 0.18f;
+        sn.frequency = 0.4f;
+        sn.scrollSpeed = 0.15f;
+        var sf = specksPS.colorOverLifetime;
+        sf.enabled = true;
+        sf.color = new ParticleSystem.MinMaxGradient(Fade(0.2f, 0.75f, 1f));
+        specksPS.Play();
+
+        // Rayos de luz: haces verticales que miran a la cámara (aditivos, muy suaves)
+        raysPS = FXFactory.CreateParticleSystem("RayosDeLuz", transform, FXFactory.ParticleMaterial(template, FXFactory.SoftDot, Color.white));
+        var rm = raysPS.main;
+        rm.maxParticles = 40;
+        rm.startSize3D = true;
+        var re = raysPS.emission;
+        re.enabled = false;
+        var rf = raysPS.colorOverLifetime;
+        rf.enabled = true;
+        rf.color = new ParticleSystem.MinMaxGradient(Fade(0.35f, 0.65f, 1f));
+        var rr = raysPS.rotationOverLifetime;
+        rr.enabled = true;
+        rr.z = new ParticleSystem.MinMaxCurve(-0.05f, 0.05f);
+        raysPS.GetComponent<ParticleSystemRenderer>().renderMode = ParticleSystemRenderMode.VerticalBillboard;
+        raysPS.Play();
+
+        // Burbujas que suben
+        bubblesPS = FXFactory.CreateParticleSystem("Burbujas", transform, FXFactory.ParticleMaterialAlpha(template, FXFactory.Bubble, Color.white));
+        var bm = bubblesPS.main;
+        bm.maxParticles = 120;
+        var be = bubblesPS.emission;
+        be.enabled = false;
+        var bn = bubblesPS.noise;
+        bn.enabled = true;
+        bn.strength = 0.35f;
+        bn.frequency = 1.2f;
+        var bf = bubblesPS.colorOverLifetime;
+        bf.enabled = true;
+        bf.color = new ParticleSystem.MinMaxGradient(Fade(0.1f, 0.9f, 1f));
+        bubblesPS.Play();
+    }
+
+    void UpdateUnderwater(float dt, Vector3 cp, float surface)
+    {
+        float depth = surface - cp.y;
+        ParticleSystem.EmitParams ep = new ParticleSystem.EmitParams();
+
+        // Partículas en suspensión: en una caja alrededor de la cámara, siempre bajo la superficie
+        speckAcc += dt * specksPerSecond;
+        int guard = 0;
+        while (speckAcc >= 1f && guard++ < 30)
+        {
+            speckAcc -= 1f;
+            Vector3 p = cp + new Vector3(Random.Range(-9f, 9f), Random.Range(-5f, 5f), Random.Range(-9f, 9f));
+            if (p.y > surface - 0.2f) p.y = surface - Random.Range(0.2f, 2f);
+            ep.position = p;
+            ep.velocity = Random.insideUnitSphere * 0.08f + Vector3.down * 0.03f;
+            ep.startSize = Random.Range(0.025f, 0.07f);
+            ep.startLifetime = Random.Range(5f, 9f);
+            ep.startColor = new Color(0.82f, 0.95f, 1f, Random.Range(0.35f, 0.7f));
+            specksPS.Emit(ep, 1);
+        }
+
+        // Rayos de luz: más fuertes cerca de la superficie
+        float sunlight = Mathf.Clamp01(1.2f - depth / 12f);
+        rayAcc += dt * raysPerSecond * sunlight;
+        guard = 0;
+        while (rayAcc >= 1f && guard++ < 4)
+        {
+            rayAcc -= 1f;
+            Vector2 d = Random.insideUnitCircle.normalized * Random.Range(5f, 22f);
+            float h = Random.Range(7f, 14f);
+            ep.position = new Vector3(cp.x + d.x, surface - h * 0.5f, cp.z + d.y);
+            ep.velocity = new Vector3(Random.Range(-0.15f, 0.15f), 0f, Random.Range(-0.15f, 0.15f));
+            ep.startSize3D = new Vector3(Random.Range(0.8f, 2.2f), h, 1f);
+            ep.rotation = Random.Range(-8f, 8f);
+            ep.startLifetime = Random.Range(5f, 9f);
+            ep.startColor = new Color(0.7f, 0.95f, 1f, rayOpacity * sunlight);
+            raysPS.Emit(ep, 1);
+        }
+
+        // Burbujas: aparecen debajo de la cámara y suben hasta la superficie
+        bubbleAcc += dt * bubblesPerSecond;
+        guard = 0;
+        while (bubbleAcc >= 1f && guard++ < 6)
+        {
+            bubbleAcc -= 1f;
+            Vector3 p = cp + new Vector3(Random.Range(-10f, 10f), Random.Range(-6f, -1f), Random.Range(-10f, 10f));
+            float speed = Random.Range(0.6f, 1.3f);
+            float rise = surface - p.y;
+            if (rise < 0.5f) continue;
+            ep.position = p;
+            ep.velocity = Vector3.up * speed;
+            ep.startSize = Random.Range(0.05f, 0.14f);
+            ep.startLifetime = Mathf.Min(10f, rise / speed);
+            ep.startColor = new Color(0.85f, 0.97f, 1f, 0.8f);
+            int n = Random.value < 0.3f ? 3 : 1;   // a veces un trenecito de burbujas
+            for (int k = 0; k < n; k++)
+            {
+                ep.position = p + Vector3.down * (k * 0.25f);
+                bubblesPS.Emit(ep, 1);
+            }
+        }
+    }
+
     // Aparece, se mantiene y se desvanece
     static Gradient Fade(float fadeIn, float fadeOut, float alpha)
     {
@@ -212,7 +340,12 @@ public class AmbientParticles : MonoBehaviour
         if (cam == null) return;
         Vector3 cp = cam.transform.position;
         float surface = lake != null ? lake.SurfaceY : float.NegativeInfinity;
-        if (cp.y < surface) return;   // bajo el agua: nada de esto
+        if (cp.y < surface)
+        {
+            // Bajo el agua: suspensión, rayos de luz y burbujas (nada de hojas ni polen)
+            if (underwater && specksPS != null && lake.IsInsideXZ(cp, 0f)) UpdateUnderwater(dt, cp, surface);
+            return;
+        }
 
         float wind = LakeAmbience.Wind01;
         Vector3 windDir = LakeAmbience.WindDirection;

@@ -9,7 +9,9 @@ using UnityEngine.SceneManagement;
 //  - Niebla de distancia del color del horizonte (da profundidad: lo lejano se aclara y se azula).
 //  - Luz ambiente en degradado (cielo / horizonte / suelo) y tono cálido del sol.
 //  - Viento con ráfagas: mueve las plantas (DecorationSway), las nubes y las hojas que caen.
-//  - Efectos ambientales (AmbientParticles): hojas, polen y niebla baja sobre el agua.
+//  - Bajo el agua: niebla densa del color del agua (se ve un poco y lo lejano se pierde), más oscura en lo hondo.
+//  - Efectos ambientales (AmbientParticles): hojas, polen y niebla baja sobre el agua; bajo el agua, partículas
+//    en suspensión y rayos de luz.
 //  Se agrega solo al darle Play en las escenas con LakeWater. Para volver al cielo anterior,
 //  desmarca "Use Stylized Sky" (o agrega este componente a mano a la escena y ajústalo).
 // ============================================================================
@@ -61,12 +63,35 @@ public class LakeAmbience : MonoBehaviour
     [Tooltip("Cuánto arrastra el viento a las nubes")]
     public float cloudDrift = 0.01f;
 
+    [Header("Bajo el agua")]
+    [Tooltip("Con la cámara bajo el agua, niebla densa del color del agua: se ve cerca y lo lejano se pierde")]
+    public bool underwaterFog = true;
+    [Tooltip("Color del agua cerca de la superficie (antes del filtro azul del Underwater Volume)")]
+    public Color waterFogShallow = new Color(0.16f, 0.46f, 0.52f, 1f);
+    [Tooltip("Color del agua en lo hondo")]
+    public Color waterFogDeep = new Color(0.05f, 0.2f, 0.3f, 1f);
+    [Tooltip("A cuántos metros bajo la superficie el agua ya tiene el color de lo hondo")]
+    public float waterDarkDepth = 8f;
+    [Tooltip("Densidad (exponencial al cuadrado). 0.06: a 10 m se ve un 25 % borroso, a 20 m un 70 %, a 25 m casi nada")]
+    [Range(0.01f, 0.2f)] public float waterFogDensity = 0.06f;
+    [Tooltip("Rapidez con la que vuelve la niebla de aire al sacar la cámara del agua")]
+    public float waterFogFadeOut = 6f;
+
     [Header("Efectos")]
     [Tooltip("Hojas que caen de los árboles, polen en el aire y niebla baja sobre el agua")]
     public bool ambientEffects = true;
 
     DecorationSway sway;
     float swayTimer;
+    // Niebla de aire (la que deja Apply) y mezcla con la del agua
+    bool airFog;
+    FogMode airFogMode = FogMode.ExponentialSquared;
+    float airFogDensity = 0.0026f;
+    Color airFogColor = new Color(0.68f, 0.8f, 0.9f, 1f);
+    float under01;
+    Camera cam;
+    float camTimer;
+    LakeVolume lake;
     Vector2 cloudOffset;
     static readonly int WindOffsetId = Shader.PropertyToID("_FOW_WindOffset");
 
@@ -171,6 +196,13 @@ public class LakeAmbience : MonoBehaviour
             Light sun = FindSun();
             if (sun != null) sun.color = sunColor;
         }
+
+        // La niebla de aire queda guardada para volver a ella al salir del agua
+        airFog = RenderSettings.fog;
+        airFogMode = RenderSettings.fogMode;
+        airFogDensity = RenderSettings.fogDensity;
+        airFogColor = RenderSettings.fogColor;
+        under01 = 0f;
     }
 
     static Light FindSun()
@@ -217,5 +249,53 @@ public class LakeAmbience : MonoBehaviour
         // Nubes: se corren más rápido con las ráfagas
         cloudOffset += new Vector2(WindDirection.x, WindDirection.z) * cloudDrift * Mathf.Lerp(0.4f, 1.6f, Wind01) * dt;
         Shader.SetGlobalVector(WindOffsetId, new Vector4(cloudOffset.x, cloudOffset.y, 0f, 0f));
+
+        UpdateWaterFog(dt);
     }
+
+    // ======================= BAJO EL AGUA =======================
+
+    // Igual que el filtro submarino: se decide por la posición de la cámara (sirve en tercera persona y en la
+    // cinemática). Al entrar es inmediato; al salir se desvanece en un instante
+    void UpdateWaterFog(float dt)
+    {
+        if (!underwaterFog) return;
+        camTimer -= dt;
+        if (cam == null || camTimer <= 0f)
+        {
+            cam = Camera.main;
+            camTimer = 1f;
+            if (lake == null) lake = LakeVolume.Instance;
+        }
+        if (cam == null || lake == null) return;
+
+        Vector3 cp = cam.transform.position;
+        float depth = lake.SurfaceY - cp.y;
+        bool under = depth > 0f && lake.IsInsideXZ(cp, 0f);
+        float before = under01;
+        under01 = under ? 1f : Mathf.MoveTowards(under01, 0f, dt * Mathf.Max(0.5f, waterFogFadeOut));
+        if (under01 <= 0f)
+        {
+            if (before > 0f) RestoreAirFog();
+            return;
+        }
+
+        Color water = Color.Lerp(waterFogShallow, waterFogDeep, Mathf.Clamp01(depth / Mathf.Max(0.5f, waterDarkDepth)));
+        RenderSettings.fog = true;
+        RenderSettings.fogMode = FogMode.ExponentialSquared;
+        float airD = airFog ? airFogDensity : 0f;
+        RenderSettings.fogDensity = Mathf.Lerp(airD, waterFogDensity, under01);
+        RenderSettings.fogColor = Color.Lerp(airFogColor, water, under01);
+    }
+
+    void RestoreAirFog()
+    {
+        RenderSettings.fog = airFog;
+        RenderSettings.fogMode = airFogMode;
+        RenderSettings.fogDensity = airFogDensity;
+        RenderSettings.fogColor = airFogColor;
+    }
+
+    // Lo usan los efectos (partículas en suspensión, rayos de luz)
+    public static bool CameraUnderwater { get { return Instance != null && Instance.under01 >= 1f; } }
 }
