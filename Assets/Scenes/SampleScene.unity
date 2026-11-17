@@ -156,75 +156,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: -20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!1001 &79645812
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 5.1578054
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 5.1578054
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 5.1578054
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 48.97
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 18.503
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -143.09665
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8267427934229748759, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_Name
-      value: Heather_A
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: cce04f533c148314abf74aff71206ec7, type: 3}
 --- !u!1 &172605534
 GameObject:
   m_ObjectHideFlags: 0
@@ -1027,7 +958,6 @@ MonoBehaviour:
     m_Bits: 16
   tiltSpeed: 5
   horizontalTiltX: 90
-  verticalTiltX: 0
   maxRisePitch: 30
   maxFallPitch: 22
   turnBank: 18
@@ -1049,11 +979,6 @@ MonoBehaviour:
   turboSwimMultiplier: 1.7
   turboSwimDrainRate: 10
   turboFovKick: 14
-  waterEntryThreshold: 15
-  waterDrag: 1
-  waterBuoyancy: 5
-  waterSinkSpeed: 2
-  waterNormalSpeed: 1
   waterSurfaceOffset: 0
   swimSpeed: 11
   swimResponsiveness: 4
@@ -1070,6 +995,7 @@ MonoBehaviour:
   swimDashSpeed: 22
   swimDashDuration: 0.35
   swimDashCooldown: 1.1
+  dashCharges: 1
   swimCameraSway: 1.2
   swimFovBoost: 10
   dashFovKick: 12
@@ -1078,14 +1004,29 @@ MonoBehaviour:
   currentArmor: 0
   minDamage: 13
   maxDamage: 17
+  waterArmorRegen: 0
   enemyTag: Enemy
   jetpackWaterEffect: {fileID: 1214218335}
-  splashEffect: {fileID: 2554184690986698155, guid: 224c4574d4d272a4b92df19ede61b338, type: 3}
   uiStatus: {fileID: 703434936}
   uiPanelRect: {fileID: 1477706645}
   shakeDuration: 0.5
   shakeMagnitude: 20
   isDead: 0
+  safeImpactSpeed: 13
+  severeImpactSpeed: 38
+  maxImpactDamage: 0.6
+  strandedGrace: 4
+  suffocationRate: 3.5
+  suffocationRateMax: 9
+  suffocationRamp: 8
+  strandedWalkFactor: 0.35
+  flopForward: 4.5
+  flopUp: 4
+  flopCooldown: 0.28
+  boundaryMargin: 170
+  boundaryWarnBand: 30
+  uTurnDuration: 1.3
+  uTurnRise: 7
 --- !u!54 &405605803
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1173,7 +1114,6 @@ MonoBehaviour:
   muzzleFlashPrefab: {fileID: 6042243990886550057, guid: af44cbf49172b8d42b452221c9638892, type: 3}
   impactEffectPrefab: {fileID: 5911893088733641442, guid: f6573a110c1967643a98d0efdba24be8, type: 3}
   chargedImpactPrefab: {fileID: 6261345114989098648, guid: f66e2be959a7d4e4e8b050df54d1af73, type: 3}
-  waterSplashPrefab: {fileID: 3323387954473017891, guid: 0b912e9003fba894faa88cf964a6fb8a, type: 3}
   fxMaterialTemplate: {fileID: 2100000, guid: 6a354c1417c134944959abf12f5b0f22, type: 2}
   shotColor: {r: 0.35, g: 0.9, b: 1, a: 1}
   recoilKick: 1.2
@@ -1183,6 +1123,14 @@ MonoBehaviour:
   isInWaterForAmmo: 0
   rechargeAmmoInWater: 0
   ammoRechargeInterval: 0.2
+  bubbleShotsPerSecond: 10
+  bubbleDamageFactor: 0.4
+  bubbleSpeedMultiplier: 1.35
+  bubbleScale: 0.55
+  bubblesPerAmmo: 3
+  pistolKey: 49
+  bubbleKey: 50
+  chargedPierce: 0
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1802,10 +1750,11 @@ MonoBehaviour:
   jetpackSliderImage: {fileID: 1095136368}
   ammoText: {fileID: 1333669242}
   ammoIcon: {fileID: 755693591}
-  ammoNormalColor: {r: 0.40784317, g: 0.8705883, b: 0.90196085, a: 0.56078434}
   ammoEmptyColor: {r: 1, g: 0, b: 0, a: 0.56078434}
   blinkSpeed: 2.5
   lowAmmoThreshold: 5
+  useOldAmmoCounter: 0
+  useOldBars: 0
   lowEnergyThreshold: 25
   armorSlider: {fileID: 1416268410}
   armorFillImage: {fileID: 262296202}
@@ -1813,7 +1762,6 @@ MonoBehaviour:
   armorText: {fileID: 2110880412}
   crackOverlay: {fileID: 263750206}
   redFilter: {fileID: 1604626039}
-  armorNormalColor: {r: 0, g: 1, b: 0.13396597, a: 0.56078434}
   armorLowColor: {r: 1, g: 0, b: 0, a: 0.56078434}
   armorLowThreshold: 25
   redFilterIntensity: 0.3
@@ -2248,75 +2196,6 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
---- !u!1001 &887555934
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 5.1578054
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 5.1578054
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 5.1578054
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 66.88
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 14.01
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -108.6
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 0.99135715
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: -0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0.13119102
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 15.077
-      objectReference: {fileID: 0}
-    - target: {fileID: 8267427934229748759, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_Name
-      value: Heather_A (1)
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: cce04f533c148314abf74aff71206ec7, type: 3}
 --- !u!114 &900000101
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2390,7 +2269,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 07a0b19fc6604aed8b805340549201b8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PauseMenu
-  mainMenuScene: MainMenu
   player: {fileID: 405605802}
   pauseKey: 27
   deathScreenDelay: 1.5
@@ -2441,96 +2319,39 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameDirector
   player: {fileID: 405605802}
   lake: {fileID: 900000204}
-  level: {fileID: 11400000, guid: fc3927f0e2764990a4716d11dc0a82e5, type: 2}
-  fishTypes:
-  - name: Pez naranja
-    model: {fileID: 919132149155446097, guid: e9d030000c0f489d916fea36f690c554, type: 3}
-    modelRotation: {x: 90, y: 0, z: 0}
-    modelOffset: {x: 0, y: 0, z: -0.18}
-    modelScale: 28
-    materialOverride: {fileID: 2100000, guid: f80a417841c744ad91abb9edecb8732a, type: 2}
-    animatorController: {fileID: 9100000, guid: 86300c9b41834b7fa84984a4a3d58daf, type: 2}
-    proceduralWiggle: 1
-    wiggleAmount: 14
-    count: 6
-    colliderRadius: 0.7
-    speedMultiplier: 1
-    staminaMultiplier: 1
-  - name: Pez dorado
-    model: {fileID: 919132149155446097, guid: e9d030000c0f489d916fea36f690c554, type: 3}
-    modelRotation: {x: 90, y: 0, z: 0}
-    modelOffset: {x: 0, y: 0, z: -0.18}
-    modelScale: 28
-    materialOverride: {fileID: 2100000, guid: d858919db5b24fcabd45e61dd275101d, type: 2}
-    animatorController: {fileID: 9100000, guid: 86300c9b41834b7fa84984a4a3d58daf, type: 2}
-    proceduralWiggle: 1
-    wiggleAmount: 14
-    count: 5
-    colliderRadius: 0.7
-    speedMultiplier: 1
-    staminaMultiplier: 1
-  - name: Pez rosa
-    model: {fileID: 919132149155446097, guid: e9d030000c0f489d916fea36f690c554, type: 3}
-    modelRotation: {x: 90, y: 0, z: 0}
-    modelOffset: {x: 0, y: 0, z: -0.18}
-    modelScale: 28
-    materialOverride: {fileID: 2100000, guid: a4be363814074dfeae8e1003678d2b88, type: 2}
-    animatorController: {fileID: 9100000, guid: 86300c9b41834b7fa84984a4a3d58daf, type: 2}
-    proceduralWiggle: 1
-    wiggleAmount: 14
-    count: 5
-    colliderRadius: 0.7
-    speedMultiplier: 1
-    staminaMultiplier: 1
-  schools: 3
-  maxFishLossFraction: 0.7
-  birdTypes:
-  - name: Ave de arcilla
-    model: {fileID: 919132149155446097, guid: eea51bb5daf43514790fb0032790224a, type: 3}
-    modelRotation: {x: 0, y: 0, z: 0}
-    modelOffset: {x: 0, y: 0, z: 0}
-    modelScale: 1
-    materialOverride: {fileID: 0}
-    animatorController: {fileID: 0}
-    proceduralWingFlap: 1
-    wingBones: LeftArm,RightArm,L_wing,R_wing
-    talonBones: LeftFoot,RightFoot
-    catchPointOffset: {x: 0, y: -1.1, z: 0}
-    colliderRadius: 1.3
-    colliderCenter: {x: 0, y: 0.3, z: 0}
-    health: 40
-    speedMultiplier: 1
-    damage: 15
-    detectRange: 26
-  waves:
-  - birds: 2
-    delayBefore: 15
-    birdTypes: 
-    healthMultiplier: 1
-  - birds: 3
-    delayBefore: 12
-    birdTypes: 
-    healthMultiplier: 1
-  - birds: 4
-    delayBefore: 12
-    birdTypes: 
-    healthMultiplier: 1.25
+  testLevel: {fileID: 11400000, guid: fc3927f0e2764990a4716d11dc0a82e5, type: 2}
   arrivalDistance: 120
   arrivalHeight: 45
   arrivalYaw: -1
   playArrivalCinematic: 1
   cinematicOnlyFirstWave: 1
   cinematicDuration: 6.5
+  cinematicShots:
+    shotWeights: {x: 0.34, y: 0.3, z: 0.36}
+    wideDistance: 13
+    wideHeight: 1.3
+    wideAngle: 38
+    wideOrbit: 16
+    wideFov: 54
+    flockAhead: 18
+    flockSide: 8
+    flockUp: 2
+    flockFov: 48
+    flockRoll: 6
+    shoulderBack: 5.5
+    shoulderSide: 2.4
+    shoulderUp: 3.2
+    shoulderPush: 2.5
+    handheld: 0.35
+    showCaption: 1
   ammoPickups: 6
   ammoPerPickup: 10
   pickupRespawnTime: 12
   underwaterPickupChance: 0.4
   fxMaterialTemplate: {fileID: 2100000, guid: 6a354c1417c134944959abf12f5b0f22, type: 2}
-  splashPrefab: {fileID: 8585649807550039280, guid: 224c4574d4d272a4b92df19ede61b338, type: 3}
   birdHitPrefab: {fileID: 6042243990886550057, guid: af44cbf49172b8d42b452221c9638892, type: 3}
   birdDeathPrefab: {fileID: 8294947810415399850, guid: 7a16f43b4abbc0846a15aa17f7ba39bd, type: 3}
   pickupCollectPrefab: {fileID: 5056385361940353899, guid: 5831d4dc964245b4d935906496064f8f, type: 3}
-  disablePreplacedActors: 1
 --- !u!114 &900000204
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2660,6 +2481,83 @@ MonoBehaviour:
   splashColor: {r: 0.78, g: 0.95, b: 1, a: 0.95}
   bigSplashPrefab: {fileID: 8585649807550039280, guid: 224c4574d4d272a4b92df19ede61b338, type: 3}
   bigSplashThreshold: 0.55
+--- !u!1 &900000401
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 900000402}
+  - component: {fileID: 900000403}
+  m_Layer: 0
+  m_Name: PintorDelTerreno
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &900000402
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 900000401}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &900000403
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 900000401}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3c48c3c5633c405483381abbf2fe1996, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TerrainStylizer
+  layers:
+  - {fileID: 8574412962073106934, guid: e19e8d37912240f5a98a00d87b427e48, type: 2}
+  - {fileID: 8574412962073106934, guid: bae5a54f293c40c787666e33da608ae7, type: 2}
+  - {fileID: 8574412962073106934, guid: 5ca43e13140845d6b83c11aa87b2e161, type: 2}
+  - {fileID: 8574412962073106934, guid: 8c3e63abce5442b8a72c50241bf625f2, type: 2}
+  - {fileID: 8574412962073106934, guid: e0ac5215a48a405f86d0e671aeec0e66, type: 2}
+  - {fileID: 8574412962073106934, guid: 57759c65cd7c4984b2356bb9467c3146, type: 2}
+  water: {fileID: 900000302}
+  paintOnPlay: 1
+  shoreBelow: 0.4
+  shoreAbove: 1.3
+  shoreMaxDist: 30
+  dirtBand: 1.2
+  dirtShoreAmount: 0.55
+  bankHeight: 6
+  bankRockSlope: 66
+  rockSlopeMin: 30
+  rockSlopeMax: 40
+  dirtSlopeMin: 20
+  dirtSlopeMax: 30
+  dirtSlopeAmount: 0.65
+  seed: 7
+  varScale: 60
+  varMin: 0.4
+  varMax: 0.62
+  varAmount: 0.9
+  edgeScale: 9
+  pathScale: 120
+  pathWidth: 0.022
+  pathAmount: 0.75
+  pathMaxSlope: 14
+  lakeExtent: 450
+  lakeCell: 1.5
 --- !u!1 &1010918738
 GameObject:
   m_ObjectHideFlags: 0
@@ -4734,75 +4632,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1755854445}
   m_CullTransparentMesh: 1
---- !u!1001 &1805414435
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalScale.x
-      value: 5.1578054
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalScale.y
-      value: 5.1578054
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalScale.z
-      value: 5.1578054
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 71.4
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 14.38
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -106.98
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4310304732095800949, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8267427934229748759, guid: cce04f533c148314abf74aff71206ec7, type: 3}
-      propertyPath: m_Name
-      value: Heather_A (2)
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: cce04f533c148314abf74aff71206ec7, type: 3}
 --- !u!1001 &1816586923
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5424,83 +5253,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 8602b53c7fe82bb47a9038d63bffb61f, type: 3}
---- !u!1 &900000401
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 900000402}
-  - component: {fileID: 900000403}
-  m_Layer: 0
-  m_Name: PintorDelTerreno
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &900000402
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 900000401}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &900000403
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 900000401}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3c48c3c5633c405483381abbf2fe1996, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TerrainStylizer
-  layers:
-  - {fileID: 8574412962073106934, guid: e19e8d37912240f5a98a00d87b427e48, type: 2}
-  - {fileID: 8574412962073106934, guid: bae5a54f293c40c787666e33da608ae7, type: 2}
-  - {fileID: 8574412962073106934, guid: 5ca43e13140845d6b83c11aa87b2e161, type: 2}
-  - {fileID: 8574412962073106934, guid: 8c3e63abce5442b8a72c50241bf625f2, type: 2}
-  - {fileID: 8574412962073106934, guid: e0ac5215a48a405f86d0e671aeec0e66, type: 2}
-  - {fileID: 8574412962073106934, guid: 57759c65cd7c4984b2356bb9467c3146, type: 2}
-  water: {fileID: 900000302}
-  paintOnPlay: 1
-  shoreBelow: 0.4
-  shoreAbove: 1.3
-  shoreMaxDist: 30
-  dirtBand: 1.2
-  dirtShoreAmount: 0.55
-  bankHeight: 6
-  bankRockSlope: 66
-  rockSlopeMin: 30
-  rockSlopeMax: 40
-  dirtSlopeMin: 20
-  dirtSlopeMax: 30
-  dirtSlopeAmount: 0.65
-  seed: 7
-  varScale: 60
-  varMin: 0.4
-  varMax: 0.62
-  varAmount: 0.9
-  edgeScale: 9
-  pathScale: 120
-  pathWidth: 0.022
-  pathAmount: 0.75
-  pathMaxSlope: 14
-  lakeExtent: 450
-  lakeCell: 1.5
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -5520,9 +5272,6 @@ SceneRoots:
   - {fileID: 1612172682}
   - {fileID: 1816586923}
   - {fileID: 1683198826}
-  - {fileID: 79645812}
-  - {fileID: 887555934}
-  - {fileID: 1805414435}
   - {fileID: 900000202}
   - {fileID: 1683026080}
   - {fileID: 1209434709}
