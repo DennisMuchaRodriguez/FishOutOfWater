@@ -10,9 +10,9 @@ using System.Collections.Generic;
 //  - Número grande con los peces a salvo, "/ total" y PECES A SALVO (en rojo y parpadeando cerca del límite).
 //  - OLEADA 2 / 3 con un rombo por oleada (hechas, la actual latiendo y las que faltan).
 //  - Depredadores vivos (o ZONA DESPEJADA) y la cuenta atrás de la próxima oleada.
-// Lo crea HelmetVisorHUD. En primera persona va dentro de "VisorSway" (se mueve con el casco);
-// en tercera persona no hay casco, así que se muestra pequeño pegado al borde izquierdo de la pantalla.
-// Mientras está activo, GameHUD oculta sus objetivos viejos de abajo a la derecha.
+// Lo crea HelmetVisorHUD dentro de "VisorSway" (se mueve con el casco). SOLO se ve en primera persona, como el
+// resto del casco: en tercera persona no hay panel de misión.
+// Mientras exista, GameHUD no muestra sus objetivos viejos de abajo a la derecha (ni en tercera persona).
 public class VisorMissionHUD : MonoBehaviour
 {
     // ---- Medidas en unidades del canvas del visor (800 de ancho), igual que VisorAmmoHUD ----
@@ -25,14 +25,15 @@ public class VisorMissionHUD : MonoBehaviour
     const float TextX = 30f;          // borde izquierdo de los textos (por dentro de las celdas)
     const float LabelY = 40f, NumY = 15f, MaxY = -10f, WaveY = -36f, PipY = -50f, BirdsY = -70f, CountY = -89f;
     const float NumSize = 34f, MaxSize = 12f, LabelSize = 9f, SmallSize = 9f;
-    const float FpMargin = 14f, TpInset = 16f, YOff = 18f, TpScale = 0.8f;
+    const float FpMargin = 14f, YOff = 18f;
 
     static readonly Color Navy = new Color(0.006f, 0.02f, 0.06f, 1f);
     static readonly Color Shine = new Color(0.82f, 0.95f, 1f, 1f);
 
     public static VisorMissionHUD Instance { get; private set; }
-    // GameHUD lo consulta para no mostrar dos veces los objetivos
-    public static bool IsShowing { get { return Instance != null && Instance.isActiveAndEnabled && Instance.showing; } }
+    // GameHUD lo consulta: con el casco puesto, los objetivos viejos no se muestran nunca
+    public static bool IsActive { get { return Instance != null && Instance.isActiveAndEnabled; } }
+    public static bool IsShowing { get { return IsActive && Instance.showing; } }
 
     [HideInInspector] public HelmetVisorHUD visor;
     [HideInInspector] public PlayerController_Base player;
@@ -40,7 +41,7 @@ public class VisorMissionHUD : MonoBehaviour
     Color accent = new Color(0.25f, 0.72f, 1f, 1f);
     Color danger = new Color(1f, 0.15f, 0.1f, 1f);
 
-    RectTransform root, swayParent, flatParent, cellRoot, pipRoot;
+    RectTransform root, swayParent, cellRoot, pipRoot;
     RawImage plate, limitTick, limitGlow, birdIcon, labelLine, labelLineBright;
     readonly List<RawImage> cells = new List<RawImage>();
     readonly List<RawImage> guide = new List<RawImage>();
@@ -59,12 +60,12 @@ public class VisorMissionHUD : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
+    // flat: ya no se usa (antes era el lugar del panel en tercera persona); se deja para no cambiar la llamada
     public void Build(RectTransform sway, RectTransform flat, Color accentColor, Color dangerColor)
     {
         accent = accentColor;
         danger = dangerColor;
         swayParent = sway;
-        flatParent = flat != null ? flat : sway;
         if (triangleTex == null) triangleTex = MakeTriangle(32);
 
         root = NewRect("VisorMision", swayParent);
@@ -130,20 +131,19 @@ public class VisorMissionHUD : MonoBehaviour
     void Refresh(float dt)
     {
         GameDirector d = GameDirector.Instance;
-        showing = d != null && d.TotalFish > 0 && player != null && !player.isDead && !GameDirector.InCinematic;
+        // Solo en primera persona (dentro del casco), como el resto del visor
+        showing = d != null && d.TotalFish > 0 && player != null && !player.isDead && !GameDirector.InCinematic
+                  && !player.isThirdPerson;
         if (root.gameObject.activeSelf != showing) root.gameObject.SetActive(showing);
         if (!showing) return;
 
-        // Primera persona: dentro del casco. Tercera persona: pequeño, pegado al borde de la pantalla
-        bool firstPerson = !player.isThirdPerson;
-        RectTransform parent = firstPerson ? swayParent : flatParent;
-        if (root.parent != parent) root.SetParent(parent, false);
+        if (root.parent != swayParent) root.SetParent(swayParent, false);
         RectTransform canvasRect = (RectTransform)root.parent;
         float cw = Mathf.Max(1f, canvasRect.rect.width);
         float ch = Mathf.Max(1f, canvasRect.rect.height);
-        float s = Mathf.Clamp(ch / 450f, 0.72f, 1f) * (firstPerson ? 1f : TpScale);
+        float s = Mathf.Clamp(ch / 450f, 0.72f, 1f);
         float visorSize = visor != null ? visor.visorSize : 0.97f;
-        float inset = firstPerson ? (1f - visorSize) * cw * 0.5f + FpMargin : TpInset;
+        float inset = (1f - visorSize) * cw * 0.5f + FpMargin;
         root.anchoredPosition = new Vector2(inset, YOff * s);
         root.localScale = Vector3.one * s;
 

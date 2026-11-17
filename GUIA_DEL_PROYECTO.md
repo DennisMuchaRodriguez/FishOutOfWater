@@ -555,6 +555,28 @@ En **PlayerBase**.
 | **Enemy Tag** | Enemy | Enemy | Tag de los enemigos |
 | **Jetpack Water Effect** | — | partículas | Partículas del propulsor (SuitFX las usa si su propio *Jetpack Effect* está vacío) |
 
+### Choques, fuera del agua y límite de la zona (`PlayerController_Base.Survival.cs`)
+- **Choques**: chocar fuerte contra el suelo, un árbol o una roca quita armadura (más cuanto más fuerte) y rebota.
+  Aviso en pantalla "¡CHOQUE! TRAJE −X%". Bajo el agua el golpe se amortiga. Si un ave te acaba de lanzar, la caída cuenta la mitad.
+  Ejemplos con los valores de fábrica: caer de 5 m quita ~6 %, de 10 m ~20 %, de 20 m ~43 %; chocar con turbo contra un árbol ~24 %.
+- **Varado**: en tierra, fuera del agua y sin carga para encender el propulsor. El casco cuenta los segundos;
+  a los 4 s el pez empieza a asfixiarse y pierde armadura a golpes de un segundo, cada vez más rápido (de 3,5 a 9 % por segundo).
+  Al volver al agua se acaba. Varado, caminar es muy lento.
+- **Arrastrarse**: varado, cada pulsación de **ESPACIO** da un coletazo hacia adelante (hacia donde mira el pez). Hay que pulsar
+  varias veces y girar con A/D para llegar al agua.
+- **Límite de la zona**: a `Boundary Margin` metros de la orilla. Desde 30 m antes el casco avisa "LÍMITE DE LA ZONA"; al cruzarlo,
+  el traje hace solo un giro en U (sube, da la vuelta con la nariz arriba y baja de nuevo hacia el lago) y te devuelve el control.
+
+| Campo | Defecto | Qué hace |
+|---|---|---|
+| **Safe Impact Speed** / **Severe Impact Speed** / **Max Impact Damage** | 13 / 38 m/s / 0.6 | Desde qué velocidad de choque hace daño, con cuál quita el máximo y cuánto es ese máximo (fracción de la armadura) |
+| **Stranded Grace** | 4 s | Segundos varado antes de asfixiarse |
+| **Suffocation Rate** / **Rate Max** / **Ramp** | 3.5 / 9 / 8 s | Armadura por segundo al empezar, al final y en cuánto llega al final |
+| **Stranded Walk Factor** | 0.35 | Velocidad al caminar varado |
+| **Flop Forward** / **Flop Up** / **Flop Cooldown** | 4.5 / 4 / 0.28 s | Coletazo al arrastrarse |
+| **Boundary Margin** / **Boundary Warn Band** | 170 m / 30 m | Distancia a la orilla del límite y del aviso |
+| **U Turn Duration** / **U Turn Rise** | 1.3 s / 7 | Duración y altura del giro en U |
+
 ### Referencias UI y efectos de impacto
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
@@ -650,7 +672,7 @@ Las grietas y el filtro rojo de daño siguen saliendo de aquí.
 ### HelmetVisorHUD (en VistaInterior): vista desde el casco
 Construye el marco, el cristal, la retícula y los textos por código. **Durante la cinemática se apaga entero.**
 **El casco solo se ve en primera persona**: marco, munición (`VisorAmmoHUD`), propulsor y traje (`VisorStatusHUD`), misión (`VisorMissionHUD`), textos y sonar.
-En tercera persona queda la retícula y el panel de misión, pequeño, pegado al borde izquierdo de la pantalla.
+En tercera persona queda solo la retícula (el panel de misión, como todo el casco, es solo de primera persona).
 **Panel de misión (`VisorMissionHUD`, borde izquierdo del visor, el espejo de la munición):**
 - Arco de celdas: una por pez. Las encendidas son los peces a salvo y se apagan de arriba hacia abajo cuando cazan uno.
 - La **marca roja** del arco es el límite: si las celdas encendidas llegan ahí, pierdes el nivel.

@@ -709,6 +709,23 @@ public class HelmetVisorHUD : MonoBehaviour
             {
                 msg = "";
             }
+            else if (player.IsTurningBack)
+            {
+                msg = "FUERA DE LA ZONA  //  VOLVIENDO AL LAGO"; warn = true;
+            }
+            else if (player.IsSuffocating)
+            {
+                msg = "¡TE ASFIXIAS!  //  ARRÁSTRATE AL AGUA CON [ESPACIO]"; warn = true;
+            }
+            else if (player.IsStranded)
+            {
+                int secs = Mathf.CeilToInt(Mathf.Max(0f, player.strandedGrace - player.StrandedTime));
+                msg = "SIN AGUA  //  ASFIXIA EN " + secs + " s  //  [ESPACIO] ARRASTRARSE"; warn = true;
+            }
+            else if (player.BoundaryWarning)
+            {
+                msg = "LÍMITE DE LA ZONA  //  REGRESA AL LAGO"; warn = true;
+            }
             else if (!player.isInWater && energy01 <= 0.001f)
             {
                 msg = "PROPULSOR SIN CARGA  //  BUSCA AGUA"; warn = true;

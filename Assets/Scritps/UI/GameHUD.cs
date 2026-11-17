@@ -276,8 +276,9 @@ public class GameHUD : MonoBehaviour
 
     void UpdateObjectives(bool cinematic)
     {
-        // Con el casco puesto, los objetivos van dentro del visor (VisorMissionHUD): aquí solo quedan de respaldo
-        bool show = !cinematic && director != null && !VisorMissionHUD.IsShowing;
+        // Con el casco puesto, los objetivos van dentro del visor (VisorMissionHUD) y solo en primera persona:
+        // aquí quedan de respaldo para una escena sin casco
+        bool show = !cinematic && director != null && !VisorMissionHUD.IsActive;
         if (objectives.gameObject.activeSelf != show) objectives.gameObject.SetActive(show);
         if (!show) return;
 

@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public class PlayerController_Base : MonoBehaviour
+// Ver también PlayerController_Base.Survival.cs: choques, asfixia fuera del agua, arrastrarse y límite de la zona
+public partial class PlayerController_Base : MonoBehaviour
 {
     [Header("Movimiento")]
     public float walkSpeed = 5f;
@@ -272,6 +273,8 @@ public class PlayerController_Base : MonoBehaviour
         TurnInput = Input.GetAxis("Horizontal");
         moveInput = new Vector3(0, 0, moveVertical);
         if (moveInput.magnitude > 1f) moveInput.Normalize();
+        // Varado sin carga: cada pulsación de ESPACIO es un coletazo (se aplica en FixedUpdate)
+        if (Input.GetKeyDown(KeyCode.Space)) flopRequested = true;
 
         isGrounded = Physics.Raycast(transform.position + Vector3.up * 0.1f,
                                     Vector3.down,
@@ -299,6 +302,12 @@ public class PlayerController_Base : MonoBehaviour
     {
         if (isDead || rb == null || rb.isKinematic) return;
         UpdateWaterContact();
+        // Límite de la zona: durante el giro en U el traje se maneja solo
+        if (UpdateBoundary(Time.fixedDeltaTime))
+        {
+            UpdateModelTilt();
+            return;
+        }
         bool wantsToFly = !InputLocked && Input.GetKey(KeyCode.Space);
 
         if (isInWater)
@@ -328,6 +337,9 @@ public class PlayerController_Base : MonoBehaviour
             SwimSpeed01 = Mathf.MoveTowards(SwimSpeed01, 0f, Time.fixedDeltaTime * 2f);
         }
 
+        // Fuera del agua sin carga: asfixia poco a poco y coletazos para arrastrarse
+        UpdateStranded(Time.fixedDeltaTime);
+        TryFlop();
         UpdateModelTilt();
     }
 
@@ -426,7 +438,8 @@ public class PlayerController_Base : MonoBehaviour
         if (moveInput.magnitude > 0.1f)
         {
             Vector3 moveDirection = transform.forward * moveInput.z;
-            float currentSpeed = walkSpeed;
+            // Varado (sin agua para el propulsor) el traje apenas camina: hay que arrastrarse a coletazos
+            float currentSpeed = walkSpeed * (IsStranded && isGrounded ? strandedWalkFactor : 1f);
             if (!isGrounded)
             {
                 currentSpeed = canFly ? walkSpeed * 1.5f : walkSpeed * airControl;
@@ -444,7 +457,8 @@ public class PlayerController_Base : MonoBehaviour
             rb.linearVelocity = new Vector3(horizontalVel.x, rb.linearVelocity.y, horizontalVel.z);
         }
 
-        float maxHorizontalSpeed = IsTurbo ? turboAirSpeed : (isGrounded ? walkSpeed : (canFly ? walkSpeed * 1.5f : walkSpeed));
+        float groundSpeed = IsStranded && flopTimer <= 0f ? walkSpeed * strandedWalkFactor : walkSpeed;
+        float maxHorizontalSpeed = IsTurbo ? turboAirSpeed : (isGrounded ? groundSpeed : (canFly ? walkSpeed * 1.5f : walkSpeed));
         Vector3 flatVel = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
         if (flatVel.magnitude > maxHorizontalSpeed)
         {
@@ -628,7 +642,6 @@ public class PlayerController_Base : MonoBehaviour
                 : -Mathf.Clamp(-vy * 2.5f, 0f, maxFallPitch);
         }
         if (isInWater && IsDiving) targetPitch = -15f;
-        modelPitch = Mathf.Lerp(modelPitch, targetPitch, 1f - Mathf.Exp(-tiltSpeed * dt));
 
         float wiggle = 0f;
         float roll = -TurnInput * turnBank;
@@ -638,6 +651,9 @@ public class PlayerController_Base : MonoBehaviour
             float amp = Mathf.Lerp(4f, 16f, Mathf.Clamp01(SwimSpeed01)) * (IsDashing || IsTurbo ? 1.6f : 1f);
             wiggle = Mathf.Sin(swimPhase) * amp;
         }
+        // Nariz arriba en el giro en U y coletazos al arrastrarse (PlayerController_Base.Survival.cs)
+        SurvivalPose(ref targetPitch, ref wiggle, ref roll);
+        modelPitch = Mathf.Lerp(modelPitch, targetPitch, 1f - Mathf.Exp(-tiltSpeed * (IsTurningBack ? 3f : 1f) * dt));
 
         // Pose horizontal fija (solo el eje X de la pose de base)
         Quaternion rest = Quaternion.Euler(horizontalTiltX, 0f, 0f);
@@ -850,6 +866,7 @@ public class PlayerController_Base : MonoBehaviour
         if (v.y < 0f) v.y = 0f;
         rb.linearVelocity = v + velocityChange;
         knockbackEndTime = Time.time + controlLossTime;
+        lastEnemyKnockTime = Time.time;
     }
 
     // Corrientes (el remolino de un jefe): suma velocidad sin quitarle el control al jugador
@@ -894,6 +911,8 @@ public class PlayerController_Base : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
+        // Choque fuerte contra el suelo, un árbol o una roca: quita armadura (PlayerController_Base.Survival.cs)
+        CheckCrash(collision);
         if (!collision.collider.CompareTag(enemyTag)) return;
         // Los pájaros con IA aplican su propio golpe y empujón
         if (collision.collider.GetComponentInParent<BirdAI>() != null) return;
@@ -912,6 +931,7 @@ public class PlayerController_Base : MonoBehaviour
     void Die()
     {
         isDead = true;
+        uTurnTimer = 0f;
         SetJetting(false, 0f);
         SetTurbo(false);
         if (rb != null)
