@@ -40,7 +40,11 @@ public class GameDirector : MonoBehaviour
     public bool playArrivalCinematic = true;
     [Tooltip("Mostrar la cinemática solo en la primera oleada")]
     public bool cinematicOnlyFirstWave = false;
-    public float cinematicDuration = 5f;
+    [Tooltip("Segundos que dura (se reparte entre los tres planos)")]
+    public float cinematicDuration = 6.5f;
+    [Tooltip("Encuadre de cada plano. Con el GameDirector seleccionado se ven las tres cámaras en la escena; " +
+             "el menú ⋮ del componente tiene \"Cinemática: ver plano ...\" para mirar por cada una")]
+    public WaveCinematic.Settings cinematicShots = new WaveCinematic.Settings();
 
     [Header("Munición")]
     public int ammoPickups = 6;
@@ -191,7 +195,7 @@ public class GameDirector : MonoBehaviour
             Sfx.Play2D(Sonido.Oleada, 0.9f);
             if (showCinematic)
             {
-                cinematic = WaveCinematic.Play(player, spawned, lake, cinematicDuration, on => Letterbox?.Invoke(on));
+                cinematic = WaveCinematic.Play(player, spawned, lake, cinematicDuration, on => Letterbox?.Invoke(on), cinematicShots);
                 // Espera a que termine (con tope por si acaso)
                 float guard = 0f;
                 while (cinematic != null && guard < cinematicDuration + 8f)
@@ -605,4 +609,114 @@ public class GameDirector : MonoBehaviour
         yield return new WaitForSeconds(pickupRespawnTime);
         if (!ended) SpawnPickup();
     }
+
+#if UNITY_EDITOR
+    // ======================= VISTA PREVIA DE LA CINEMÁTICA (SOLO EDITOR) =======================
+    // Con el GameDirector seleccionado se dibujan las cámaras de los tres planos (la línea va del inicio al final
+    // de cada plano y la pirámide es el encuadre a mitad del plano). La bandada se dibuja donde suele estar en ese
+    // momento: viniendo desde arrivalYaw (si es aleatoria, desde el norte), a medio camino hacia el lago.
+
+    WaveCinematic.Anchor PreviewAnchor()
+    {
+        LakeVolume l = lake != null ? lake : FindFirstObjectByType<LakeVolume>();
+        Vector3 center = transform.position;
+        if (l != null) center = l.water != null && l.water.HasData ? l.water.Centroid : l.transform.position;
+        Vector3 p = player != null ? player.transform.position : center;
+        float yaw = arrivalYaw >= 0f ? arrivalYaw : 0f;
+        Vector3 fromDir = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+        Vector3 flock = center + fromDir * arrivalDistance * 0.65f + Vector3.up * arrivalHeight * 0.8f;
+        Vector3 to = flock - p;
+        to.y = 0f;
+        Vector3 fly = center + Vector3.up * 17f - flock;
+        return new WaveCinematic.Anchor
+        {
+            player = p,
+            toFlock = to.sqrMagnitude > 0.01f ? to.normalized : Vector3.forward,
+            flock = flock,
+            flockDir = fly.sqrMagnitude > 0.01f ? fly.normalized : -fromDir,
+            flockRadius = 9f,
+            sideSign = 1f,
+            lake = l
+        };
+    }
+
+    static readonly Color[] ShotGizmoColors =
+    {
+        new Color(0.3f, 0.9f, 1f, 1f), new Color(1f, 0.8f, 0.25f, 1f), new Color(1f, 0.4f, 0.8f, 1f)
+    };
+
+    void OnDrawGizmosSelected()
+    {
+        if (!playArrivalCinematic || Application.isPlaying) return;
+        WaveCinematic.Anchor a = PreviewAnchor();
+
+        Gizmos.color = new Color(1f, 0.55f, 0.2f, 0.9f);
+        Gizmos.DrawWireSphere(a.flock, a.flockRadius);
+        Gizmos.DrawLine(a.flock, a.flock + a.flockDir * 25f);
+        UnityEditor.Handles.Label(a.flock + Vector3.up * (a.flockRadius + 1f), "Bandada (ejemplo)");
+
+        for (int i = 0; i < WaveCinematic.ShotCount; i++)
+        {
+            Vector3 p0, p1, pos;
+            Quaternion r0, r1, rot;
+            float f0, f1, fov;
+            WaveCinematic.Evaluate(cinematicShots, i, 0f, a, out p0, out r0, out f0);
+            WaveCinematic.Evaluate(cinematicShots, i, 1f, a, out p1, out r1, out f1);
+            WaveCinematic.Evaluate(cinematicShots, i, 0.5f, a, out pos, out rot, out fov);
+
+            Gizmos.color = ShotGizmoColors[i];
+            Gizmos.DrawLine(p0, p1);
+            Gizmos.DrawSphere(p0, 0.25f);
+            Gizmos.matrix = Matrix4x4.TRS(pos, rot, Vector3.one);
+            Gizmos.DrawFrustum(Vector3.zero, fov, 8f, 0.3f, 16f / 9f);
+            Gizmos.matrix = Matrix4x4.identity;
+            UnityEditor.Handles.color = ShotGizmoColors[i];
+            UnityEditor.Handles.Label(pos + Vector3.up * 0.7f, (i + 1) + " · " + WaveCinematic.ShotNames[i]);
+        }
+    }
+
+    [ContextMenu("Cinemática: ver plano 1 (general)")]
+    void ViewShot1() { ViewShot(0); }
+
+    [ContextMenu("Cinemática: ver plano 2 (bandada)")]
+    void ViewShot2() { ViewShot(1); }
+
+    [ContextMenu("Cinemática: ver plano 3 (sobre el hombro)")]
+    void ViewShot3() { ViewShot(2); }
+
+    [ContextMenu("Cinemática: devolver la vista de escena normal")]
+    void ViewShotReset()
+    {
+        UnityEditor.SceneView view = UnityEditor.SceneView.lastActiveSceneView;
+        if (view == null) return;
+        UnityEditor.SceneView.CameraSettings cam = view.cameraSettings;
+        cam.fieldOfView = 60f;
+        view.cameraSettings = cam;
+        view.Repaint();
+    }
+
+    // Pone la vista de escena justo donde estaría la cámara a mitad de ese plano (con su mismo zoom)
+    void ViewShot(int shot)
+    {
+        UnityEditor.SceneView view = UnityEditor.SceneView.lastActiveSceneView;
+        if (view == null)
+        {
+            Debug.Log("Cinemática: abre la ventana Scene para ver el plano.");
+            return;
+        }
+        Vector3 pos;
+        Quaternion rot;
+        float fov;
+        WaveCinematic.Evaluate(cinematicShots, shot, 0.5f, PreviewAnchor(), out pos, out rot, out fov);
+        UnityEditor.SceneView.CameraSettings cam = view.cameraSettings;
+        cam.fieldOfView = fov;
+        view.cameraSettings = cam;
+        GameObject temp = new GameObject("PlanoCinematica");
+        temp.hideFlags = HideFlags.HideAndDontSave;
+        temp.transform.SetPositionAndRotation(pos, rot);
+        view.AlignViewToObject(temp.transform);
+        DestroyImmediate(temp);
+        view.Repaint();
+    }
+#endif
 }

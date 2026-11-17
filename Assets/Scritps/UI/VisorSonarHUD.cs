@@ -55,6 +55,9 @@ public class VisorSonarHUD : MonoBehaviour
         if (root != null && root.gameObject.activeSelf != visible) root.gameObject.SetActive(visible);
     }
 
+    // La vista previa del casco en el editor lo actualiza a mano (fuera de Play no hay LateUpdate)
+    public void Tick() { LateUpdate(); }
+
     void LateUpdate()
     {
         if (root == null || !root.gameObject.activeSelf) return;
@@ -64,7 +67,7 @@ public class VisorSonarHUD : MonoBehaviour
         bool active = level > 0 && cam != null && player != null && !player.isDead && !GameDirector.InCinematic && !PauseMenu.IsPaused;
         if (active)
         {
-            float pulse = Mathf.Repeat(Time.time * 1.6f, 1f);
+            float pulse = Mathf.Repeat(HelmetVisorHUD.Now * 1.6f, 1f);
             foreach (BirdAI bird in BirdAI.All)
             {
                 if (bird == null || !bird.IsAlive || bird.IsArriving) continue;

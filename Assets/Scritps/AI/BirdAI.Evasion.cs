@@ -197,12 +197,14 @@ public partial class BirdAI
         Vector3 off = to - dir * along;
         if (off.magnitude > bodyRadius * 1.5f + 1.2f) return;   // la bala pasa lejos: ni se inmuta
 
+        // Una bala rápida disparada de cerca no da tiempo a reaccionar (acercarse tiene premio)
+        float travel = along / Mathf.Max(10f, speed);
+        if (travel < 0.1f) return;
         if (Random.value > DodgeChance)
         {
             dodgeCooldown = 0.3f;   // con la metralleta no tira los dados con cada burbuja
             return;
         }
-        float travel = along / Mathf.Max(10f, speed);
         dodgeDelay = Mathf.Clamp(travel * 0.35f, 0.04f, 0.16f) + Random.Range(0f, 0.05f);
 
         // Hacia el lado contrario de la bala (perpendicular a su trayectoria), con algo de altura al azar

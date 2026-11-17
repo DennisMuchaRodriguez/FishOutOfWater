@@ -11,6 +11,8 @@ public class Projectile : MonoBehaviour
     public GameObject impactEffectPrefab;
     [Tooltip("Al entrar al agua el proyectil se frena a este factor")]
     public float waterSlowdown = 0.55f;
+    [Tooltip("Largo de la estela en metros (se ajusta a la velocidad de la bala)")]
+    public float trailLength = 14f;
 
     private PlayerShooting owner;
     private bool isCharged;
@@ -29,6 +31,14 @@ public class Projectile : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         ownCollider = GetComponent<Collider>();
+        if (rb != null)
+        {
+            // Desde el primer paso de física: barrido continuo (no atraviesa aves a alta velocidad) y movimiento
+            // interpolado (se ve fluido entre pasos de física en vez de avanzar a saltos)
+            rb.useGravity = false;
+            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+        }
     }
 
     // Lo llama PlayerShooting justo después de instanciar
@@ -85,10 +95,15 @@ public class Projectile : MonoBehaviour
         Destroy(gameObject, lifeTime);
 
         baseScale = transform.localScale;
-        if (rb != null)
+        if (rb != null) lastVelocity = rb.linearVelocity;
+
+        // La estela mide siempre lo mismo en metros, vaya la bala lenta o rápida
+        TrailRenderer trail = GetComponent<TrailRenderer>();
+        float speed = lastVelocity.magnitude;
+        if (trail != null && speed > 1f)
         {
-            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-            lastVelocity = rb.linearVelocity;
+            float length = trailLength * (isCharged ? 1.7f : (isBubble ? 0.4f : 1f));
+            trail.time = Mathf.Clamp(length / speed, 0.03f, 0.4f);
         }
 
         // Salpica y hace anillos al cruzar la superficie

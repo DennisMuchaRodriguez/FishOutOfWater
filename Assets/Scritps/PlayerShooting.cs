@@ -5,7 +5,8 @@ public class PlayerShooting : MonoBehaviour
     [Header("Configuración")]
     public KeyCode shootKey = KeyCode.Mouse0;
     public GameObject projectilePrefab;
-    public float shootForce = 20f;
+    [Tooltip("Velocidad de la bala en m/s (más alto = más recto y llega antes a donde apuntas)")]
+    public float shootForce = 150f;
     public float fireRate = 0.3f;
     [Tooltip("Mantener presionado para disparar en ráfaga")]
     public bool holdToFire = true;
@@ -22,12 +23,24 @@ public class PlayerShooting : MonoBehaviour
 
     [Header("Precisión - NUEVO")]
     [Tooltip("Dispersión base en grados")]
-    public float baseSpread = 0.25f;
-    public float spreadPerShot = 0.6f;
-    public float maxSpread = 3f;
-    public float spreadRecovery = 5f;
+    public float baseSpread = 0.1f;
+    public float spreadPerShot = 0.25f;
+    public float maxSpread = 1.2f;
+    public float spreadRecovery = 8f;
     [Tooltip("Dispersión extra mientras vuelas")]
-    public float airSpread = 1f;
+    public float airSpread = 0.2f;
+
+    [Header("Disparo recto y asistido")]
+    [Tooltip("Suma a la bala la velocidad con la que avanzas, así nunca se queda atrás ni parece que cae")]
+    public bool inheritForwardSpeed = true;
+    [Tooltip("Grados alrededor de la mira en los que el disparo busca un ave (0 = sin ayuda)")]
+    [Range(0f, 10f)] public float aimAssistAngle = 4f;
+    [Tooltip("Cuánto corrige la puntería hacia esa ave (0 = nada, 1 = justo a donde va a estar)")]
+    [Range(0f, 1f)] public float aimAssistStrength = 0.9f;
+    [Tooltip("Apunta adelante del ave según su velocidad, para que la bala llegue a donde VA a estar")]
+    public bool leadTargets = true;
+    [Tooltip("La dispersión se multiplica por esto mientras la mira tiene un ave fijada")]
+    [Range(0f, 1f)] public float lockedSpreadFactor = 0.3f;
 
     [Header("Disparo cargado - NUEVO")]
     public KeyCode chargeKey = KeyCode.Mouse1;
@@ -61,6 +74,8 @@ public class PlayerShooting : MonoBehaviour
     public float CurrentSpread { get; private set; }
     public float LastShotTime { get; private set; } = -10f;
     public bool IsCharging { get; private set; }
+    // Ave que la mira tiene fijada ahora mismo (null = ninguna): el HUD cierra la retícula sobre ella
+    public BirdAI AimTarget { get; private set; }
     [Header("Metralleta de burbujas (mejora del Taller)")]
     [Tooltip("Disparos por segundo de la metralleta")]
     public float bubbleShotsPerSecond = 10f;
@@ -114,11 +129,13 @@ public class PlayerShooting : MonoBehaviour
     private ParticleSystem muzzleSparks;
     private Material trailMaterial;
     private PlayerController_Base controller;
+    private Rigidbody body;
 
     void Start()
     {
         currentAmmo = maxAmmo;
         controller = GetComponent<PlayerController_Base>();
+        body = GetComponent<Rigidbody>();
 
         if (playerCamera == null)
         {
@@ -183,6 +200,10 @@ public class PlayerShooting : MonoBehaviour
         spreadHeat = Mathf.MoveTowards(spreadHeat, 0f, spreadRecovery * dt);
         bool airborne = controller != null && controller.IsJetting;
         CurrentSpread = Mathf.Min(baseSpread + spreadHeat + (airborne ? airSpread : 0f), maxSpread);
+
+        // --- Ave bajo la mira (para la ayuda de puntería y la retícula) ---
+        AimTarget = playerCamera != null && aimAssistAngle > 0f && aimAssistStrength > 0f ? FindAssistTarget(AimRay) : null;
+        if (AimTarget != null) CurrentSpread *= lockedSpreadFactor;
 
         // --- Cambio de arma principal (1 / 2 o la rueda del mouse) ---
         if (bubbleUnlocked && !IsCharging && (controller == null || !controller.isDead))
@@ -347,16 +368,21 @@ public class PlayerShooting : MonoBehaviour
             return;
         }
 
-        // PASO 1: Calcular dónde apunta el mouse en el mundo
-        Vector3 targetPoint = GetAimTarget();
+        // PASO 1: Velocidad de la bala (más la que ya lleva el pez hacia adelante, para que nunca se quede atrás)
+        float shotSpeed = shootForce * (charged ? chargedSpeedMultiplier : (bubble ? bubbleSpeedMultiplier : 1f));
+        Ray aim = AimRay;
+        if (inheritForwardSpeed && body != null) shotSpeed += Mathf.Max(0f, Vector3.Dot(body.linearVelocity, aim.direction));
 
-        // PASO 2: Dirección desde firePoint hacia el objetivo, con un poco de dispersión
-        Vector3 direction = (targetPoint - firePoint.position).normalized;
-        float spread = charged || bubble ? 0f : CurrentSpread;   // la metralleta dispara recto
+        // PASO 2: Dirección hacia lo que hay bajo la mira (o hacia donde va a estar el ave fijada), con poca dispersión
+        BirdAI locked;
+        Vector3 direction = GetAimDirection(aim, shotSpeed, out locked);
+        float spread = charged || bubble ? 0f : CurrentSpread;   // la metralleta y el cargado van rectos
         if (spread > 0f)
         {
             Vector2 r = Random.insideUnitCircle * spread;
-            direction = Quaternion.AngleAxis(r.x, Vector3.up) * Quaternion.AngleAxis(r.y, Vector3.Cross(direction, Vector3.up).normalized) * direction;
+            Vector3 right = Vector3.Cross(direction, Vector3.up);
+            if (right.sqrMagnitude < 0.001f) right = Vector3.right;
+            direction = Quaternion.AngleAxis(r.x, Vector3.up) * Quaternion.AngleAxis(r.y, right.normalized) * direction;
         }
 
         // PASO 3: Crear proyectil
@@ -375,8 +401,7 @@ public class PlayerShooting : MonoBehaviour
             if (charged && chargedPierce > 0) proj.pierceCount = chargedPierce;
         }
 
-        // PASO 4: Darle velocidad en esa dirección
-        float shotSpeed = shootForce * (charged ? chargedSpeedMultiplier : (bubble ? bubbleSpeedMultiplier : 1f));
+        // PASO 4: Darle velocidad en esa dirección (en línea recta: sin gravedad)
         Rigidbody rb = projectile.GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -405,7 +430,7 @@ public class PlayerShooting : MonoBehaviour
         LastShotTime = Time.time;
         OnShot?.Invoke(charged);
 
-        Debug.DrawLine(firePoint.position, targetPoint, Color.red, 1f);
+        Debug.DrawRay(firePoint.position, direction * 60f, locked != null ? Color.yellow : Color.red, 1f);
     }
 
     public void NotifyHit(bool killed)
@@ -413,16 +438,37 @@ public class PlayerShooting : MonoBehaviour
         OnTargetHit?.Invoke(killed);
     }
 
-    Vector3 GetAimTarget()
+    // ======================= PUNTERÍA =======================
+
+    // Dirección de la bala desde el punto de disparo: hacia lo que hay bajo la mira y, si cerca de la mira hay un
+    // ave, hacia donde va a estar cuando la bala llegue (según aimAssistStrength)
+    Vector3 GetAimDirection(Ray aim, float shotSpeed, out BirdAI locked)
     {
-        // Rayo desde la cámara hacia donde está el mouse (ignorando triggers y al propio jugador)
-        Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
+        Vector3 origin = firePoint.position;
+        Vector3 dir = AimPoint(aim) - origin;
+        dir = dir.sqrMagnitude > 0.0001f ? dir.normalized : aim.direction;
+
+        locked = aimAssistAngle > 0f && aimAssistStrength > 0f ? FindAssistTarget(aim) : null;
+        if (locked != null)
+        {
+            Vector3 target = leadTargets ? PredictPosition(locked, origin, shotSpeed) : locked.transform.position;
+            Vector3 toTarget = target - origin;
+            if (toTarget.sqrMagnitude > 0.01f) dir = Vector3.Slerp(dir, toTarget.normalized, aimAssistStrength);
+        }
+        return dir;
+    }
+
+    // Lo que hay bajo la mira (ignora triggers, al propio jugador y lo que queda entre la cámara y el pez:
+    // en tercera persona eso hacía que la bala saliera torcida)
+    Vector3 AimPoint(Ray ray)
+    {
+        float minDist = Mathf.Max(0f, Vector3.Dot(firePoint.position - ray.origin, ray.direction)) + 0.5f;
         RaycastHit[] hits = Physics.RaycastAll(ray, maxDistance, aimLayers, QueryTriggerInteraction.Ignore);
         float best = float.MaxValue;
         Vector3 point = ray.GetPoint(maxDistance);
         foreach (RaycastHit h in hits)
         {
-            if (h.collider.transform.IsChildOf(transform)) continue;
+            if (h.distance < minDist || h.collider.transform.IsChildOf(transform)) continue;
             if (h.distance < best)
             {
                 best = h.distance;
@@ -430,5 +476,81 @@ public class PlayerShooting : MonoBehaviour
             }
         }
         return point;
+    }
+
+    // El ave viva más cerca de la mira dentro de aimAssistAngle (más un margen por su tamaño) y a la vista
+    BirdAI FindAssistTarget(Ray ray)
+    {
+        BirdAI best = null;
+        float bestScore = float.MaxValue;
+        float maxSqr = maxDistance * maxDistance;
+        for (int i = 0; i < BirdAI.All.Count; i++)
+        {
+            BirdAI b = BirdAI.All[i];
+            if (b == null || !b.IsAlive) continue;
+            Vector3 to = b.transform.position - ray.origin;
+            float sqr = to.sqrMagnitude;
+            if (sqr > maxSqr || sqr < 1f || Vector3.Dot(to, ray.direction) <= 0f) continue;
+            float dist = Mathf.Sqrt(sqr);
+            float limit = aimAssistAngle + Mathf.Atan2(1.5f, dist) * Mathf.Rad2Deg;
+            float angle = Vector3.Angle(ray.direction, to);
+            if (angle > limit) continue;
+            float score = angle / limit + dist / maxDistance * 0.15f;   // la más centrada; a igualdad, la más cercana
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = b;
+            }
+        }
+        if (best != null && !InSight(ray.origin, best)) best = null;
+        return best;
+    }
+
+    // Que no haya un árbol, una roca o el suelo entre la cámara y el ave
+    bool InSight(Vector3 from, BirdAI bird)
+    {
+        Vector3 to = bird.transform.position - from;
+        float dist = to.magnitude;
+        if (dist < 0.1f) return true;
+        RaycastHit[] hits = Physics.RaycastAll(from, to / dist, dist, aimLayers, QueryTriggerInteraction.Ignore);
+        foreach (RaycastHit h in hits)
+        {
+            Transform t = h.collider.transform;
+            if (t.IsChildOf(transform) || t.IsChildOf(bird.transform)) continue;
+            if (h.distance < dist - 2f) return false;
+        }
+        return true;
+    }
+
+    // Dónde va a estar el ave cuando llegue una bala a esta velocidad (intercepción con su velocidad actual)
+    static Vector3 PredictPosition(BirdAI bird, Vector3 origin, float speed)
+    {
+        Vector3 pos = bird.transform.position;
+        Rigidbody brb = bird.GetComponent<Rigidbody>();
+        Vector3 v = brb != null ? brb.linearVelocity : Vector3.zero;
+        Vector3 d = pos - origin;
+        float a = Vector3.Dot(v, v) - speed * speed;
+        float bq = 2f * Vector3.Dot(d, v);
+        float c = Vector3.Dot(d, d);
+        float t;
+        if (Mathf.Abs(a) < 0.001f)
+        {
+            t = bq < 0f ? -c / bq : d.magnitude / Mathf.Max(1f, speed);
+        }
+        else
+        {
+            float disc = bq * bq - 4f * a * c;
+            if (disc < 0f) t = d.magnitude / Mathf.Max(1f, speed);
+            else
+            {
+                float sq = Mathf.Sqrt(disc);
+                float t1 = (-bq - sq) / (2f * a);
+                float t2 = (-bq + sq) / (2f * a);
+                t = Mathf.Min(t1, t2);
+                if (t < 0f) t = Mathf.Max(t1, t2);
+                if (t < 0f) t = d.magnitude / Mathf.Max(1f, speed);
+            }
+        }
+        return pos + v * Mathf.Clamp(t, 0f, 1.5f);
     }
 }

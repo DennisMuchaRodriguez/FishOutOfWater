@@ -33,6 +33,9 @@ public class GameHUD : MonoBehaviour
     RectTransform barTop, barBottom;
     float letterbox;
     bool letterboxOn;
+    // Rótulo de la cinemática (qué aves llegan) y aviso para saltarla
+    TextMeshProUGUI cineTitle, cineCaption, cineSkip;
+    RawImage cineLine;
 
     RectTransform markerRoot;
     readonly List<RawImage> markerPool = new List<RawImage>();
@@ -234,6 +237,56 @@ public class GameHUD : MonoBehaviour
         b.texture = FXFactory.White;
         b.color = Color.black;
         b.raycastTarget = false;
+
+        // Rótulo abajo a la izquierda, sobre la barra negra (estilo documental)
+        cineTitle = MenuUI.CreateText("CineTitulo", root, "", 14f, new Vector2(0f, 0f), new Vector2(330f, 150f), new Vector2(560f, 22f));
+        cineTitle.alignment = TextAlignmentOptions.Left;
+        cineTitle.characterSpacing = 8f;
+        cineTitle.color = GameDirector.Danger;
+        cineCaption = MenuUI.CreateText("CineRotulo", root, "", 22f, new Vector2(0f, 0f), new Vector2(330f, 124f), new Vector2(560f, 30f));
+        cineCaption.alignment = TextAlignmentOptions.Left;
+        cineCaption.fontStyle = FontStyles.Bold;
+        cineCaption.characterSpacing = 3f;
+        cineCaption.color = Color.white;
+        cineLine = CreateRaw("CineLinea", root, FXFactory.White, GameDirector.Danger);
+        RectTransform lr = cineLine.rectTransform;
+        lr.anchorMin = lr.anchorMax = new Vector2(0f, 0f);
+        lr.pivot = new Vector2(0f, 0.5f);
+        lr.anchoredPosition = new Vector2(50f, 139f);
+        lr.sizeDelta = new Vector2(220f, 2f);
+
+        // Aviso para saltar, dentro de la barra de abajo
+        cineSkip = MenuUI.CreateText("CineSaltar", root, "ESPACIO / CLIC  ·  SALTAR", 13f, new Vector2(1f, 0f), new Vector2(-170f, 44f), new Vector2(300f, 22f));
+        cineSkip.alignment = TextAlignmentOptions.Right;
+        cineSkip.characterSpacing = 4f;
+        SetCinematicTexts(0f, 0f);
+    }
+
+    void UpdateCinematicTexts(float dt)
+    {
+        float cap = WaveCinematic.CaptionAlpha;
+        if (cap > 0f)
+        {
+            cineTitle.text = WaveCinematic.CaptionTitle;
+            cineCaption.text = WaveCinematic.Caption;
+        }
+        float skip = WaveCinematic.CanSkip ? Mathf.Min(letterbox, 0.55f + Mathf.Sin(Time.unscaledTime * 3f) * 0.15f) : 0f;
+        SetCinematicTexts(cap, skip);
+        // La línea crece al aparecer el rótulo
+        cineLine.rectTransform.sizeDelta = new Vector2(220f * Mathf.SmoothStep(0f, 1f, cap), 2f);
+    }
+
+    void SetCinematicTexts(float caption, float skip)
+    {
+        SetAlpha(cineTitle, caption);
+        SetAlpha(cineCaption, caption);
+        Color lc = cineLine.color;
+        cineLine.color = new Color(lc.r, lc.g, lc.b, caption * 0.9f);
+        SetAlpha(cineSkip, skip);
+        // El texto entra deslizándose desde la izquierda
+        float slide = (1f - Mathf.SmoothStep(0f, 1f, caption)) * -24f;
+        cineTitle.rectTransform.anchoredPosition = new Vector2(330f + slide, 150f);
+        cineCaption.rectTransform.anchoredPosition = new Vector2(330f + slide * 1.5f, 124f);
     }
 
     // ======================= MENSAJES =======================
@@ -270,6 +323,7 @@ public class GameHUD : MonoBehaviour
         float h = Mathf.SmoothStep(0f, 1f, letterbox) * 95f;
         barTop.sizeDelta = new Vector2(4000f, h);
         barBottom.sizeDelta = new Vector2(4000f, h);
+        UpdateCinematicTexts(dt);
 
         UpdateMarkers(cinematic);
     }

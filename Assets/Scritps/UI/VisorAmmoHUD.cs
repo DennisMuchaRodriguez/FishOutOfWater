@@ -189,7 +189,8 @@ public class VisorAmmoHUD : MonoBehaviour
 
     // ======================= ACTUALIZACIÓN =======================
 
-    void Refresh(float dt)
+    // También la llama la vista previa del casco en el editor
+    public void Refresh(float dt)
     {
         bool show = shooting != null && shooting.enabled && (player == null || !player.isDead);
         if (root.gameObject.activeSelf != show) root.gameObject.SetActive(show);
@@ -217,7 +218,7 @@ public class VisorAmmoHUD : MonoBehaviour
 
         bool low = ammo <= 5;
         bool empty = ammo <= 0;
-        bool blinkOn = !low || Mathf.Repeat(Time.time * 4f, 1f) < 0.6f;
+        bool blinkOn = !low || Mathf.Repeat(HelmetVisorHUD.Now * 4f, 1f) < 0.6f;
         Color baseC = low ? danger : accent;
         float frac = ammo / (float)maxAmmo;
         float pick = pickupFlash / 0.6f;
@@ -230,11 +231,11 @@ public class VisorAmmoHUD : MonoBehaviour
         float charge = charging ? shooting.ChargeProgress01 : 0f;
         laneFill.fillAmount = charge;
         bool full = charge >= 1f;
-        laneFill.color = full ? Color.Lerp(accent, Color.white, Mathf.Sin(Time.time * 25f) * 0.5f + 0.5f) : new Color(accent.r, accent.g, accent.b, 0.95f);
+        laneFill.color = full ? Color.Lerp(accent, Color.white, Mathf.Sin(HelmetVisorHUD.Now * 25f) * 0.5f + 0.5f) : new Color(accent.r, accent.g, accent.b, 0.95f);
 
         // Celdas: se apagan de arriba hacia abajo. Cada pocos segundos un destello las recorre de abajo arriba
         int n = cells.Count;
-        float sweepK = Mathf.Repeat(Time.time, 3.4f) / 0.75f;
+        float sweepK = Mathf.Repeat(HelmetVisorHUD.Now, 3.4f) / 0.75f;
         float sweepPos = sweepK < 1f ? Mathf.Lerp(-3f, n + 3f, sweepK) : -100f;
         int top = Mathf.CeilToInt(ammo / (float)bulletsPerCell) - 1;
         int costCells = Mathf.CeilToInt(Mathf.Max(1, shooting.chargedAmmoCost) / (float)bulletsPerCell);
@@ -357,10 +358,10 @@ public class VisorAmmoHUD : MonoBehaviour
         bool ready = bs.Ready;
         float r01 = ready ? 1f : Mathf.Clamp01(bs.Recharge01);
         shieldRing.fillAmount = r01;
-        Color c = shieldFlash > 0f && Mathf.Repeat(Time.time * 8f, 1f) < 0.5f ? danger : accent;
+        Color c = shieldFlash > 0f && Mathf.Repeat(HelmetVisorHUD.Now * 8f, 1f) < 0.5f ? danger : accent;
         shieldRing.color = new Color(c.r, c.g, c.b, 0.9f);
         shieldBubble.color = new Color(c.r, c.g, c.b, ready ? 0.95f : 0.35f);
-        shieldBubble.rectTransform.localScale = Vector3.one * (ready ? 1f + Mathf.Sin(Time.time * 3f) * 0.04f : 0.85f);
+        shieldBubble.rectTransform.localScale = Vector3.one * (ready ? 1f + Mathf.Sin(HelmetVisorHUD.Now * 3f) * 0.04f : 0.85f);
         shieldLabel.text = ready ? "ESCUDO" : "ESCUDO " + Mathf.FloorToInt(r01 * 100f) + "%";
         shieldLabel.color = new Color(accent.r, accent.g, accent.b, ready ? 0.8f : 0.5f);
     }
@@ -395,12 +396,12 @@ public class VisorAmmoHUD : MonoBehaviour
         }
         for (int i = n; i < cells.Count; i++)
         {
-            Destroy(cells[i].gameObject);
+            HelmetVisorHUD.Kill(cells[i].gameObject);
         }
         if (cells.Count > n) cells.RemoveRange(n, cells.Count - n);
 
         // Marcas cada 10 balas por fuera del arco
-        foreach (RawImage t in ticks) Destroy(t.gameObject);
+        foreach (RawImage t in ticks) HelmetVisorHUD.Kill(t.gameObject);
         ticks.Clear();
         for (int b = 10; b < maxAmmo; b += 10)
         {
@@ -418,8 +419,8 @@ public class VisorAmmoHUD : MonoBehaviour
     void BuildMissiles(int capacity)
     {
         builtCapacity = capacity;
-        foreach (RawImage r in missileOutlines) Destroy(r.gameObject);
-        foreach (Image i in missileFills) Destroy(i.gameObject);
+        foreach (RawImage r in missileOutlines) HelmetVisorHUD.Kill(r.gameObject);
+        foreach (Image i in missileFills) HelmetVisorHUD.Kill(i.gameObject);
         missileOutlines.Clear();
         missileFills.Clear();
         for (int j = 0; j < capacity; j++)

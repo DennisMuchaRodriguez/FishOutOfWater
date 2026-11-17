@@ -89,6 +89,7 @@ public class HelmetVisorHUD : MonoBehaviour
     float lastArmor;
     float submergedWeight;
     float reticleSpreadPx;
+    float reticleLock;   // 0..1: la mira tiene un ave fijada (la ayuda de puntería la corrige)
     string bootMessage = "SISTEMAS DEL TRAJE EN LÍNEA";
 
     class Droplet
@@ -110,6 +111,24 @@ public class HelmetVisorHUD : MonoBehaviour
 
     public static HelmetVisorHUD Instance { get; private set; }
 
+    // Reloj de las animaciones del visor: el del juego en Play y el real en el editor (la vista previa del casco
+    // anima sin darle Play; en el editor Time.time no avanza)
+    public static float Now { get { return Application.isPlaying ? Time.time : Time.realtimeSinceStartup; } }
+
+    // Destroy en el juego, DestroyImmediate en el editor (Destroy no se puede usar fuera de Play)
+    public static void Kill(Object o)
+    {
+        if (o == null) return;
+        if (Application.isPlaying) Destroy(o);
+        else DestroyImmediate(o);
+    }
+
+    // ---- Vista previa en el editor (Herramientas > Casco > Vista previa del casco) ----
+    // La vista previa es una COPIA oculta de este visor que no se guarda en la escena; estos campos solo los usa esa copia.
+    [System.NonSerialized] public bool previewMode;
+    [System.NonSerialized] public bool previewUnderwater;
+    public VisorMissionHUD MissionHud { get { return missionHud; } }
+
     // Ensucia el visor (solo se ve en primera persona)
     public static void SplatGlass()
     {
@@ -126,7 +145,12 @@ public class HelmetVisorHUD : MonoBehaviour
         canvasRect = (RectTransform)transform;
         if (player == null) player = FindFirstObjectByType<PlayerController_Base>();
         if (shooting == null && player != null) shooting = player.GetComponent<PlayerShooting>();
+        BuildAll();
+    }
 
+    // Arma todo el casco: lo usa el juego (Start) y la vista previa del editor (BuildPreview)
+    void BuildAll()
+    {
         BuildFrame();
         BuildSwayRoot();
         BuildOverlay();
@@ -150,6 +174,8 @@ public class HelmetVisorHUD : MonoBehaviour
         missionHud = gameObject.AddComponent<VisorMissionHUD>();
         missionHud.visor = this;
         missionHud.player = player;
+        missionHud.previewMode = previewMode;
+        if (previewMode) missionHud.previewSample = VisorMissionHUD.Sample.Example;
         missionHud.Build(swayRoot, overlayRoot, accent, dangerColor);
 
         if (player != null)
@@ -438,10 +464,14 @@ public class HelmetVisorHUD : MonoBehaviour
 
     void Update()
     {
+        Tick(Time.deltaTime);
+    }
+
+    void Tick(float dt)
+    {
         if (player == null) return;
-        float dt = Time.deltaTime;
         bool firstPerson = !player.isThirdPerson;
-        bool cinematic = GameDirector.InCinematic;
+        bool cinematic = !previewMode && GameDirector.InCinematic;
 
         // Durante la cinemática se apaga TODO el canvas del casco (marco, HUD, filtros):
         // la cinemática es una vista de cámara externa, no desde dentro del casco
@@ -465,7 +495,7 @@ public class HelmetVisorHUD : MonoBehaviour
         UpdateTexts();
         UpdateDroplets(dt);
         UpdateSplats(dt);
-        UpdateCursor();
+        if (!previewMode) UpdateCursor();   // en el editor no se toca el cursor
     }
 
     void UpdateBoot(float dt)
@@ -500,8 +530,8 @@ public class HelmetVisorHUD : MonoBehaviour
             target.y = -player.Velocity.y * swayFromVertical;
             target = Vector2.ClampMagnitude(target, maxSway);
             // Respiración
-            target.y += Mathf.Sin(Time.time * 1.4f) * breathingAmount;
-            if (player.isInWater) target.x += Mathf.Sin(Time.time * 2.1f) * breathingAmount * (0.5f + player.SwimSpeed01);
+            target.y += Mathf.Sin(Now * 1.4f) * breathingAmount;
+            if (player.isInWater) target.x += Mathf.Sin(Now * 2.1f) * breathingAmount * (0.5f + player.SwimSpeed01);
         }
         if (glitchTimer > 0f) target += Random.insideUnitCircle * 9f * (glitchTimer / 0.35f);
 
@@ -598,13 +628,14 @@ public class HelmetVisorHUD : MonoBehaviour
     void UpdateGlass(float dt)
     {
         // Al hundirse el tinte entra casi de golpe (igual que el filtro); al salir se va más despacio
-        submergedWeight = Mathf.MoveTowards(submergedWeight, player.IsEyeSubmerged ? 1f : 0f, dt * (player.IsEyeSubmerged ? 10f : 2.5f));
-        float caustic = 0.85f + Mathf.Sin(Time.time * 1.7f) * 0.1f + Mathf.Sin(Time.time * 3.1f) * 0.05f;
+        bool eyeSubmerged = previewMode ? previewUnderwater : player.IsEyeSubmerged;
+        submergedWeight = Mathf.MoveTowards(submergedWeight, eyeSubmerged ? 1f : 0f, dt * (eyeSubmerged ? 10f : 2.5f));
+        float caustic = 0.85f + Mathf.Sin(Now * 1.7f) * 0.1f + Mathf.Sin(Now * 3.1f) * 0.05f;
         glassTint.color = new Color(waterTint.r, waterTint.g, waterTint.b, submergedWeight * underwaterTintOpacity * caustic);
 
         // Líneas de escaneo que se desplazan lentamente
         float lines = Mathf.Max(1f, canvasRect.rect.height / 3f);
-        scanlines.uvRect = new Rect(0f, Time.time * 0.6f, 1f, lines);
+        scanlines.uvRect = new Rect(0f, Now * 0.6f, 1f, lines);
 
         // El reflejo se mueve un poco con el giro (como si la luz se quedara fija)
         float shift = Mathf.Repeat(player.transform.eulerAngles.y / 360f, 1f);
@@ -625,7 +656,7 @@ public class HelmetVisorHUD : MonoBehaviour
         Color rim = Color.white;
         if (armor01 <= 0.25f || player.isDead)
         {
-            float pulse = player.isDead ? 1f : (Mathf.Sin(Time.time * 4f) * 0.5f + 0.5f);
+            float pulse = player.isDead ? 1f : (Mathf.Sin(Now * 4f) * 0.5f + 0.5f);
             rim = Color.Lerp(Color.white, new Color(1f, 0.45f, 0.45f, 1f), pulse);
         }
 
@@ -650,27 +681,33 @@ public class HelmetVisorHUD : MonoBehaviour
         if (!show) return;
 
         Vector2 local = Vector2.zero;
-        if (reticleFollowsMouse)
+        if (reticleFollowsMouse && !previewMode)   // en la vista previa queda al centro
         {
             RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, Input.mousePosition, null, out local);
         }
         reticleRoot.anchoredPosition = local;
 
+        // Ave fijada: las marcas se cierran en diagonal y la retícula se pone blanca
+        reticleLock = Mathf.MoveTowards(reticleLock, shooting.AimTarget != null ? 1f : 0f, dt * 9f);
+
         // Dispersión -> separación de las marcas
         float spreadPx = 8f + shooting.CurrentSpread * 7f;
-        float sinceShot = Time.time - shooting.LastShotTime;
+        float sinceShot = Now - shooting.LastShotTime;
         if (sinceShot < 0.08f) spreadPx += 6f;
+        spreadPx = Mathf.Lerp(spreadPx, 6.5f, reticleLock * 0.6f);
         reticleSpreadPx = Mathf.Lerp(reticleSpreadPx, spreadPx, 1f - Mathf.Exp(-18f * dt));
         for (int i = 0; i < 4; i++)
         {
-            float ang = i * 90f * Mathf.Deg2Rad;
+            float ang = (i * 90f + reticleLock * 45f) * Mathf.Deg2Rad;
             reticleTicks[i].rectTransform.anchoredPosition = new Vector2(Mathf.Sin(ang), Mathf.Cos(ang)) * reticleSpreadPx;
+            reticleTicks[i].rectTransform.localEulerAngles = new Vector3(0f, 0f, -(i * 90f + reticleLock * 45f));
         }
 
         bool noAmmo = shooting.currentAmmo <= 0;
-        Color baseC = noAmmo ? dangerColor : accent;
-        reticleRing.color = new Color(baseC.r, baseC.g, baseC.b, 0.55f + (sinceShot < 0.1f ? 0.4f : 0f));
-        reticleRing.rectTransform.localEulerAngles = new Vector3(0f, 0f, Time.time * 20f);
+        Color baseC = noAmmo ? dangerColor : Color.Lerp(accent, Color.white, reticleLock * 0.75f);
+        reticleRing.color = new Color(baseC.r, baseC.g, baseC.b, 0.55f + (sinceShot < 0.1f ? 0.4f : 0f) + reticleLock * 0.2f);
+        reticleRing.rectTransform.localEulerAngles = new Vector3(0f, 0f, Now * (20f + reticleLock * 70f));
+        reticleRing.rectTransform.localScale = Vector3.one * (1f - reticleLock * 0.18f);
         reticleDot.color = baseC;
         foreach (RawImage t in reticleTicks) t.color = new Color(baseC.r, baseC.g, baseC.b, 0.9f);
 
@@ -678,7 +715,7 @@ public class HelmetVisorHUD : MonoBehaviour
         float charge = shooting.ChargeProgress01;
         chargeRing.fillAmount = charge;
         bool full = charge >= 1f;
-        chargeRing.color = full ? Color.Lerp(accent, Color.white, Mathf.Sin(Time.time * 25f) * 0.5f + 0.5f) : new Color(accent.r, accent.g, accent.b, 0.85f);
+        chargeRing.color = full ? Color.Lerp(accent, Color.white, Mathf.Sin(Now * 25f) * 0.5f + 0.5f) : new Color(accent.r, accent.g, accent.b, 0.85f);
         chargeRing.rectTransform.localScale = Vector3.one * (full ? 1.05f : 1f);
 
         // Marcador de impacto
@@ -758,7 +795,7 @@ public class HelmetVisorHUD : MonoBehaviour
 
             statusText.text = msg;
             Color c = warn ? dangerColor : accent;
-            float a = warn ? (Mathf.Sin(Time.time * 8f) > -0.2f ? 0.95f : 0.25f) : 0.85f;
+            float a = warn ? (Mathf.Sin(Now * 8f) > -0.2f ? 0.95f : 0.25f) : 0.85f;
             statusText.color = new Color(c.r, c.g, c.b, a);
         }
 
@@ -969,4 +1006,72 @@ public class HelmetVisorHUD : MonoBehaviour
         hitTimer = killed ? 0.3f : 0.18f;
         lastHitWasKill = killed;
     }
+
+    // ======================= VISTA PREVIA EN EL EDITOR =======================
+    // La llama HelmetPreviewWindow sobre la copia oculta del visor (nunca sobre el de la escena).
+
+    public void BuildPreview()
+    {
+        previewMode = true;
+        canvasRect = (RectTransform)transform;
+        BuildAll();
+        if (player != null) lastArmor = player.currentArmor;   // sin "golpe" al armarse con el traje a medias
+        // Sin la secuencia de encendido: se ve directamente como en pleno juego
+        bootTimer = bootDuration + 2f;
+        hudGroup.alpha = 1f;
+    }
+
+    public void PreviewTick(float dt)
+    {
+        Tick(dt);
+        if (ammoHud != null) ammoHud.Refresh(dt);
+        if (statusHud != null) statusHud.Refresh(dt);
+        if (missionHud != null) missionHud.Refresh(dt);
+        if (sonarHud != null) sonarHud.Tick();
+    }
+
+    public void PreviewBoot() { bootTimer = 0f; }
+    public void PreviewHit() { glitchTimer = 0.35f; }
+    public void PreviewDroplets() { SpawnDroplets(dropletsOnExit); }
+    public void PreviewSplat() { AddSplat(); }
+
+    // Borra las texturas que arma este visor (las de los demás paneles se comparten y se quedan)
+    public void DestroyPreviewTextures()
+    {
+        if (!previewMode) return;
+        Texture[] owned =
+        {
+            frameImage != null ? frameImage.texture : null,
+            glassTint != null ? glassTint.texture : null,
+            reflection != null ? reflection.texture : null,
+            scanlines != null ? scanlines.texture : null,
+            rimSheen != null ? rimSheen.texture : null,
+            reticleRing != null ? reticleRing.texture : null
+        };
+        if (chargeRing != null && chargeRing.sprite != null)
+        {
+            Sprite sp = chargeRing.sprite;
+            chargeRing.sprite = null;
+            DestroyImmediate(sp);
+        }
+        foreach (Texture t in owned)
+        {
+            if (t == null || t == FXFactory.White || t == FXFactory.SoftDot || t == FXFactory.Bubble || t == FXFactory.Streak) continue;
+#if UNITY_EDITOR
+            if (UnityEditor.EditorUtility.IsPersistent(t)) continue;
+#endif
+            DestroyImmediate(t);
+        }
+    }
+
+#if UNITY_EDITOR
+    // Avisa a la vista previa del casco que cambiaste algo en el Inspector (para regenerarla)
+    public static event System.Action<HelmetVisorHUD> EditorValidated;
+
+    void OnValidate()
+    {
+        if (previewMode || (gameObject.hideFlags & HideFlags.DontSaveInEditor) != 0) return;
+        if (EditorValidated != null) EditorValidated(this);
+    }
+#endif
 }

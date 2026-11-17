@@ -258,9 +258,41 @@ El GameDirector ya **no tiene listas de peces, aves ni oleadas**: todo eso vive 
 ### Cinemática de llegada
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
-| **Play Arrival Cinematic** | ✔ | ✔ | Muestra el plano de la bandada llegando |
+| **Play Arrival Cinematic** | ✔ | ✔ | Muestra la cinemática de la bandada llegando |
 | **Cinematic Only First Wave** | ✘ | ✔ | Solo en la primera oleada |
-| **Cinematic Duration** | 5 | 5 | Segundos del plano (sin contar la entrada de 0.9 s y la vuelta de 0.7 s) |
+| **Cinematic Duration** | 6.5 | 6.5 | Segundos de la cinemática, repartidos entre los tres planos (sin contar la entrada de 0.9 s y la vuelta de 0.7 s) |
+| **Cinematic Shots** | — | — | Encuadre de cada plano (abajo) |
+
+La cinemática (`WaveCinematic`) son **tres planos seguidos**, con cortes como en una película:
+1. **Plano general**: a ras del agua, de lado y algo por detrás del jugador, girando despacio; el jugador abajo y la bandada arriba.
+2. **Bandada**: la cámara va por delante de las aves, a un lado, y las ve venir de frente (se acercan durante el plano, con
+   un poco de inclinación). Abajo a la izquierda sale el rótulo **AVES DETECTADAS · 4 × GAVIOTA · 2 × CHARRÁN** (o JEFE DETECTADO).
+3. **Sobre el hombro**: detrás del jugador mirando a la bandada, acercándose; de ahí vuelve a la vista normal.
+
+Tiene un temblor suave de cámara en mano. Con ESPACIO, ENTER o clic se salta (el aviso sale en la barra negra de abajo).
+Si una oleada no tiene aves o dura menos de 2.5 s, no hay plano de bandada.
+
+**Cinematic Shots** (todo se ajusta en el Inspector):
+
+| Campo | Defecto | Qué hace |
+|---|---|---|
+| **Shot Weights** | (0.34, 0.3, 0.36) | Cuánto dura cada plano: x = general, y = bandada, z = sobre el hombro |
+| **Wide Distance / Wide Height** | 13 / 1.3 | Distancia al jugador y altura sobre el agua del plano general |
+| **Wide Angle / Wide Orbit** | 38 / 16 | Ángulo alrededor del jugador al empezar (0 = justo detrás) y cuánto gira durante el plano |
+| **Wide Fov** | 54 | Zoom del plano general (se cierra 4° durante el plano) |
+| **Flock Ahead / Flock Side / Flock Up** | 18 / 8 / 2 | Dónde va la cámara respecto a la bandada (por delante, a un lado, arriba) |
+| **Flock Fov / Flock Roll** | 48 / 6 | Zoom e inclinación del plano de la bandada |
+| **Shoulder Back / Side / Up** | 5.5 / 2.4 / 3.2 | Posición del plano sobre el hombro |
+| **Shoulder Push** | 2.5 | Metros que se acerca durante ese plano |
+| **Handheld** | 0.35 | Temblor de cámara en mano (grados) |
+| **Show Caption** | ✔ | Muestra el rótulo de las aves |
+
+**Verlo sin darle Play**: con el **GameDirector seleccionado**, la vista de escena dibuja las tres cámaras (celeste = general,
+amarillo = bandada, rosa = sobre el hombro). La línea va del inicio al final de cada plano y la pirámide es el encuadre a
+mitad del plano. La bandada naranja es un ejemplo: viene desde **Arrival Yaw** (si es aleatoria, desde el norte) a medio
+camino del lago. En el menú **⋮** del componente GameDirector:
+- **Cinemática: ver plano 1 / 2 / 3**: pone la vista de escena justo en ese encuadre y con su zoom.
+- **Cinemática: devolver la vista de escena normal**: deja el zoom de la vista de escena en 60°.
 
 ### Munición
 | Campo | Defecto | En escena | Qué hace |
@@ -593,22 +625,37 @@ En **PlayerBase**.
 ### PlayerShooting (en PlayerBase)
 La munición **no se recarga con el agua** (salvo que actives `Recharge Ammo In Water`): se recarga con las cápsulas del lago. No dispara durante la cinemática ni en pausa.
 
+**Disparo recto y asistido:**
+- La bala va **en línea recta** (sin gravedad) a 150 m/s, más la velocidad con la que avanzas.
+- Se mueve **interpolada** (fluida entre pasos de física) y con detección continua desde el primer paso, así no atraviesa aves.
+- La estela mide siempre lo mismo en metros (`Trail Length` de la bala, 14 m), vaya rápida o lenta.
+- Apunta a lo que hay bajo la mira. Ignora lo que queda entre la cámara y el pez (en tercera persona eso torcía el disparo).
+- **Ayuda de puntería**: si hay un ave a la vista a menos de `Aim Assist Angle` de la mira (más un margen por su tamaño), la
+  bala va a donde **va a estar** el ave cuando llegue.
+- Con un ave fijada, las marcas de la retícula se cierran en diagonal, se pone blanca y gira más rápido.
+- Una bala que llega en menos de 0.1 s (de cerca) no da tiempo a que el ave la esquive.
+
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
 | **Shoot Key** | Mouse0 | Mouse0 | Disparo |
 | **Projectile Prefab** | — | prefab de bala | La bala (`Projectile`) |
-| **Shoot Force** | 20 | 80 | Velocidad de la bala |
+| **Shoot Force** | 150 | 150 | Velocidad de la bala en m/s (más alto = más recto y llega antes a donde apuntas) |
 | **Fire Rate** | 0.3 | 0.2 | Segundos entre disparos |
 | **Hold To Fire** | ✔ | ✔ | Mantener para ráfaga |
 | **Fire Point** | — | punto del traje | De dónde sale la bala |
 | **Player Camera** | — | PlayerCamera | Para apuntar con el ratón (rayo desde la cámara) |
 | **Max Distance** | 500 | 500 | Alcance del rayo de puntería |
 | **Aim Layers** | Everything | Everything | Capas contra las que apunta |
-| **Base Spread** | 0.25 | 0.25 | Dispersión base (grados) |
-| **Spread Per Shot** | 0.6 | 0.6 | Dispersión que suma cada disparo seguido |
-| **Max Spread** | 3 | 3 | Dispersión máxima |
-| **Spread Recovery** | 5 | 5 | Rapidez con la que vuelve a la precisión |
-| **Air Spread** | 1 | 1 | Dispersión extra volando |
+| **Base Spread** | 0.1 | 0.1 | Dispersión base (grados) |
+| **Spread Per Shot** | 0.25 | 0.25 | Dispersión que suma cada disparo seguido |
+| **Max Spread** | 1.2 | 1.2 | Dispersión máxima |
+| **Spread Recovery** | 8 | 8 | Rapidez con la que vuelve a la precisión |
+| **Air Spread** | 0.2 | 0.2 | Dispersión extra volando |
+| **Inherit Forward Speed** | ✔ | ✔ | Suma a la bala la velocidad con la que avanzas: nunca se queda atrás ni parece que cae |
+| **Aim Assist Angle** | 4 | 4 | Grados alrededor de la mira en los que el disparo busca un ave (0 = sin ayuda) |
+| **Aim Assist Strength** | 0.9 | 0.9 | Cuánto corrige hacia esa ave (1 = justo a donde va a estar) |
+| **Lead Targets** | ✔ | ✔ | Apunta adelante del ave según su velocidad, para que la bala llegue a donde VA a estar |
+| **Locked Spread Factor** | 0.3 | 0.3 | La dispersión se multiplica por esto mientras la mira tiene un ave fijada |
 | **Charge Key** | Mouse1 | Mouse1 | Disparo cargado (mantener y soltar) |
 | **Charge Time** | 0.9 | 0.9 | Segundos para cargarlo |
 | **Charged Ammo Cost** | 3 | 3 | Balas que gasta |
@@ -671,6 +718,21 @@ Las grietas y el filtro rojo de daño siguen saliendo de aquí.
 
 ### HelmetVisorHUD (en VistaInterior): vista desde el casco
 Construye el marco, el cristal, la retícula y los textos por código. **Durante la cinemática se apaga entero.**
+
+**Verlo en el editor sin darle Play**: menú **Herramientas > Casco > Vista previa del casco**.
+- Abre una ventana y arma el casco como en el juego: marco, cristal, munición, propulsor, traje, misión, retícula y textos.
+- Se mira en la ventana **Game** (la abre sola).
+- En la ventana eliges los valores de ejemplo: traje, propulsor, munición, en el agua, cámara bajo el agua, tercera persona,
+  peces, oleada, depredadores y cuenta atrás.
+- Los botones **Encendido / Golpe / Gotas / Mancha** prueban los efectos.
+- **Para ajustarlo**: cambia los valores de este HelmetVisorHUD en el Inspector (colores, tamaño del visor, opacidades,
+  retícula...). La vista previa se regenera sola al instante.
+- Es una **copia** ("Casco (vista previa · no se guarda)") con un jugador de ejemplo invisible. **No se guarda en la escena**:
+  se quita sola antes de guardar, al darle Play, al recompilar y al cerrar la escena, y vuelve después.
+- Tu canvas y el panel viejo del HUD (`Hud Panel`) no se tocan: se ven y se editan como siempre.
+- Si tocas la copia directamente, esos cambios se pierden al regenerar.
+- Los misiles, el escudo y el sonar solo salen en Play (dependen de las mejoras).
+- **Herramientas > Casco > Quitar vista previa** (o el botón **Quitar**) la borra.
 **El casco solo se ve en primera persona**: marco, munición (`VisorAmmoHUD`), propulsor y traje (`VisorStatusHUD`), misión (`VisorMissionHUD`), textos y sonar.
 En tercera persona queda solo la retícula (el panel de misión, como todo el casco, es solo de primera persona).
 **Panel de misión (`VisorMissionHUD`, borde izquierdo del visor, el espejo de la munición):**
@@ -969,6 +1031,8 @@ Flores, Juncos, Totora, Nenufar y Pasto_Acuatico (más los del fondo). Cada uno 
   - `Life Time` 3 s.
   - `Impact Effect Prefab`.
   - `Water Slowdown` 0.55: freno al entrar al agua.
+  - `Trail Length` 14 m: largo de la estela (la cargada 1.7×, la burbuja 0.4×).
+  - El Rigidbody del prefab está sin gravedad, interpolado y con detección continua (el código lo asegura igual al crearla).
 
 ---
 

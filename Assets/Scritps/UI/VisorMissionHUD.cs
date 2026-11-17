@@ -38,6 +38,41 @@ public class VisorMissionHUD : MonoBehaviour
     [HideInInspector] public HelmetVisorHUD visor;
     [HideInInspector] public PlayerController_Base player;
 
+    // Lo que muestra el panel: en el juego sale del GameDirector; en la vista previa del editor, de previewSample
+    public struct Sample
+    {
+        public int totalFish, fishAlive, maxFishLoss, wave, totalWaves, birds;
+        public float countdown;
+        public bool waveActive;   // oleada en curso (las pastillas laten)
+        public bool waiting;      // calma o descanso entre oleadas (se ve la cuenta atrás)
+
+        public static Sample Example
+        {
+            get
+            {
+                return new Sample { totalFish = 24, fishAlive = 17, maxFishLoss = 17, wave = 2, totalWaves = 4, birds = 5, waveActive = true };
+            }
+        }
+
+        public static Sample From(GameDirector d)
+        {
+            return new Sample
+            {
+                totalFish = d.TotalFish,
+                fishAlive = d.FishAlive,
+                maxFishLoss = d.MaxFishLoss,
+                wave = d.CurrentWave,
+                totalWaves = d.TotalWaves,
+                birds = d.AliveBirds(),
+                countdown = d.Countdown,
+                waveActive = d.State == GameDirector.GameState.WaveActive || d.State == GameDirector.GameState.WaveIncoming,
+                waiting = d.State == GameDirector.GameState.Calm || d.State == GameDirector.GameState.Intermission
+            };
+        }
+    }
+    [System.NonSerialized] public bool previewMode;
+    [System.NonSerialized] public Sample previewSample;
+
     Color accent = new Color(0.25f, 0.72f, 1f, 1f);
     Color danger = new Color(1f, 0.15f, 0.1f, 1f);
 
@@ -128,11 +163,14 @@ public class VisorMissionHUD : MonoBehaviour
 
     // ======================= ACTUALIZACIÓN =======================
 
-    void Refresh(float dt)
+    // También la llama la vista previa del casco en el editor
+    public void Refresh(float dt)
     {
-        GameDirector d = GameDirector.Instance;
+        GameDirector director = GameDirector.Instance;
+        bool hasData = previewMode || director != null;
+        Sample d = previewMode ? previewSample : (director != null ? Sample.From(director) : new Sample());
         // Solo en primera persona (dentro del casco), como el resto del visor
-        showing = d != null && d.TotalFish > 0 && player != null && !player.isDead && !GameDirector.InCinematic
+        showing = hasData && d.totalFish > 0 && player != null && !player.isDead && !GameDirector.InCinematic
                   && !player.isThirdPerson;
         if (root.gameObject.activeSelf != showing) root.gameObject.SetActive(showing);
         if (!showing) return;
@@ -147,9 +185,9 @@ public class VisorMissionHUD : MonoBehaviour
         root.anchoredPosition = new Vector2(inset, YOff * s);
         root.localScale = Vector3.one * s;
 
-        int total = d.TotalFish;
-        int alive = Mathf.Clamp(d.FishAlive, 0, total);
-        int limitAlive = Mathf.Clamp(total - d.MaxFishLoss, 0, total);   // con esta cantidad o menos se pierde
+        int total = d.totalFish;
+        int alive = Mathf.Clamp(d.fishAlive, 0, total);
+        int limitAlive = Mathf.Clamp(total - d.maxFishLoss, 0, total);   // con esta cantidad o menos se pierde
         if (total != builtTotal) BuildCells(total);
         if (limitAlive != builtLimit) PlaceLimit(limitAlive);
 
@@ -161,13 +199,13 @@ public class VisorMissionHUD : MonoBehaviour
         // Cerca del límite: rojo y parpadeo
         int margin = alive - limitAlive;
         bool critical = margin <= Mathf.Max(2, total / 8);
-        bool blinkOn = !critical || Mathf.Repeat(Time.time * 3f, 1f) < 0.65f;
+        bool blinkOn = !critical || Mathf.Repeat(HelmetVisorHUD.Now * 3f, 1f) < 0.65f;
         Color baseC = critical ? danger : accent;
 
         // Celdas: encendidas = peces a salvo (de abajo arriba). Un destello las recorre cada pocos segundos
         int n = cells.Count;
         float lit = alive / (float)fishPerCell;
-        float sweepK = Mathf.Repeat(Time.time + 1.7f, 3.4f) / 0.75f;
+        float sweepK = Mathf.Repeat(HelmetVisorHUD.Now + 1.7f, 3.4f) / 0.75f;
         float sweepPos = sweepK < 1f ? Mathf.Lerp(-3f, n + 3f, sweepK) : -100f;
         int top = Mathf.CeilToInt(lit) - 1;
         for (int i = 0; i < n; i++)
@@ -191,7 +229,7 @@ public class VisorMissionHUD : MonoBehaviour
         }
         for (int i = 0; i < guide.Count; i++) guide[i].color = new Color(baseC.r, baseC.g, baseC.b, 0.35f);
 
-        float pulse = Mathf.Sin(Time.time * 5f) * 0.5f + 0.5f;
+        float pulse = Mathf.Sin(HelmetVisorHUD.Now * 5f) * 0.5f + 0.5f;
         limitTick.color = new Color(danger.r, danger.g, danger.b, critical ? 0.6f + 0.4f * pulse : 0.85f);
         limitGlow.color = new Color(danger.r, danger.g, danger.b, critical ? 0.25f + 0.35f * pulse : 0.2f);
 
@@ -221,11 +259,11 @@ public class VisorMissionHUD : MonoBehaviour
         RefreshCountdown(d);
     }
 
-    void RefreshWaves(GameDirector d)
+    void RefreshWaves(Sample d)
     {
-        int waves = Mathf.Max(0, d.TotalWaves);
+        int waves = Mathf.Max(0, d.totalWaves);
         if (waves != builtWaves) BuildPips(waves);
-        int wave = Mathf.Clamp(d.CurrentWave, 0, waves);
+        int wave = Mathf.Clamp(d.wave, 0, waves);
         if (wave != shownWave)
         {
             waveText.text = "OLEADA  " + (wave > 0 ? wave.ToString() : "-") + " / " + waves;
@@ -233,8 +271,8 @@ public class VisorMissionHUD : MonoBehaviour
         }
         waveText.color = new Color(accent.r, accent.g, accent.b, 0.95f);
 
-        bool active = d.State == GameDirector.GameState.WaveActive || d.State == GameDirector.GameState.WaveIncoming;
-        float pulse = Mathf.Sin(Time.time * 6f) * 0.5f + 0.5f;
+        bool active = d.waveActive;
+        float pulse = Mathf.Sin(HelmetVisorHUD.Now * 6f) * 0.5f + 0.5f;
         for (int i = 0; i < pips.Count; i++)
         {
             int w = i + 1;
@@ -247,9 +285,9 @@ public class VisorMissionHUD : MonoBehaviour
         }
     }
 
-    void RefreshBirds(GameDirector d)
+    void RefreshBirds(Sample d)
     {
-        int birds = d.AliveBirds();
+        int birds = d.birds;
         if (birds != shownBirds)
         {
             birdsText.text = birds > 0 ? "DEPREDADORES  " + birds : "ZONA DESPEJADA";
@@ -258,25 +296,24 @@ public class VisorMissionHUD : MonoBehaviour
         Color c = birds > 0 ? danger : accent;
         birdsText.color = new Color(c.r, c.g, c.b, 0.95f);
         birdIcon.enabled = birds > 0;
-        birdIcon.color = new Color(danger.r, danger.g, danger.b, 0.6f + 0.4f * (Mathf.Sin(Time.time * 7f) * 0.5f + 0.5f));
+        birdIcon.color = new Color(danger.r, danger.g, danger.b, 0.6f + 0.4f * (Mathf.Sin(HelmetVisorHUD.Now * 7f) * 0.5f + 0.5f));
         // Sin depredadores el texto empieza donde iría el triángulo
         birdsText.rectTransform.anchoredPosition = new Vector2(birds > 0 ? TextX + 15f : TextX, BirdsY);
     }
 
-    void RefreshCountdown(GameDirector d)
+    void RefreshCountdown(Sample d)
     {
-        bool waiting = d.State == GameDirector.GameState.Calm || d.State == GameDirector.GameState.Intermission;
-        bool show = waiting && d.Countdown > 0f;
+        bool show = d.waiting && d.countdown > 0f;
         if (countText.gameObject.activeSelf != show) countText.gameObject.SetActive(show);
         if (!show) return;
-        int secs = Mathf.CeilToInt(d.Countdown);
+        int secs = Mathf.CeilToInt(d.countdown);
         if (secs != shownCount)
         {
             countText.text = "PRÓXIMA OLEADA  " + secs;
             shownCount = secs;
         }
         bool urgent = secs <= 3;
-        float blink = Mathf.Repeat(Time.time * (urgent ? 4f : 1.5f), 1f) < 0.6f ? 1f : 0.45f;
+        float blink = Mathf.Repeat(HelmetVisorHUD.Now * (urgent ? 4f : 1.5f), 1f) < 0.6f ? 1f : 0.45f;
         Color c = urgent ? Color.Lerp(accent, Shine, 0.6f) : accent;
         countText.color = new Color(c.r, c.g, c.b, blink);
     }
@@ -285,7 +322,7 @@ public class VisorMissionHUD : MonoBehaviour
 
     void BuildCells(int total)
     {
-        foreach (RawImage c in cells) if (c != null) Destroy(c.gameObject);
+        foreach (RawImage c in cells) if (c != null) HelmetVisorHUD.Kill(c.gameObject);
         cells.Clear();
         fishPerCell = Mathf.Max(1, Mathf.CeilToInt(total / (float)MaxCells));
         int n = Mathf.Max(1, Mathf.CeilToInt(total / (float)fishPerCell));
@@ -320,7 +357,7 @@ public class VisorMissionHUD : MonoBehaviour
 
     void BuildPips(int waves)
     {
-        foreach (Image p in pips) if (p != null) Destroy(p.gameObject);
+        foreach (Image p in pips) if (p != null) HelmetVisorHUD.Kill(p.gameObject);
         pips.Clear();
         builtWaves = waves;
         for (int i = 0; i < waves; i++)

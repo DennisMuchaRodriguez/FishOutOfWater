@@ -1145,7 +1145,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerShooting
   shootKey: 323
   projectilePrefab: {fileID: 8968281187045372582, guid: e5466b337a9476f40a255c67e81ce463, type: 3}
-  shootForce: 80
+  shootForce: 150
   fireRate: 0.2
   holdToFire: 1
   firePoint: {fileID: 1555813758}
@@ -1154,11 +1154,16 @@ MonoBehaviour:
   aimLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  baseSpread: 0.25
-  spreadPerShot: 0.6
-  maxSpread: 3
-  spreadRecovery: 5
-  airSpread: 1
+  baseSpread: 0.1
+  spreadPerShot: 0.25
+  maxSpread: 1.2
+  spreadRecovery: 8
+  airSpread: 0.2
+  inheritForwardSpeed: 1
+  aimAssistAngle: 4
+  aimAssistStrength: 0.9
+  leadTargets: 1
+  lockedSpreadFactor: 0.3
   chargeKey: 324
   chargeTime: 0.9
   chargedAmmoCost: 3
@@ -2515,7 +2520,7 @@ MonoBehaviour:
   arrivalYaw: -1
   playArrivalCinematic: 1
   cinematicOnlyFirstWave: 1
-  cinematicDuration: 5
+  cinematicDuration: 6.5
   ammoPickups: 6
   ammoPerPickup: 10
   pickupRespawnTime: 12

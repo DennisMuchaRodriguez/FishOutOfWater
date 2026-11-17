@@ -32,7 +32,7 @@ public class VisorStatusHUD : MonoBehaviour
     // Destello que recorre las celdas encendidas cada pocos segundos (desfasado en cada medidor)
     static float ShineAt(int i, float offset)
     {
-        float k = Mathf.Repeat(Time.time + offset, 3.8f) / 0.7f;
+        float k = Mathf.Repeat(HelmetVisorHUD.Now + offset, 3.8f) / 0.7f;
         if (k >= 1f) return 0f;
         float pos = Mathf.Lerp(-3f, Cells + 3f, k);
         return Mathf.Exp(-(i - pos) * (i - pos) * 0.2f);
@@ -105,7 +105,8 @@ public class VisorStatusHUD : MonoBehaviour
 
     // ======================= ACTUALIZACIÓN =======================
 
-    void Refresh(float dt)
+    // También la llama la vista previa del casco en el editor
+    public void Refresh(float dt)
     {
         bool show = player != null && !player.isDead;
         if (root.gameObject.activeSelf != show) root.gameObject.SetActive(show);
@@ -134,12 +135,12 @@ public class VisorStatusHUD : MonoBehaviour
     {
         Gauge g = fuel;
         bool low = v <= Low;
-        bool blinkOn = !low || Mathf.Repeat(Time.time * 4f, 1f) < 0.6f;
+        bool blinkOn = !low || Mathf.Repeat(HelmetVisorHUD.Now * 4f, 1f) < 0.6f;
         bool recharging = player.isInWater && v < 0.999f;
         bool burning = player.IsTurbo || player.IsJetting;
         Color baseC = low ? danger : g.color;
         float lit = v * Cells;
-        float sweep = Mathf.Repeat(Time.time * 14f, Cells + 6f) - 3f;   // brillo de la recarga
+        float sweep = Mathf.Repeat(HelmetVisorHUD.Now * 14f, Cells + 6f) - 3f;   // brillo de la recarga
         int front = Mathf.CeilToInt(lit) - 1;
 
         for (int i = 0; i < Cells; i++)
@@ -152,7 +153,7 @@ public class VisorStatusHUD : MonoBehaviour
                 c = new Color(baseC.r, baseC.g, baseC.b, a);
                 if (recharging) c = Color.Lerp(c, Color.white, Mathf.Exp(-(i - sweep) * (i - sweep) * 0.35f) * 0.55f);
                 else if (!low) c = Color.Lerp(c, Shine, ShineAt(i, 0f) * 0.7f);
-                if (burning && i == front) c.a *= 0.55f + 0.45f * Mathf.PerlinNoise(Time.time * 18f, 0.3f);
+                if (burning && i == front) c.a *= 0.55f + 0.45f * Mathf.PerlinNoise(HelmetVisorHUD.Now * 18f, 0.3f);
             }
             else
             {
@@ -181,7 +182,7 @@ public class VisorStatusHUD : MonoBehaviour
         g.heal = Mathf.Max(0f, g.heal - dt * 1.5f);
 
         bool low = v <= Low;
-        bool blinkOn = !low || Mathf.Repeat(Time.time * 4f, 1f) < 0.6f;
+        bool blinkOn = !low || Mathf.Repeat(HelmetVisorHUD.Now * 4f, 1f) < 0.6f;
         Color baseC = low ? danger : g.color;
         float lit = v * Cells, ghostLit = g.ghost * Cells;
         float hit = g.ghostWait > 0f ? 1f : 0.6f;
