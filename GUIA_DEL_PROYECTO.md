@@ -887,6 +887,17 @@ Los dibujos del Archivo (`Assets/Resources/Archivo/<archivo del Ave>.png`, 512×
 
 ### Vegetación y ambiente del lago
 Todo se agrega solo al darle Play en la escena del lago (`LakeDecorator` y `LakeAmbience`), sin tocar la escena.
+Por eso, sin Play, la escena se ve con el cielo viejo y sin vegetación.
+
+**Verlo en el editor sin darle Play**: menú **Herramientas > Lago**:
+- **Vista previa en el editor**: genera la vegetación y aplica el cielo, la niebla y la luz (tarda unos segundos).
+- **Regenerar vista previa**: después de cambiar `Decoracion_Lago`.
+- **Quitar vista previa**: la borra y deja el cielo y la luz como estaban.
+
+La vista previa **no se guarda en la escena**: sus objetos son temporales y el cielo y la luz originales se vuelven a poner
+antes de guardar, al darle Play y al cerrar la escena. Al darle Play se esconde y el juego genera lo suyo; al volver de Play
+reaparece sola. Las hojas, el polen y los efectos bajo el agua solo se ven en Play. La opción queda marcada en el menú
+mientras está encendida.
 
 **Vegetación por zonas** (`Decoracion_Lago`). Sigue cómo crecen las plantas en un lago de verdad: del agua hacia afuera,
 plantas sumergidas → hojas flotantes → plantas emergentes en el agua baja → franja leñosa de la orilla → pradera → bosque.

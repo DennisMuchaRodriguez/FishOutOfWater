@@ -18,6 +18,8 @@ using UnityEditor.SceneManagement;
 //   - En el editor: botones "Generar ahora" / "Borrar" del Inspector (o clic derecho en el
 //     componente). Lo generado en el editor se guarda con la escena y ya no se regenera al jugar.
 //  Este objeto es la raíz "Decoracion": cuelga un hijo por zona y no debe moverse del origen.
+//  Vista previa: el menú Herramientas > Lago > Vista previa en el editor crea una decoración que solo se ve en el
+//  editor y no se guarda en la escena (Editor/LakePreviewMenu.cs). Al darle Play se ignora y se genera la de verdad.
 // ============================================================================
 [DisallowMultipleComponent]
 [DefaultExecutionOrder(-45)]
@@ -36,6 +38,9 @@ public class LakeDecorator : MonoBehaviour
     public bool generateOnStart = true;
     [Tooltip("Al darle Play, borrar lo generado en el editor y volver a generar")]
     public bool regenerateOnPlay = false;
+
+    // Solo para la vista previa del editor: sin Ctrl+Z, sin marcar la escena como modificada y sin enlaces al modelo
+    [System.NonSerialized] public bool previewOnly;
 
     public int PlacedCount { get; private set; }
     public string LastReport { get; private set; }
@@ -74,7 +79,9 @@ public class LakeDecorator : MonoBehaviour
             if (lw != null && lw.gameObject.scene == scene) { lake = lw; break; }
         }
         if (lake == null) return;
-        if (FindFirstObjectByType<LakeDecorator>(FindObjectsInactive.Include) != null) return;
+        // La vista previa del editor (no se guarda en la escena) no cuenta: al jugar se genera la de verdad
+        foreach (LakeDecorator existing in FindObjectsByType<LakeDecorator>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if ((existing.gameObject.hideFlags & HideFlags.DontSaveInEditor) == 0) return;
         DecorationSet loaded = Resources.Load<DecorationSet>(ResourcePath);
         if (loaded == null) return;
 
@@ -202,7 +209,7 @@ public class LakeDecorator : MonoBehaviour
         if (total > 0) Debug.Log("Decoración del lago: " + total + " objetos en " + seconds.ToString("0.00") + " s.");
 
 #if UNITY_EDITOR
-        if (!Application.isPlaying)
+        if (!Application.isPlaying && !previewOnly)
         {
             EditorUtility.SetDirty(c.sway);
             EditorSceneManager.MarkSceneDirty(gameObject.scene);
@@ -726,7 +733,7 @@ public class LakeDecorator : MonoBehaviour
     GameObject Spawn(GameObject prefab, Transform parent)
     {
 #if UNITY_EDITOR
-        if (!Application.isPlaying)
+        if (!Application.isPlaying && !previewOnly)
         {
             // En el editor se mantiene el enlace al modelo (la escena pesa menos)
             GameObject linked = PrefabUtility.InstantiatePrefab(prefab, parent) as GameObject;
@@ -745,7 +752,7 @@ public class LakeDecorator : MonoBehaviour
         g = go.transform;
         c.groups[zone] = g;
 #if UNITY_EDITOR
-        if (!Application.isPlaying) Undo.RegisterCreatedObjectUndo(go, "Generar decoración");
+        if (!Application.isPlaying && !previewOnly) Undo.RegisterCreatedObjectUndo(go, "Generar decoración");
 #endif
         return g;
     }
