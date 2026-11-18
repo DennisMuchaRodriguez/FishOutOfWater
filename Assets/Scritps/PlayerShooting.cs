@@ -108,6 +108,8 @@ public class PlayerShooting : MonoBehaviour
     public bool ShowingBubbles { get { return usingBubbleGun && CurrentBubbles > 0; } }
     public int HudAmmo { get { return ShowingBubbles ? CurrentBubbles : currentAmmo; } }
     public int HudMaxAmmo { get { return ShowingBubbles ? Mathf.Max(1, bubbleCapacity) : maxAmmo; } }
+    // ¿El arma elegida puede disparar? (la metralleta usa su tanque y, si se vació, las balas)
+    public bool CanFireSelected { get { return usingBubbleGun ? (CurrentBubbles > 0 || currentAmmo > 0) : currentAmmo > 0; } }
     // ¿Le sirve una cápsula? (balas que faltan o, con la metralleta, burbujas que faltan)
     public bool WantsAmmo { get { return currentAmmo < maxAmmo || (bubbleUnlocked && CurrentBubbles < bubbleCapacity); } }
     public event System.Action<string> OnWeaponChanged;
@@ -117,7 +119,7 @@ public class PlayerShooting : MonoBehaviour
     float bubbleDamageBonus = 1f;
     int bubbleShotsSinceAmmo;
     float bubbleRefillAcc;
-    Material bubbleMaterial;
+    Material bubbleMaterial, bubbleGlowMaterial;
     ParticleSystem bubbleTrail;
 
     public event System.Action<bool> OnShot;          // bool = cargado
@@ -382,6 +384,9 @@ public class PlayerShooting : MonoBehaviour
     {
         if (bubbleMaterial == null)
             bubbleMaterial = FXFactory.ParticleMaterialAlpha(fxMaterialTemplate, FXFactory.Bubble, new Color(0.85f, 0.97f, 1f, 0.95f));
+        // Halo de energía (aditivo) alrededor de cada burbuja
+        if (bubbleGlowMaterial == null)
+            bubbleGlowMaterial = FXFactory.ParticleMaterial(fxMaterialTemplate, FXFactory.SoftDot, new Color(0.45f, 0.95f, 1f, 1f));
         if (bubbleTrail == null)
         {
             Material mat = FXFactory.ParticleMaterialAlpha(fxMaterialTemplate, FXFactory.Bubble, new Color(0.8f, 0.96f, 1f, 0.8f));
@@ -402,6 +407,15 @@ public class PlayerShooting : MonoBehaviour
     void OnDestroy()
     {
         if (bubbleTrail != null) Destroy(bubbleTrail.gameObject);
+    }
+
+    // Lo que hace falta para disparar burbujas de energía (los peces defensores con metralleta lo comparten)
+    public void GetBubbleFX(out Material bubble, out ParticleSystem trail, out Material glow)
+    {
+        EnsureBubbleFX();
+        bubble = bubbleMaterial;
+        trail = bubbleTrail;
+        glow = bubbleGlowMaterial;
     }
 
     void Shoot(bool charged, bool bubble = false)
@@ -441,7 +455,7 @@ public class PlayerShooting : MonoBehaviour
             if (bubble) dmg = Mathf.Max(1, Mathf.RoundToInt(proj.damage * bubbleDamageFactor * bubbleDamageBonus));
             proj.Setup(this, dmg, charged ? chargedImpactPrefab : impactEffectPrefab,
                        shotColor, trailMaterial, charged);
-            if (bubble) proj.MakeBubble(bubbleMaterial, bubbleTrail);
+            if (bubble) proj.MakeBubble(bubbleMaterial, bubbleTrail, bubbleGlowMaterial);
             if (charged && chargedPierce > 0) proj.pierceCount = chargedPierce;
         }
 

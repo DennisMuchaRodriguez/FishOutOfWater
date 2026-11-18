@@ -740,7 +740,8 @@ public class HelmetVisorHUD : MonoBehaviour
             reticleTicks[i].rectTransform.localEulerAngles = new Vector3(0f, 0f, -(i * 90f + reticleLock * 45f));
         }
 
-        bool noAmmo = shooting.currentAmmo <= 0;
+        // Roja si el arma elegida no puede disparar (la metralleta mira su tanque y las balas)
+        bool noAmmo = !shooting.CanFireSelected;
         Color baseC = noAmmo ? dangerColor : Color.Lerp(accent, Color.white, reticleLock * 0.75f);
         reticleRing.color = new Color(baseC.r, baseC.g, baseC.b, 0.55f + (sinceShot < 0.1f ? 0.4f : 0f) + reticleLock * 0.2f);
         reticleRing.rectTransform.localEulerAngles = new Vector3(0f, 0f, Now * (20f + reticleLock * 70f));

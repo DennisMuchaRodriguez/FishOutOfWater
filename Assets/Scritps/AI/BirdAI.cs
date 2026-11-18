@@ -39,7 +39,7 @@ public partial class BirdAI : MonoBehaviour
     [Tooltip("Altura máxima sobre el agua (persiguiendo al jugador puede subir hasta 25 m por encima de él)")]
     public float maxAltitude = 55f;
     [Tooltip("Metros más allá de la orilla a los que puede alejarse antes de volver al lago")]
-    public float leashMargin = 60f;
+    public float leashMargin = 30f;
 
     [Header("Caza")]
     public float huntRange = 75f;

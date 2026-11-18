@@ -284,6 +284,8 @@ public partial class PlayerController_Base : MonoBehaviour
         if (moveInput.magnitude > 1f) moveInput.Normalize();
         // Varado sin carga: cada pulsación de ESPACIO es un coletazo (se aplica en FixedUpdate)
         if (Input.GetKeyDown(KeyCode.Space)) flopRequested = true;
+        // Giro de esquive: doble toque de A / D o Z / X (PlayerController_Base.Dodge.cs)
+        ReadDodgeInput();
 
         isGrounded = Physics.Raycast(transform.position + Vector3.up * 0.1f,
                                     Vector3.down,
@@ -319,6 +321,7 @@ public partial class PlayerController_Base : MonoBehaviour
             return;
         }
         bool wantsToFly = !InputLocked && Input.GetKey(KeyCode.Space);
+        TryDodge();
 
         if (isInWater)
         {
@@ -685,6 +688,9 @@ public partial class PlayerController_Base : MonoBehaviour
 
     // Se trabaja con cuaterniones: con ángulos Euler la rotación inicial (~100° en X)
     // se descomponía como (78, 180, 180) y al subir el modelo quedaba boca abajo.
+    Quaternion tiltRotation;
+    bool tiltInitialized;
+
     void UpdateModelTilt()
     {
         if (modeloPez == null) return;
@@ -719,7 +725,14 @@ public partial class PlayerController_Base : MonoBehaviour
         // Las inclinaciones se aplican en el espacio del jugador: X = cabeceo, Y = coleteo, Z = alabeo
         Quaternion target = Quaternion.Euler(-modelPitch, wiggle, roll) * rest;
 
-        modeloPez.localRotation = Quaternion.Slerp(modeloPez.localRotation, target, 1f - Mathf.Exp(-tiltSpeed * 2f * dt));
+        // La pose suavizada se guarda aparte: así la vuelta del esquive (360°) se suma encima sin romper el suavizado
+        if (!tiltInitialized)
+        {
+            tiltRotation = modeloPez.localRotation;
+            tiltInitialized = true;
+        }
+        tiltRotation = Quaternion.Slerp(tiltRotation, target, 1f - Mathf.Exp(-tiltSpeed * 2f * dt));
+        modeloPez.localRotation = Quaternion.AngleAxis(DodgeRoll(), Vector3.forward) * tiltRotation;
     }
 
     // ---------------- CÁMARA ----------------
@@ -819,7 +832,7 @@ public partial class PlayerController_Base : MonoBehaviour
         pitch -= recoilPitch;
 
         currentRoll = Mathf.Lerp(currentRoll, rollTarget, 1f - Mathf.Exp(-6f * dt));
-        Quaternion rot = Quaternion.Euler(pitch, yaw, currentRoll);
+        Quaternion rot = Quaternion.Euler(pitch, yaw, currentRoll + (isThirdPerson ? 0f : DodgeCameraRoll()));
 
         // FOV dinámico: se abre con la velocidad de nado, el dash y el turbo
         fovKick = Mathf.Lerp(fovKick, 0f, 1f - Mathf.Exp(-3f * dt));
@@ -945,6 +958,8 @@ public partial class PlayerController_Base : MonoBehaviour
     public void TakeHit(float damage, Vector3 knockbackVelocity)
     {
         if (isDead) return;
+        // En plena vuelta de esquive las aves se le pasan de largo
+        if (IsDodgeInvulnerable) return;
 
         // Escudo de burbuja (mejora): absorbe el golpe entero y el empujón es mucho menor
         if (shield == null) shield = GetComponent<BubbleShield>();

@@ -453,7 +453,9 @@ public class GameDirector : MonoBehaviour
             wi.minSpeed = 1f;
 
             DefenderFish defender = go.AddComponent<DefenderFish>();
-            defender.Setup(defenderSuitModel, scale, projectile, impact, fxMaterialTemplate, i, count);
+            // La mitad con pistola (más daño, más lenta) y la otra mitad con la metralleta de burbujas
+            DefenderFish.Weapon gun = i % 2 == 0 ? DefenderFish.Weapon.Pistol : DefenderFish.Weapon.Bubbles;
+            defender.Setup(defenderSuitModel, scale, projectile, impact, fxMaterialTemplate, i, count, gun, shooting);
             defender.SuitBroken += OnDefenderSuitBroken;
 
             fish.Died += OnFishDied;

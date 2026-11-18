@@ -84,6 +84,20 @@ def burbuja(v):
     return mixdown(pop, click)
 
 
+@sound('Metralleta', peak=-4, variants=4)
+def metralleta(v):
+    # Disparo de metralleta de burbujas: chasquido seco, golpe grave corto, mecanismo metálico, "pop" de burbuja y
+    # un zumbido de energía. Corto (~0,1 s) para que a 10 disparos por segundo suene a ráfaga
+    r = rng(60 + v)
+    k = [1.0, 0.94, 1.06, 0.98][v - 1]
+    crack = hp(noise(0.03, r), 1800) * env_exp(0.03, 0.006) * 0.9
+    thump = sine(sweep(210 * k, 70 * k, 0.07), 0.07) * env_exp(0.07, 0.022)
+    clack = metal([1850 * k, 2630 * k, 3900 * k], 0.05, tau=0.012, rng=r) * 0.35
+    pop = sine(sweep(600 * k, 1500 * k, 0.04, 2), 0.04) * env_exp(0.04, 0.012) * 0.45
+    zap = saw(sweep(2600 * k, 900 * k, 0.06, 0.7), 0.06) * env_exp(0.06, 0.015) * 0.18
+    return mixdown(crack, thump, clack, place(silence(0.006), pop, 0.006), zap)
+
+
 @sound('SinMunicion', peak=-8)
 def sin_municion(v):
     r = rng(40)

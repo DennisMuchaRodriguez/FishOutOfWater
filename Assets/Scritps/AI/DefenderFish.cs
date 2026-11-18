@@ -5,6 +5,8 @@ using UnityEngine;
 //  - No vuela: nada rápido cerca de la superficie, sin hundirse mucho, patrullando su sector del lago. Si un ave
 //    está cazando a un pez cerca, va hacia ese pez para defenderlo (FishAI > "Patrullar y defender").
 //  - Dispara a las aves que lo siguen o que cazan peces cerca (apunta adelante del ave, como el jugador).
+//    La mitad usa la pistola (más daño por disparo, pero más lenta) y la otra mitad la metralleta de burbujas
+//    (ráfagas de burbujas de energía que hacen poco daño cada una).
 //  - Lo pueden atrapar, pero la descarga del traje hace que el ave lo suelte al instante, salga despedida y quede
 //    aturdida un momento. Cada vez el traje pierde vida; cuando se rompe, queda como un pez normal (huye y se
 //    puede comer como los demás).
@@ -24,11 +26,25 @@ public class DefenderFish : MonoBehaviour
     [Tooltip("Distancia a la que va a defender a un pez que estén cazando")]
     public float escortRange = 20f;
 
+    public enum Weapon { Pistol, Bubbles }
+
     [Header("Disparo")]
+    [Tooltip("Pistola: más daño por disparo pero más lenta. Metralleta: ráfagas de burbujas que hacen poco daño")]
+    public Weapon weapon = Weapon.Pistol;
     public float range = 26f;
-    public float fireInterval = 0.6f;
-    public int damage = 6;
+    [Tooltip("Pistola: segundos entre disparos")]
+    public float fireInterval = 1.1f;
+    [Tooltip("Pistola: daño de cada disparo")]
+    public int damage = 12;
     public float shotSpeed = 90f;
+    [Tooltip("Metralleta: daño de cada burbuja")]
+    public int bubbleDamage = 2;
+    [Tooltip("Metralleta: burbujas por segundo dentro de la ráfaga")]
+    public float bubbleRate = 9f;
+    [Tooltip("Metralleta: burbujas por ráfaga y pausa entre ráfagas")]
+    public int bubbleBurst = 8;
+    public float bubblePause = 0.9f;
+    public float bubbleSpeed = 110f;
     public Color shotColor = new Color(0.55f, 1f, 0.95f, 1f);
 
     public bool SuitIntact { get; private set; } = true;
@@ -52,11 +68,17 @@ public class DefenderFish : MonoBehaviour
     float fireTimer;
     ParticleSystem sparks;
     Light zapLight;
+    Material bubbleMaterial, bubbleGlow;
+    ParticleSystem bubbleTrail;
+    int burstLeft;
+    float bubbleTimer;
 
     // Lo llama el GameDirector justo después de crear el pez
     public void Setup(GameObject suitModel, float scale, GameObject projectile, GameObject impact, Material fxTemplate,
-                      int sectorIndex, int sectors)
+                      int sectorIndex, int sectors, Weapon gun, PlayerShooting shooter)
     {
+        weapon = gun;
+        if (shooter != null) shooter.GetBubbleFX(out bubbleMaterial, out bubbleTrail, out bubbleGlow);
         fish = GetComponent<FishAI>();
         fish.Defender = this;
         bodyScale = Mathf.Max(0.1f, scale);
@@ -146,7 +168,21 @@ public class DefenderFish : MonoBehaviour
         }
 
         fireTimer -= dt;
-        if (target != null && fireTimer <= 0f && !GameDirector.InCinematic)
+        bubbleTimer -= dt;
+        bool canShoot = target != null && !GameDirector.InCinematic;
+        if (weapon == Weapon.Bubbles)
+        {
+            // Ráfagas: varias burbujas seguidas y una pausa
+            if (canShoot && burstLeft <= 0 && fireTimer <= 0f) burstLeft = Mathf.Max(1, bubbleBurst);
+            if (burstLeft > 0 && bubbleTimer <= 0f)
+            {
+                if (canShoot) FireBubble(target);
+                burstLeft--;
+                bubbleTimer = 1f / Mathf.Max(1f, bubbleRate);
+                if (burstLeft <= 0) fireTimer = bubblePause * Random.Range(0.85f, 1.15f);
+            }
+        }
+        else if (canShoot && fireTimer <= 0f)
         {
             Fire(target);
             fireTimer = fireInterval * Random.Range(0.85f, 1.15f);
@@ -199,7 +235,7 @@ public class DefenderFish : MonoBehaviour
         dir.Normalize();
 
         GameObject shot = Instantiate(projectilePrefab, muzzle, Quaternion.LookRotation(dir));
-        shot.transform.localScale *= 0.6f;
+        shot.transform.localScale *= 0.75f;
         Projectile proj = shot.GetComponent<Projectile>();
         if (proj != null) proj.Setup(null, damage, impactPrefab, shotColor, trailMaterial, false);
         Rigidbody rb = shot.GetComponent<Rigidbody>();
@@ -209,8 +245,35 @@ public class DefenderFish : MonoBehaviour
             rb.linearVelocity = dir * shotSpeed;
         }
 
-        Sfx.Play(Sonido.Disparo, muzzle, 0.45f, 1.35f, 6f, 0.08f, 0.05f);
-        EmitSparks(muzzle, dir, 6, shotColor, 3f);
+        Sfx.Play(Sonido.Disparo, muzzle, 0.5f, 1.2f, 6f, 0.08f, 0.05f);
+        EmitSparks(muzzle, dir, 8, shotColor, 3.5f);
+    }
+
+    // Una burbuja de energía de la metralleta (poco daño, rápida)
+    void FireBubble(BirdAI bird)
+    {
+        if (projectilePrefab == null) return;
+        Vector3 muzzle = Muzzle();
+        Vector3 dir = Lead(bird, muzzle) - muzzle;
+        if (dir.sqrMagnitude < 0.01f) return;
+        dir = Quaternion.Euler(Random.Range(-1.2f, 1.2f), Random.Range(-1.2f, 1.2f), 0f) * dir.normalized;
+
+        GameObject shot = Instantiate(projectilePrefab, muzzle, Quaternion.LookRotation(dir));
+        shot.transform.localScale *= 0.45f;
+        Projectile proj = shot.GetComponent<Projectile>();
+        if (proj != null)
+        {
+            proj.Setup(null, bubbleDamage, impactPrefab, shotColor, trailMaterial, false);
+            proj.MakeBubble(bubbleMaterial, bubbleTrail, bubbleGlow);
+        }
+        Rigidbody rb = shot.GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.useGravity = false;
+            rb.linearVelocity = dir * bubbleSpeed;
+        }
+        Sfx.Play(Sonido.Metralleta, muzzle, 0.3f, 1.15f, 6f, 0.08f, 0.05f);
+        EmitSparks(muzzle, dir, 2, shotColor, 2.5f);
     }
 
     // Dónde va a estar el ave cuando llegue la bala

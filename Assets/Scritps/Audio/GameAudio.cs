@@ -85,7 +85,12 @@ public class GameAudio : MonoBehaviour
     void OnShot(bool charged)
     {
         if (charged) Sfx.Play2D(Sonido.DisparoCargado, 0.9f);
-        else if (shooting != null && shooting.IsBubbleGun) Sfx.Play2D(Sonido.Burbuja, 0.45f, 1f, 0.15f, 0.04f);
+        else if (shooting != null && shooting.IsBubbleGun)
+        {
+            // Metralleta: ráfaga seca y con energía, con un "pop" de burbuja suave encima
+            Sfx.Play2D(Sonido.Metralleta, 0.6f, 1f, 0.06f, 0.03f);
+            Sfx.Play2D(Sonido.Burbuja, 0.18f, 1.2f, 0.15f, 0.04f);
+        }
         else Sfx.Play2D(Sonido.Disparo, 0.7f, 1f, 0.07f);
     }
 

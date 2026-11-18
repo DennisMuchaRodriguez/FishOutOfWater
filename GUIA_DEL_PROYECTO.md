@@ -459,6 +459,13 @@ En **PlayerBase**.
 - **Ctrl izquierdo**: bucear (en el agua).
 - **Q**: cambiar entre primera y tercera persona (en la escena está en Q; por defecto, C).
 - **Clic izquierdo**: disparar. **Clic derecho**: disparo cargado. **Esc**: pausa.
+- **Doble toque de A o D** (o de las flechas), o **Z / X**: giro de esquive a la izquierda o a la derecha.
+
+**Giro de esquive** (`PlayerController_Base.Dodge.cs`): un tirón de lado con una vuelta completa del pez sobre sí
+mismo, como el de las aves. Durante 0,35 s las aves no lo pueden golpear. En el aire gasta 6 de combustible; en el agua
+no gasta. En primera persona la cámara solo se ladea un poco (no da la vuelta entera, para no marear).
+Campos: `Dodge On Double Tap` ✔, `Dodge Left Key` Z, `Dodge Right Key` X, `Double Tap Time` 0,28, `Dodge Speed` 13,
+`Dodge Duration` 0,42, `Dodge Cooldown` 0,75, `Dodge Invulnerable` 0,35, `Dodge Energy Cost` 6, `Dodge Camera Roll` 22.
 
 ### Movimiento
 | Campo | Defecto | En escena | Qué hace |
@@ -651,6 +658,15 @@ disparando con las balas del cargador: 8 burbujas por bala. Con la metralleta, e
 tanque (marcas cada 40 burbujas).
 Campos (no están en la escena, usan estos valores): `Bubble Shots Per Second` 10, `Bubble Damage Factor` 0.4,
 `Bubble Capacity` 240, `Bubble Water Refill` 30, `Bubbles Per Pickup Ammo` 8, `Bubbles Per Ammo` 8.
+Cada burbuja va **cargada de energía**: un halo cian que late, un núcleo blanco y una estela blanca y cian. Suena a
+**metralleta** (sonido `Metralleta`, 4 variantes cortas), con un "pop" de burbuja suave encima.
+
+**La mira se pone roja** cuando el arma elegida no puede disparar: con la pistola, sin balas; con la metralleta, sin
+burbujas en el tanque y sin balas.
+
+**Empuje de los disparos**: los disparos empujan un poco a las aves livianas (pistola 1,2, burbuja 0,3, cargado 5, en
+`Projectile`), lo justo para que se note el golpe sin sacarlas del lago. Si igual se alejan, vuelven solas al pasar
+30 m de la orilla (`Leash Margin` de las aves).
 
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
@@ -872,9 +888,12 @@ Son peces de otros colores (verde, violeta y turquesa, no naranja como el protag
 En el GameDirector (**Peces defensores**): `Defender Start Level` (10), `Defender Level Step` (3), `Defenders Per Step`
 (2), **`Test Defenders`** (para probarlos en cualquier nivel: pon por ejemplo 2), `Defender Suit Model` (Traje_Defensor) y
 `Defender Materials` (PezVerde, PezVioleta, PezTurquesa en `Assets/Models/PezNormal`).
+**Armas**: la mitad lleva **pistola** (12 de daño por disparo, uno cada 1,1 s) y la otra mitad la **metralleta de
+burbujas** (ráfagas de 8 burbujas de energía de 2 de daño, 9 por segundo, y una pausa de 0,9 s).
 En el componente `DefenderFish` de cada uno (se agrega solo): `Suit Health` 100, `Damage Per Catch` 34,
-`Patrol Speed` 8,5, `Patrol Depth` (0,35-0,7), `Escort Range` 20, `Range` 26, `Fire Interval` 0,6, `Damage` 6,
-`Shot Speed` 90.
+`Patrol Speed` 8,5, `Patrol Depth` (0,35-0,7), `Escort Range` 20, `Weapon` (Pistol / Bubbles), `Range` 26,
+`Fire Interval` 1,1, `Damage` 12, `Shot Speed` 90, `Bubble Damage` 2, `Bubble Rate` 9, `Bubble Burst` 8,
+`Bubble Pause` 0,9, `Bubble Speed` 110.
 
 ### BirdAI (cada pájaro)
 | Campo | Defecto | Qué hace |
@@ -885,7 +904,7 @@ En el componente `DefenderFish` de cada uno (se agrega solo): `Suit Health` 100,
 | Stalk Altitude | 9 | Altura al acechar un pez |
 | Min Altitude Above Ground | 3 | Altura mínima sobre el terreno |
 | Max Altitude | 55 | Techo sobre el agua (persiguiendo al jugador puede subir hasta 25 m por encima de él) |
-| Leash Margin | 60 | Metros más allá de la orilla a los que se puede alejar antes de volver al lago |
+| Leash Margin | 30 | Metros más allá de la orilla a los que se puede alejar antes de volver al lago |
 
 Las aves ya no se van al cielo ni se atascan en los bordes: al chocar con un árbol o una ladera la rodean por un lado (no
 suben sin parar); y si quieren volar pero casi no avanzan durante 3 s, o se alejan demasiado, salen un momento volando
@@ -1088,6 +1107,10 @@ de Iron Man y cuevas submarinas estilizadas). Todo se arma por código al abrir 
 - **Monitores** con interfaces que brillan, **lámparas colgantes** y la **mesa de chatarra** con tablero de herramientas,
   morsa, flexo y cajonero.
 - **El mecánico**: un bagre de canal erguido, con gafas, delantal de cuero, ocho barbillas y una llave inglesa.
+- **Peces del taller**: nadan acostados boca abajo, como los del lago. Uno de los alevines y dos del cardumen llevan el
+  traje de los defensores, con sus colores (`Helper Suit Model` y `Helper Materials`).
+- **La escafandra del traje es transparente**: a la pieza "Vidrio" del traje se le pone `Visor Glass Material`
+  (Eskafandra), en el soporte y en las vitrinas.
 
 Modelos (en el componente WorkshopScene, todos hechos con `Herramientas/Modelado/entorno`): `Mechanic Model`
 (Mecanico_Bagre), `Bench Model` (Mesa_Chatarra), `Display Case Model` (Vitrina_Traje), `Holo Table Model` (Mesa_Holo),

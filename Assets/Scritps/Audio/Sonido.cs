@@ -6,6 +6,7 @@ public static class Sonido
     public const string Disparo = "Disparo";
     public const string DisparoCargado = "DisparoCargado";
     public const string Burbuja = "Burbuja";
+    public const string Metralleta = "Metralleta";
     public const string SinMunicion = "SinMunicion";
     public const string Capsula = "Capsula";
     public const string Acierto = "Acierto";

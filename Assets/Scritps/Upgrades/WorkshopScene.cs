@@ -47,6 +47,12 @@ public class WorkshopScene : MonoBehaviour
     public GameObject stalactiteModel;
     [Tooltip("Cristales que brillan (Cristales_Cueva)")]
     public GameObject crystalModel;
+    [Tooltip("Traje de los peces defensores (Traje_Defensor): lo llevan algunos peces que nadan por el taller")]
+    public GameObject helperSuitModel;
+    [Tooltip("Colores de los peces con traje (los mismos de los defensores)")]
+    public Material[] helperMaterials;
+    [Tooltip("Vidrio transparente de la escafandra del traje (Eskafandra)")]
+    public Material visorGlassMaterial;
 
     [Header("Efectos")]
     [Tooltip("Material base de las partículas (el mismo del lago)")]
@@ -360,6 +366,7 @@ public class WorkshopScene : MonoBehaviour
         suitSpin.localPosition = Vector3.up * 1.25f;
         suitSpin.localRotation = Quaternion.Euler(0f, 200f, 0f);
         GameObject suit = WorkshopKit.PlaceModel(suitModel, suitSpin, 1.5f, true);
+        ApplyVisorGlass(suit);
         if (suit != null)
         {
             Animator anim = suit.GetComponentInChildren<Animator>();
@@ -426,16 +433,8 @@ public class WorkshopScene : MonoBehaviour
         {
             Transform f = new GameObject("Alevin" + i).transform;
             f.SetParent(env, false);
-            GameObject inst = WorkshopKit.PlaceModel(fryModel, f, 0.45f, false);
-            if (inst != null)
-            {
-                if (fryMaterial != null)
-                    foreach (Renderer r in inst.GetComponentsInChildren<Renderer>()) r.sharedMaterial = fryMaterial;
-                Animator anim = inst.GetComponentInChildren<Animator>();
-                if (anim == null && fryAnimator != null) anim = inst.AddComponent<Animator>();
-                if (anim != null && fryAnimator != null) anim.runtimeAnimatorController = fryAnimator;
-            }
-            else
+            GameObject inst = PlaceSwimmingFish(f, 0.55f, i == 1, i);
+            if (inst == null)
             {
                 Material gold = WorkshopKit.Lit(new Color(1f, 0.75f, 0.25f), null, 0.4f, "Taller_Alevin");
                 WorkshopKit.Shape(PrimitiveType.Sphere, "Cuerpo", f, Vector3.zero, new Vector3(0.18f, 0.2f, 0.36f), gold);
@@ -536,13 +535,8 @@ public class WorkshopScene : MonoBehaviour
         {
             Transform f = new GameObject("Cardumen" + i).transform;
             f.SetParent(cave, false);
-            GameObject inst = WorkshopKit.PlaceModel(fryModel, f, 0.38f, false);
+            GameObject inst = PlaceSwimmingFish(f, 0.5f, i == 2 || i == 5, i);
             if (inst == null) continue;
-            if (fryMaterial != null)
-                foreach (Renderer r in inst.GetComponentsInChildren<Renderer>()) r.sharedMaterial = fryMaterial;
-            Animator anim = inst.GetComponentInChildren<Animator>();
-            if (anim == null && fryAnimator != null) anim = inst.AddComponent<Animator>();
-            if (anim != null && fryAnimator != null) anim.runtimeAnimatorController = fryAnimator;
             WorkshopCritter c = f.gameObject.AddComponent<WorkshopCritter>();
             c.kind = WorkshopCritter.Kind.Fry;
             c.center = new Vector3(0.5f, 0f, 4.5f);
@@ -595,6 +589,7 @@ public class WorkshopScene : MonoBehaviour
             {
                 foreach (Animator a in old.GetComponentsInChildren<Animator>()) a.enabled = false;
                 TintModel(old, tints[tintIndex[i]]);
+                ApplyVisorGlass(old);
             }
             Light l = new GameObject("LuzVitrina").AddComponent<Light>();
             l.transform.SetParent(h, false);
@@ -788,6 +783,67 @@ public class WorkshopScene : MonoBehaviour
     }
 
     // ======================= AYUDAS DE LA GUARIDA =======================
+
+    // Pez del Taller igual que los del lago: acostado boca abajo (cabeza adelante, cara hacia abajo). Algunos llevan el
+    // traje de los peces defensores, con sus colores. length: largo del pez en metros (el del lago mide ~1,3 m con la
+    // escala 28 del modelo; el traje está hecho a esa medida)
+    GameObject PlaceSwimmingFish(Transform f, float length, bool suited, int index)
+    {
+        if (fryModel == null) return null;
+        float k = length / 1.3f;
+        Transform visual = new GameObject("Visual").transform;
+        visual.SetParent(f, false);
+        visual.localPosition = new Vector3(0f, 0f, -0.18f * k);
+        visual.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        visual.localScale = Vector3.one * 28f * k;
+        GameObject inst = Instantiate(fryModel, visual, false);
+        inst.transform.localPosition = Vector3.zero;
+        inst.transform.localRotation = Quaternion.identity;
+        inst.transform.localScale = Vector3.one;
+        WorkshopKit.StripColliders(inst);
+
+        Material skin = suited && helperMaterials != null && helperMaterials.Length > 0
+            ? helperMaterials[index % helperMaterials.Length] : fryMaterial;
+        if (skin != null)
+        {
+            foreach (Renderer r in inst.GetComponentsInChildren<Renderer>())
+            {
+                Material[] mats = r.sharedMaterials;
+                for (int m = 0; m < mats.Length; m++) mats[m] = skin;
+                r.sharedMaterials = mats;
+            }
+        }
+        Animator anim = inst.GetComponentInChildren<Animator>();
+        if (anim == null && fryAnimator != null) anim = inst.AddComponent<Animator>();
+        if (anim != null && fryAnimator != null) anim.runtimeAnimatorController = fryAnimator;
+
+        if (suited && helperSuitModel != null)
+        {
+            GameObject suit = Instantiate(helperSuitModel, f, false);
+            suit.transform.localPosition = Vector3.zero;
+            suit.transform.localRotation = Quaternion.identity;
+            suit.transform.localScale = Vector3.one * k;
+            WorkshopKit.StripColliders(suit);
+            suit.transform.SetParent(visual, true);
+        }
+        return inst;
+    }
+
+    // La escafandra del traje es de vidrio: a la pieza "Vidrio" le pone el material transparente (Eskafandra)
+    void ApplyVisorGlass(GameObject suit)
+    {
+        if (visorGlassMaterial == null || suit == null) return;
+        foreach (Renderer r in suit.GetComponentsInChildren<Renderer>(true))
+        {
+            string n = r.gameObject.name;
+            if (n.IndexOf("Vidrio", System.StringComparison.OrdinalIgnoreCase) < 0 &&
+                n.IndexOf("Glass", System.StringComparison.OrdinalIgnoreCase) < 0) continue;
+            Material[] mats = r.sharedMaterials;
+            for (int m = 0; m < mats.Length; m++) mats[m] = visorGlassMaterial;
+            r.sharedMaterials = mats;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+    }
 
     // Pone un modelo con su pivote original (sin recentrar) y escalado; false si no hay modelo
     static bool PlaceRaw(GameObject model, Transform parent, float scale)

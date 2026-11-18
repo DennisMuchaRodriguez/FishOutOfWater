@@ -26,6 +26,8 @@ public class Projectile : MonoBehaviour
     private Vector3 lastVelocity;
     private ParticleSystem bubbleTrail;
     private float bubbleEmit;
+    private Transform energyGlow;
+    private float glowPhase;
 
     void Awake()
     {
@@ -71,7 +73,7 @@ public class Projectile : MonoBehaviour
 
     // Metralleta de burbujas: la bala se vuelve una burbuja chica y rápida que deja burbujitas.
     // Lo llama PlayerShooting después de Setup.
-    public void MakeBubble(Material bubbleMaterial, ParticleSystem trailBubbles)
+    public void MakeBubble(Material bubbleMaterial, ParticleSystem trailBubbles, Material glowMaterial = null)
     {
         isBubble = true;
         bubbleTrail = trailBubbles;
@@ -80,13 +82,26 @@ public class Projectile : MonoBehaviour
         foreach (MeshRenderer r in GetComponents<MeshRenderer>()) r.enabled = false;
         for (int i = 0; i < transform.childCount; i++) transform.GetChild(i).gameObject.SetActive(false);
 
+        // Estela de energía: blanca al frente y cian atrás, más brillante que la de la pistola
         TrailRenderer trail = GetComponent<TrailRenderer>();
         if (trail != null)
         {
             trail.time = 0.09f;
-            trail.widthCurve = new AnimationCurve(new Keyframe(0f, 0.1f), new Keyframe(1f, 0f));
+            trail.widthCurve = new AnimationCurve(new Keyframe(0f, 0.16f), new Keyframe(1f, 0f));
+            Gradient g = new Gradient();
+            g.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(new Color(0.45f, 0.95f, 1f), 0.35f), new GradientColorKey(new Color(0.2f, 0.6f, 1f), 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.8f, 0.4f), new GradientAlphaKey(0f, 1f) });
+            trail.colorGradient = g;
         }
 
+        // Burbuja cargada de energía: halo cian que late y un núcleo blanco dentro de la burbuja
+        if (glowMaterial != null)
+        {
+            energyGlow = FXBillboard.Create("Energia", transform, glowMaterial, 2.8f, 0f).transform;
+            FXBillboard.Create("Nucleo", transform, glowMaterial, 0.9f, 0f);
+            glowPhase = Random.Range(0f, 6f);
+        }
         if (bubbleMaterial != null) FXBillboard.Create("Burbuja", transform, bubbleMaterial, 1.3f, 0.12f);
     }
 
@@ -123,6 +138,13 @@ public class Projectile : MonoBehaviour
         {
             float s = 1f + Mathf.Sin(Time.time * 30f) * 0.08f;
             transform.localScale = baseScale * s;
+        }
+
+        // El halo de energía late rápido
+        if (energyGlow != null)
+        {
+            glowPhase += Time.deltaTime * 38f;
+            energyGlow.localScale = Vector3.one * 2.8f * (0.82f + 0.18f * Mathf.Sin(glowPhase));
         }
 
         // Estela de burbujitas (un solo sistema de partículas compartido por todas las balas)
@@ -162,7 +184,7 @@ public class Projectile : MonoBehaviour
                 pierceCount--;
                 if (collision.rigidbody != null)
                 {
-                    float push = 4f * PushScale(collision.rigidbody);
+                    float push = 2.5f * PushScale(collision.rigidbody);
                     if (push > 0f) collision.rigidbody.AddForceAtPosition(lastVelocity.normalized * push, contact.point, ForceMode.Impulse);
                 }
                 FXFactory.SpawnOneShot(impactEffectPrefab, contact.point + contact.normal * 0.05f,
@@ -188,7 +210,8 @@ public class Projectile : MonoBehaviour
         Rigidbody other = collision.rigidbody;
         if (other != null && rb != null)
         {
-            float push = (isCharged ? 8f : (isBubble ? 0.8f : 2f)) * PushScale(other);
+            // Empuje suave: se nota el golpe pero no los saca del lago
+            float push = (isCharged ? 5f : (isBubble ? 0.3f : 1.2f)) * PushScale(other);
             if (push > 0f) other.AddForceAtPosition(rb.linearVelocity.normalized * push, contact.point, ForceMode.Impulse);
         }
 
