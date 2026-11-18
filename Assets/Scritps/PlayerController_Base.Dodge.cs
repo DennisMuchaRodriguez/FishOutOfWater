@@ -9,6 +9,7 @@ using UnityEngine;
 //  - Durante un instante las aves no lo pueden golpear (se le pasan de largo).
 //  - Tercera persona: solo gira el modelo del pez; la cámara no gira (lo sigue de lado).
 //  - Primera persona: toda la pantalla da la vuelta completa con el giro.
+//  - El fuego del propulsor no gira con el pez: sigue saliendo hacia donde salía (KeepJetSteady).
 public partial class PlayerController_Base
 {
     [Header("Esquive - NUEVO")]
@@ -19,9 +20,9 @@ public partial class PlayerController_Base
     [Tooltip("Segundos máximos entre los dos toques")]
     public float doubleTapTime = 0.28f;
     [Tooltip("Metros que se desplaza hacia el lado")]
-    public float dodgeDistance = 7.5f;
+    public float dodgeDistance = 12f;
     [Tooltip("Duración del impulso y de la vuelta")]
-    public float dodgeDuration = 0.42f;
+    public float dodgeDuration = 0.45f;
     public float dodgeCooldown = 0.6f;
     [Tooltip("Segundos en los que las aves no lo pueden golpear")]
     public float dodgeInvulnerable = 0.35f;
@@ -37,6 +38,10 @@ public partial class PlayerController_Base
     int dodgeDir, dodgeRequest;
     float lastTapLeft = -10f, lastTapRight = -10f;
     Vector3 dodgeSide;
+    // Pose de reposo del fuego del propulsor (relativa al modelo), para compensar la vuelta
+    Vector3 jetRestPosition;
+    Quaternion jetRestRotation;
+    bool jetRestStored;
 
     // En Update: lee las teclas (el impulso se aplica en FixedUpdate)
     void ReadDodgeInput()
@@ -107,6 +112,32 @@ public partial class PlayerController_Base
         float k = Mathf.Clamp01((Time.time - dodgeStartTime) / Mathf.Max(0.05f, dodgeDuration));
         float ease = 1f - (1f - k) * (1f - k) * (1f - k);
         return -dodgeDir * 360f * ease;
+    }
+
+    // El fuego del propulsor (jetpackWaterEffect) es hijo del modelo del pez, que da la vuelta en el esquive. Para que
+    // el fuego no gire en espiral, mientras dura la vuelta se le aplica el giro contrario (sigue saliendo hacia donde
+    // salía, desde donde salía). Las chispas y la luz del propulsor siguen su posición (SuitFX).
+    void KeepJetSteady(Quaternion roll)
+    {
+        if (jetpackWaterEffect == null || modeloPez == null) return;
+        Transform jet = jetpackWaterEffect.transform;
+        if (jet.parent != modeloPez) return;
+        if (!jetRestStored)
+        {
+            jetRestPosition = jet.localPosition;
+            jetRestRotation = jet.localRotation;
+            jetRestStored = true;
+        }
+        if (!IsDodging)
+        {
+            if (jet.localRotation != jetRestRotation) jet.localRotation = jetRestRotation;
+            if (jet.localPosition != jetRestPosition) jet.localPosition = jetRestPosition;
+            return;
+        }
+        // modelo = vuelta · inclinación  ->  fuego' = inclinación⁻¹ · vuelta⁻¹ · inclinación · fuego
+        Quaternion fix = Quaternion.Inverse(tiltRotation) * Quaternion.Inverse(roll) * tiltRotation;
+        jet.localRotation = fix * jetRestRotation;
+        jet.localPosition = fix * jetRestPosition;
     }
 
     // Giro de la cámara: en primera persona toda la pantalla da la vuelta completa; en tercera persona la cámara no

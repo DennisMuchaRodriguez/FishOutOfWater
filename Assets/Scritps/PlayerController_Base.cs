@@ -33,9 +33,13 @@ public partial class PlayerController_Base : MonoBehaviour
 
     [Header("Cámara en tercera persona")]
     public bool isThirdPerson = false;
-    [Tooltip("Cambiar entre primera y tercera persona")]
+    [Tooltip("Tercera persona mirando hacia atrás: la cámara va delante del pez y mira lo que viene detrás")]
+    public bool isReverseView = false;
+    [Tooltip("Cambia de cámara: primera persona -> tercera persona -> tercera persona mirando hacia atrás")]
     public KeyCode toggleCameraKey = KeyCode.R;
     public Vector3 thirdPersonOffset = new Vector3(0, 1.7f, -5f);
+    [Tooltip("Dónde va la cámara mirando hacia atrás (delante del pez)")]
+    public Vector3 reverseCameraOffset = new Vector3(0f, 1.7f, 5f);
     public Vector3 firstPersonOffset = new Vector3(0, 1.7f, 0);
 
     [Header("Caída")]
@@ -293,10 +297,7 @@ public partial class PlayerController_Base : MonoBehaviour
                                     groundCheckDistance,
                                     groundLayer);
 
-        if (Input.GetKeyDown(toggleCameraKey))
-        {
-            isThirdPerson = !isThirdPerson;
-        }
+        if (Input.GetKeyDown(toggleCameraKey)) CycleCameraView();
 
         // El dash se lee en Update para no perder la pulsación.
         // Cargas: tras el enfriamiento del último dash se rellenan todas.
@@ -736,7 +737,10 @@ public partial class PlayerController_Base : MonoBehaviour
             tiltInitialized = true;
         }
         tiltRotation = Quaternion.Slerp(tiltRotation, target, 1f - Mathf.Exp(-tiltSpeed * 2f * dt));
-        modeloPez.localRotation = Quaternion.AngleAxis(DodgeRoll(), Vector3.forward) * tiltRotation;
+        Quaternion dodgeRoll = Quaternion.AngleAxis(DodgeRoll(), Vector3.forward);
+        modeloPez.localRotation = dodgeRoll * tiltRotation;
+        // El fuego del propulsor cuelga del modelo: no debe dar la vuelta con él
+        KeepJetSteady(dodgeRoll);
     }
 
     // ---------------- CÁMARA ----------------
@@ -747,12 +751,43 @@ public partial class PlayerController_Base : MonoBehaviour
         recoilShake = Mathf.Max(recoilShake, shake);
     }
 
+    // ---------------- VISTAS DE CÁMARA ----------------
+    // R: primera persona -> tercera persona -> tercera persona mirando hacia atrás (para dispararle a las aves que te
+    // persiguen) -> primera persona. La vista hacia atrás es tercera persona: el casco no se ve, la mira sí.
+    void CycleCameraView()
+    {
+        if (!isThirdPerson)
+        {
+            isThirdPerson = true;
+            isReverseView = false;
+        }
+        else if (!isReverseView)
+        {
+            isReverseView = true;
+        }
+        else
+        {
+            isThirdPerson = false;
+            isReverseView = false;
+        }
+    }
+
+    Vector3 CameraOffsetForView()
+    {
+        if (!isThirdPerson) return firstPersonOffset;
+        return isReverseView ? reverseCameraOffset : thirdPersonOffset;
+    }
+
+    float CameraYawForView()
+    {
+        return isThirdPerson && isReverseView ? 180f : 0f;
+    }
+
     // Pose "normal" de la cámara (la usan las cinemáticas para volver suavemente)
     public void GetDefaultCameraPose(out Vector3 position, out Quaternion rotation)
     {
-        Vector3 targetOffset = isThirdPerson ? thirdPersonOffset : firstPersonOffset;
-        position = transform.position + transform.TransformDirection(targetOffset);
-        rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+        position = transform.position + transform.TransformDirection(CameraOffsetForView());
+        rotation = Quaternion.Euler(0f, transform.eulerAngles.y + CameraYawForView(), 0f);
     }
 
     public void SetCinematicLock(bool locked)
@@ -783,12 +818,11 @@ public partial class PlayerController_Base : MonoBehaviour
             if (InputLocked) SetCinematicLock(false);
         }
 
-        Vector3 targetOffset = isThirdPerson ? thirdPersonOffset : firstPersonOffset;
-        cameraOffset = transform.TransformDirection(targetOffset);
+        cameraOffset = transform.TransformDirection(CameraOffsetForView());
         Vector3 pos = transform.position + cameraOffset;
 
         float dt = Time.deltaTime;
-        float yaw = transform.eulerAngles.y;
+        float yaw = transform.eulerAngles.y + CameraYawForView();
         float pitch = 0f;
         float rollTarget = -TurnInput * cameraTiltAmount;
 

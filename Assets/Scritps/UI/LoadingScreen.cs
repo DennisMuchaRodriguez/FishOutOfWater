@@ -31,7 +31,8 @@ public class LoadingScreen : MonoBehaviour
         "La metralleta de burbujas se recarga sola dentro del agua.",
         "Si un ave atrapa un pez, dispárale: lo soltará.",
         "Los peces defensores disparan a las aves, pero su traje no aguanta para siempre.",
-        "Con la R cambias entre primera y tercera persona. Con la F lanzas los misiles.",
+        "La R cambia de cámara: primera persona, tercera y mirando hacia atrás (para dispararle a quien te persigue).",
+        "Con la F lanzas los misiles teledirigidos.",
         "Las cápsulas de munición flotan en el lago (y algunas están bajo el agua).",
         "Cuidado con los choques a toda velocidad: el traje pierde armadura."
     };

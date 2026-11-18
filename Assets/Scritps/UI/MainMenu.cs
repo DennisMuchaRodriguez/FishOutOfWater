@@ -714,7 +714,7 @@ public partial class MainMenu : MonoBehaviour
             k + "CLIC IZQUIERDO" + e + "  Disparar (mantener = ráfaga)\n" +
             k + "CLIC DERECHO" + e + "  Disparo cargado (soltar al llenarse)\n" +
             k + "Q / E" + e + "  Esquive a la izquierda / a la derecha        " + k + "F" + e + "  Misiles\n" +
-            k + "1 / 2" + e + "  Cambiar arma        " + k + "R" + e + "  Cambiar cámara        " + k + "ESC" + e + "  Pausa\n\n" +
+            k + "1 / 2" + e + "  Cambiar arma        " + k + "R" + e + "  Cámara (1ª, 3ª, mirar atrás)        " + k + "ESC" + e + "  Pausa\n\n" +
             "<color=" + MenuUI.HexAccent + ">OBJETIVO:</color> derriba a todas las aves antes de que cacen a demasiados peces.\n" +
             "El agua recarga el propulsor. La munición está en cápsulas dentro del lago.\n" +
             "Si un ave atrapa un pez, dispárale: lo soltará.";
