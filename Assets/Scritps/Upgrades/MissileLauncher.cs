@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-// Arma secundaria: misiles teledirigidos (mejora del Taller, tecla E).
+// Arma secundaria: misiles teledirigidos (mejora del Taller, tecla F).
 // E dispara una salva con todos los misiles cargados, uno por hombro, cada uno a un ave distinta si hay varias.
 // El soporte se recarga misil por misil: el soporte completo tarda 'reload' segundos (I: 3 en 10 s, II: 4 en 8 s).
 // CONTRATO para el HUD: Instance, Unlocked, Capacity, Loaded, Reload01 y Fired.
@@ -20,7 +20,7 @@ public class MissileLauncher : MonoBehaviour
     public event System.Action Fired;
 
     [Header("Misiles teledirigidos")]
-    public KeyCode fireKey = KeyCode.E;
+    public KeyCode fireKey = KeyCode.F;
     public int damage = 35;
     [Tooltip("Daño a las aves cerca de la explosión (fracción del daño)")]
     public float splashFraction = 0.4f;

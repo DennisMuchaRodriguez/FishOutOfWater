@@ -33,7 +33,8 @@ public partial class PlayerController_Base : MonoBehaviour
 
     [Header("Cámara en tercera persona")]
     public bool isThirdPerson = false;
-    public KeyCode toggleCameraKey = KeyCode.C;
+    [Tooltip("Cambiar entre primera y tercera persona")]
+    public KeyCode toggleCameraKey = KeyCode.R;
     public Vector3 thirdPersonOffset = new Vector3(0, 1.7f, -5f);
     public Vector3 firstPersonOffset = new Vector3(0, 1.7f, 0);
 
@@ -358,6 +359,9 @@ public partial class PlayerController_Base : MonoBehaviour
             SwimSpeed01 = Mathf.MoveTowards(SwimSpeed01, 0f, Time.fixedDeltaTime * 2f);
         }
 
+        // Giro de esquive: el tirón de lado manda sobre el nado y el vuelo mientras dura
+        ApplyDodgeMotion();
+
         // Fuera del agua sin carga: asfixia poco a poco y coletazos para arrastrarse
         UpdateStranded(Time.fixedDeltaTime);
         TryFlop();
@@ -475,7 +479,7 @@ public partial class PlayerController_Base : MonoBehaviour
         if (IsKnockedBack) return;
 
         // En el aire el rumbo sigue al pez: al girar a toda velocidad traza la curva en vez de derrapar de lado
-        if (!isGrounded) CarveAirVelocity();
+        if (!isGrounded && !IsDodging) CarveAirVelocity();
 
         if (moveInput.magnitude < 0.1f && isGrounded && !IsTurbo)
         {
@@ -487,7 +491,7 @@ public partial class PlayerController_Base : MonoBehaviour
         float groundSpeed = IsStranded && flopTimer <= 0f ? walkSpeed * strandedWalkFactor : walkSpeed;
         float maxHorizontalSpeed = IsTurbo ? turboAirSpeed : (isGrounded ? groundSpeed : (canFly ? walkSpeed * 1.5f : walkSpeed));
         Vector3 flatVel = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
-        if (flatVel.magnitude > maxHorizontalSpeed)
+        if (flatVel.magnitude > maxHorizontalSpeed && !IsDodging)
         {
             // Al salir del agua o del turbo se conserva la inercia y se va frenando poco a poco
             flatVel = Vector3.MoveTowards(flatVel, flatVel.normalized * maxHorizontalSpeed, 12f * Time.fixedDeltaTime);
@@ -832,7 +836,12 @@ public partial class PlayerController_Base : MonoBehaviour
         pitch -= recoilPitch;
 
         currentRoll = Mathf.Lerp(currentRoll, rollTarget, 1f - Mathf.Exp(-6f * dt));
-        Quaternion rot = Quaternion.Euler(pitch, yaw, currentRoll + (isThirdPerson ? 0f : DodgeCameraRoll()));
+        // Giro de esquive: en tercera persona la cámara da la vuelta completa con el pez (gira alrededor de él);
+        // en primera persona solo se ladea un poco
+        float dodgeCam = DodgeCameraRoll();
+        if (isThirdPerson && IsDodging)
+            pos = transform.position + Quaternion.AngleAxis(dodgeCam, transform.forward) * (pos - transform.position);
+        Quaternion rot = Quaternion.Euler(pitch, yaw, currentRoll + dodgeCam);
 
         // FOV dinámico: se abre con la velocidad de nado, el dash y el turbo
         fovKick = Mathf.Lerp(fovKick, 0f, 1f - Mathf.Exp(-3f * dt));

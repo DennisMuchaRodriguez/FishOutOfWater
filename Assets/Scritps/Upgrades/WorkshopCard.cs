@@ -43,9 +43,36 @@ public class WorkshopCard : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
         appear = -delay;
     }
 
+    // Se desvanece (tras 'delay' segundos) y se apaga: así se ve el taller de fondo al instalar la mejora
+    public void Vanish(float delay)
+    {
+        vanishIn = Mathf.Max(0f, delay);
+        vanishing = true;
+    }
+
+    bool vanishing;
+    float vanishIn;
+    float vanish01 = 1f;
+
     void Update()
     {
         float dt = Time.unscaledDeltaTime;
+        if (vanishing)
+        {
+            if (vanishIn > 0f) vanishIn -= dt;
+            else
+            {
+                // Sube un poco, se achica y se apaga como un holograma
+                vanish01 = Mathf.MoveTowards(vanish01, 0f, dt * 3f);
+                RectTransform vr = (RectTransform)transform;
+                vr.anchoredPosition += Vector2.up * dt * 60f;
+                float vs = Mathf.Lerp(0.8f, 1f, vanish01);
+                vr.localScale = new Vector3(vs, vs, 1f);
+                if (group != null) group.alpha = vanish01 * (0.75f + 0.25f * Mathf.Sin(Time.unscaledTime * 50f));
+                if (vanish01 <= 0f) gameObject.SetActive(false);
+                return;
+            }
+        }
         float t = Time.unscaledTime + phase;
         appear = Mathf.Min(1f, appear + dt * 2.6f);
         float a = Mathf.Clamp01(appear);

@@ -132,7 +132,7 @@ public class VisorAmmoHUD : MonoBehaviour
         missileLabel = Text("MisilTexto", missileRoot, 7.5f, MenuUI.BodyFont, 8f);
         missileLabel.text = "MISIL";
         missileKey = Text("MisilTecla", missileRoot, 7.5f, MenuUI.BodyFont, 4f);
-        missileKey.text = "[E]";
+        missileKey.text = "[F]";
         missileRoot.gameObject.SetActive(false);
 
         shieldRoot = NewRect("Escudo", root);
@@ -311,6 +311,8 @@ public class VisorAmmoHUD : MonoBehaviour
         bool show = ml != null && ml.isActiveAndEnabled && ml.Unlocked && ml.Capacity > 0;
         if (missileRoot.gameObject.activeSelf != show) missileRoot.gameObject.SetActive(show);
         if (!show) return;
+        string keyLabel = "[" + ml.fireKey + "]";
+        if (missileKey.text != keyLabel) missileKey.text = keyLabel;
 
         int cap = Mathf.Min(ml.Capacity, 6);
         if (cap != builtCapacity) BuildMissiles(cap);

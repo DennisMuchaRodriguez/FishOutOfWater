@@ -26,4 +26,6 @@ public class HelmetPreviewState : ScriptableSingleton<HelmetPreviewState>
     public int birds = 5;
     public bool waiting;
     public float countdown = 8f;
+    public int defendersTotal = 4;
+    public int defenders = 3;
 }

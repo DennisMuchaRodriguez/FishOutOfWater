@@ -713,11 +713,12 @@ public partial class MainMenu : MonoBehaviour
             k + "CTRL" + e + "  Bucear más hondo\n" +
             k + "CLIC IZQUIERDO" + e + "  Disparar (mantener = ráfaga)\n" +
             k + "CLIC DERECHO" + e + "  Disparo cargado (soltar al llenarse)\n" +
-            k + "Q" + e + "  Cambiar cámara        " + k + "ESC" + e + "  Pausa\n\n" +
+            k + "E" + e + "  Giro de esquive (con A / D eliges el lado)        " + k + "F" + e + "  Misiles\n" +
+            k + "1 / 2" + e + "  Cambiar arma        " + k + "R" + e + "  Cambiar cámara        " + k + "ESC" + e + "  Pausa\n\n" +
             "<color=" + MenuUI.HexAccent + ">OBJETIVO:</color> derriba a todas las aves antes de que cacen a demasiados peces.\n" +
             "El agua recarga el propulsor. La munición está en cápsulas dentro del lago.\n" +
             "Si un ave atrapa un pez, dispárale: lo soltará.";
-        TextMeshProUGUI t = MenuUI.Text("Texto", panel, controls, 23f, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(920f, 420f), MenuUI.Cream);
+        TextMeshProUGUI t = MenuUI.Text("Texto", panel, controls, 21f, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(920f, 420f), MenuUI.Cream);
         t.lineSpacing = 12f;
 
         MenuUI.ComicButton("VOLVER", s, new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(220f, 54f), MenuUI.BlueDark, () => Go(titleScreen), 24f);

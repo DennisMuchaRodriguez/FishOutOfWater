@@ -42,13 +42,13 @@ public static class GameSession
         CurrentMode = Mode.Historia;
         LevelIndex = index;
         Time.timeScale = 1f;
-        SceneManager.LoadScene(LakeScene);
+        LoadingScreen.Load(LakeScene);
     }
 
     public static void ReplayLevel()
     {
         Time.timeScale = 1f;
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        LoadingScreen.Load(SceneManager.GetActiveScene().name);
     }
 
     public static void PlayNextLevel()
@@ -61,14 +61,14 @@ public static class GameSession
     {
         OpenLevelMap = true;
         Time.timeScale = 1f;
-        SceneManager.LoadScene(MenuScene);
+        LoadingScreen.Load(MenuScene);
     }
 
     public static void GoToMainMenu()
     {
         OpenLevelMap = false;
         Time.timeScale = 1f;
-        SceneManager.LoadScene(MenuScene);
+        LoadingScreen.Load(MenuScene);
     }
 
     // ---- Taller (modo Historia) ----

@@ -44,7 +44,7 @@ public static class WorkshopFlow
             GameSession.GoToLevelMap();
             return;
         }
-        SceneManager.LoadScene(WorkshopScene);
+        LoadingScreen.Load(WorkshopScene);
     }
 
     // Se olvida la visita en curso (al salir del Taller)

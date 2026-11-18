@@ -236,6 +236,7 @@ public partial class BirdAI
 
     BTStatus HoverStalk()
     {
+        if (TargetFish == null) return BTStatus.Failure;
         tree.MarkActive("Cernirse sobre el pez");
         Vector3 fish = TargetFish.transform.position;
         Vector3 above = new Vector3(fish.x, lake.SurfaceY + stalkAltitude, fish.z);

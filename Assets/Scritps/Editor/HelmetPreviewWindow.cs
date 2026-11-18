@@ -133,6 +133,8 @@ public class HelmetPreviewWindow : EditorWindow
         s.totalWaves = EditorGUILayout.IntSlider("Oleadas", s.totalWaves, 1, 10);
         s.wave = EditorGUILayout.IntSlider("Oleada actual", s.wave, 0, s.totalWaves);
         s.birds = EditorGUILayout.IntSlider("Depredadores", s.birds, 0, 20);
+        s.defendersTotal = EditorGUILayout.IntSlider("Defensores (total)", s.defendersTotal, 0, 8);
+        s.defenders = EditorGUILayout.IntSlider("Defensores con traje", s.defenders, 0, s.defendersTotal);
         s.waiting = EditorGUILayout.Toggle("Entre oleadas", s.waiting);
         if (s.waiting) s.countdown = EditorGUILayout.Slider("Cuenta atrás (s)", s.countdown, 0f, 30f);
         if (EditorGUI.EndChangeCheck())
@@ -316,6 +318,8 @@ public class HelmetPreviewWindow : EditorWindow
                 wave = Mathf.Clamp(s.wave, 0, waves),
                 totalWaves = waves,
                 birds = Mathf.Max(0, s.birds),
+                defenders = Mathf.Clamp(s.defenders, 0, Mathf.Max(0, s.defendersTotal)),
+                defendersTotal = Mathf.Max(0, s.defendersTotal),
                 countdown = s.waiting ? s.countdown : 0f,
                 waveActive = !s.waiting,
                 waiting = s.waiting

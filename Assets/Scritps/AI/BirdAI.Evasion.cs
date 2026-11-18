@@ -302,8 +302,9 @@ public partial class BirdAI
         float dt = Time.fixedDeltaTime;
         fleeTimer -= dt;
 
-        // Al borde del lago, del lado contrario al jugador, y algo alta
-        Vector3 away = player != null ? transform.position - player.transform.position : transform.forward;
+        // Al borde del lago, del lado contrario al jugador (o al defensor que la acribilla), y algo alta
+        Vector3 away = fleeFromDefender ? transform.position - fleeFrom
+                     : (player != null ? transform.position - player.transform.position : transform.forward);
         away.y = 0f;
         if (away.sqrMagnitude < 0.01f) away = transform.forward;
         away.Normalize();
@@ -313,13 +314,21 @@ public partial class BirdAI
 
         // Va soltando plumas: se nota que está herida
         fleeFeatherTimer -= dt;
-        if (fleeFeatherTimer <= 0f)
+        if (fleeFeatherTimer <= 0f && !fleeFromDefender)
         {
             fleeFeatherTimer = 0.22f;
             Vector3 v = rb.linearVelocity;
             HitFX.FeatherTrail(transform.position, v.sqrMagnitude > 1f ? v.normalized : transform.forward, bodyRadius * 0.6f, FeatherColor);
         }
 
+        if (fleeTimer <= 0f && fleeFromDefender)
+        {
+            // Se alejó del defensor: sigue con lo suyo (sin la furia de la huida por heridas)
+            fleeTimer = 0f;
+            fleeFromDefender = false;
+            jinkTimer = 0f;
+            return BTStatus.Success;
+        }
         if (fleeTimer <= 0f)
         {
             // Vuelve furiosa: ataca enseguida
@@ -334,5 +343,66 @@ public partial class BirdAI
             return BTStatus.Success;
         }
         return BTStatus.Running;
+    }
+
+    // ======================= PECES DEFENSORES =======================
+    // Si un pez defensor le dispara, a veces el ave herida va por él (solo esa ave, para que el defensor no caiga
+    // enseguida): deja al jugador y a su presa y se lanza a atraparlo. Si recibe muchos disparos seguidos, se aleja
+    // de ese defensor un rato y después sigue con lo suyo.
+    float defenderHeat;      // disparos recientes de defensores (pistola 1, burbuja 0,35); se enfría con el tiempo
+    float counterTimer;      // yendo por el defensor que le disparó
+    Vector3 fleeFrom;
+    bool fleeFromDefender;
+
+    const float DefenderHeatLimit = 3f;
+    const float CounterChance = 0.6f;
+
+    public void ShotByDefender(DefenderFish defender, float weight)
+    {
+        if (dead || IsBoss || arriving || defender == null) return;
+        defenderHeat += weight;
+
+        // Demasiados disparos seguidos: se aleja del defensor
+        if (defenderHeat >= DefenderHeatLimit)
+        {
+            defenderHeat = 0f;
+            counterTimer = 0f;
+            if (TargetFish != null && TargetFish.IsDefending) ReleaseTarget();
+            CancelSpecialHunt();
+            diving = false;
+            fleeFrom = defender.transform.position;
+            fleeFromDefender = true;
+            fleeTimer = Mathf.Max(fleeTimer, Random.Range(2f, 3f));
+            jinkTimer = Mathf.Max(jinkTimer, fleeTimer);
+            return;
+        }
+
+        if (counterTimer > 0f || carried.Count > 0 || fleeTimer > 0f) return;
+        FishAI f = defender.Fish;
+        if (f == null || !f.IsCatchable) return;
+        if (f.Hunter != null && f.Hunter != this) return;   // otra ave ya va por él
+        if (Random.value > CounterChance) return;            // no siempre
+
+        if (TargetFish != null && TargetFish != f) ReleaseTarget();
+        CancelSpecialHunt();
+        aggroUntil = Mathf.Min(aggroUntil, Time.time);
+        TargetFish = f;
+        f.Hunter = this;
+        stalkDuration = 0.4f;
+        stalkTimer = stalkDuration;   // se lanza enseguida
+        diveCooldownTimer = 0f;
+        counterTimer = 6f;
+        Call(1.1f);
+    }
+
+    void TickDefenderReaction(float dt)
+    {
+        defenderHeat = Mathf.MoveTowards(defenderHeat, 0f, dt * 1.1f);
+        if (counterTimer > 0f)
+        {
+            counterTimer -= dt;
+            if (TargetFish == null || !TargetFish.IsDefending) counterTimer = 0f;
+        }
+        if (fleeTimer <= 0f) fleeFromDefender = false;
     }
 }

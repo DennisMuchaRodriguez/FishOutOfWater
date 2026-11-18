@@ -589,7 +589,7 @@ public class WorkshopScene : MonoBehaviour
             {
                 foreach (Animator a in old.GetComponentsInChildren<Animator>()) a.enabled = false;
                 TintModel(old, tints[tintIndex[i]]);
-                ApplyVisorGlass(old);
+                MakeEmptySuit(old);
             }
             Light l = new GameObject("LuzVitrina").AddComponent<Light>();
             l.transform.SetParent(h, false);
@@ -827,6 +827,34 @@ public class WorkshopScene : MonoBehaviour
             suit.transform.SetParent(visual, true);
         }
         return inst;
+    }
+
+    // Traje de exhibición: sin el pez adentro (se ocultan la cabeza, los ojos, el cuerpo y las aletas) y con la
+    // escafandra blanca y opaca, para que se vea como un traje vacío y no como un pez con traje
+    void MakeEmptySuit(GameObject suit)
+    {
+        if (suit == null) return;
+        Material white = WorkshopKit.Lit(new Color(0.93f, 0.95f, 0.97f), null, 0.85f, "Taller_EscafandraBlanca");
+        string[] fishParts = { "Head", "Ojos", "Body", "Aleta" };
+        foreach (Renderer r in suit.GetComponentsInChildren<Renderer>(true))
+        {
+            string n = r.gameObject.name;
+            bool fish = false;
+            foreach (string part in fishParts)
+                if (n.StartsWith(part, System.StringComparison.OrdinalIgnoreCase)) fish = true;
+            if (fish)
+            {
+                r.enabled = false;
+                continue;
+            }
+            if (n.IndexOf("Vidrio", System.StringComparison.OrdinalIgnoreCase) >= 0 ||
+                n.IndexOf("Glass", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                Material[] mats = r.sharedMaterials;
+                for (int m = 0; m < mats.Length; m++) mats[m] = white;
+                r.sharedMaterials = mats;
+            }
+        }
     }
 
     // La escafandra del traje es de vidrio: a la pieza "Vidrio" le pone el material transparente (Eskafandra)
@@ -1156,6 +1184,8 @@ public class WorkshopScene : MonoBehaviour
         }
         string name = UpgradeCatalog.NameOf(offer.upgrade);
         statusText.text = "INSTALANDO " + name.ToUpper() + "...";
+        // Los planos se van (el elegido un poco después, como si se cargara en el traje): se ve el taller de fondo
+        foreach (WorkshopCard c in cards) c.Vanish(c.index == selected ? 0.45f : 0f);
 
         // Los alevines se alborotan y el mecánico mira el traje
         mechanic.excitement = 1f;

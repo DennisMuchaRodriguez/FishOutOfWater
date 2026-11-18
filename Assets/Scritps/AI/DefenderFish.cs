@@ -33,22 +33,23 @@ public class DefenderFish : MonoBehaviour
     public Weapon weapon = Weapon.Pistol;
     public float range = 26f;
     [Tooltip("Pistola: segundos entre disparos")]
-    public float fireInterval = 1.1f;
+    public float fireInterval = 0.8f;
     [Tooltip("Pistola: daño de cada disparo")]
     public int damage = 12;
     public float shotSpeed = 90f;
     [Tooltip("Metralleta: daño de cada burbuja")]
     public int bubbleDamage = 2;
     [Tooltip("Metralleta: burbujas por segundo dentro de la ráfaga")]
-    public float bubbleRate = 9f;
+    public float bubbleRate = 10f;
     [Tooltip("Metralleta: burbujas por ráfaga y pausa entre ráfagas")]
     public int bubbleBurst = 8;
-    public float bubblePause = 0.9f;
+    public float bubblePause = 0.6f;
     public float bubbleSpeed = 110f;
     public Color shotColor = new Color(0.55f, 1f, 0.95f, 1f);
 
     public bool SuitIntact { get; private set; } = true;
     public float Suit01 { get { return maxSuit > 0f ? Mathf.Clamp01(suitHealth / maxSuit) : 0f; } }
+    public FishAI Fish { get { return fish; } }
     // Aviso al GameDirector (para el mensaje en pantalla)
     public event System.Action<DefenderFish> SuitBroken;
 
@@ -237,7 +238,11 @@ public class DefenderFish : MonoBehaviour
         GameObject shot = Instantiate(projectilePrefab, muzzle, Quaternion.LookRotation(dir));
         shot.transform.localScale *= 0.75f;
         Projectile proj = shot.GetComponent<Projectile>();
-        if (proj != null) proj.Setup(null, damage, impactPrefab, shotColor, trailMaterial, false);
+        if (proj != null)
+        {
+            proj.Setup(null, damage, impactPrefab, shotColor, trailMaterial, false);
+            proj.defenderOwner = this;
+        }
         Rigidbody rb = shot.GetComponent<Rigidbody>();
         if (rb != null)
         {
@@ -265,6 +270,7 @@ public class DefenderFish : MonoBehaviour
         {
             proj.Setup(null, bubbleDamage, impactPrefab, shotColor, trailMaterial, false);
             proj.MakeBubble(bubbleMaterial, bubbleTrail, bubbleGlow);
+            proj.defenderOwner = this;
         }
         Rigidbody rb = shot.GetComponent<Rigidbody>();
         if (rb != null)

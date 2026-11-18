@@ -95,6 +95,9 @@ public class HelmetVisorHUD : MonoBehaviour
     float glitchTimer;
     float lowHealthTime;
     bool wasCritical;
+    // Alerta breve en los textos del casco (por ejemplo, "DEFENSOR DESTRUIDO // QUEDAN 3")
+    string alertMessage = "";
+    float alertTimer;
 
     // Grietas del cristal: una por cada umbral de traje que se cruza (se van si el traje se repara)
     static readonly float[] CrackThresholds = { 0.6f, 0.4f, 0.25f, 0.12f };
@@ -154,6 +157,14 @@ public class HelmetVisorHUD : MonoBehaviour
     [System.NonSerialized] public bool previewMode;
     [System.NonSerialized] public bool previewUnderwater;
     public VisorMissionHUD MissionHud { get { return missionHud; } }
+
+    // Muestra una alerta en los textos del casco durante unos segundos (solo se ve en primera persona)
+    public static void ShowAlert(string message, float seconds = 3.5f)
+    {
+        if (Instance == null) return;
+        Instance.alertMessage = message;
+        Instance.alertTimer = seconds;
+    }
 
     // Ensucia el visor (solo se ve en primera persona)
     public static void SplatGlass()
@@ -522,6 +533,7 @@ public class HelmetVisorHUD : MonoBehaviour
         UpdateTexts();
         UpdateDroplets(dt);
         UpdateCracks(dt);
+        if (alertTimer > 0f) alertTimer -= dt;
         UpdateSplats(dt);
         if (!previewMode) UpdateCursor();   // en el editor no se toca el cursor
     }
@@ -783,6 +795,10 @@ public class HelmetVisorHUD : MonoBehaviour
             else if (player.isDead)
             {
                 msg = "";
+            }
+            else if (alertTimer > 0f)
+            {
+                msg = alertMessage; warn = true;
             }
             else if (player.IsTurningBack)
             {

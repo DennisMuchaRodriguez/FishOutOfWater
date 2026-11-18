@@ -457,15 +457,20 @@ En **PlayerBase**.
 - **Espacio**: propulsor (en el agua, subir o salir de un salto).
 - **Shift izquierdo**: turbo (mantener). En el agua, al pulsarlo también hace el dash.
 - **Ctrl izquierdo**: bucear (en el agua).
-- **Q**: cambiar entre primera y tercera persona (en la escena está en Q; por defecto, C).
+- **R**: cambiar entre primera y tercera persona.
+- **F**: lanzar los misiles teledirigidos (si tienes la mejora).
+- **1 / 2** (o la rueda del ratón): cambiar entre la pistola y la metralleta de burbujas.
 - **Clic izquierdo**: disparar. **Clic derecho**: disparo cargado. **Esc**: pausa.
-- **Doble toque de A o D** (o de las flechas), o **Z / X**: giro de esquive a la izquierda o a la derecha.
+- **E**: giro de esquive. El lado lo eliges con **A / D** mantenidas; sin dirección, va hacia el lado de la mira (y si
+  la mira está al centro, alterna). También sirve el **doble toque de A o D**.
 
-**Giro de esquive** (`PlayerController_Base.Dodge.cs`): un tirón de lado con una vuelta completa del pez sobre sí
-mismo, como el de las aves. Durante 0,35 s las aves no lo pueden golpear. En el aire gasta 6 de combustible; en el agua
-no gasta. En primera persona la cámara solo se ladea un poco (no da la vuelta entera, para no marear).
-Campos: `Dodge On Double Tap` ✔, `Dodge Left Key` Z, `Dodge Right Key` X, `Double Tap Time` 0,28, `Dodge Speed` 13,
-`Dodge Duration` 0,42, `Dodge Cooldown` 0,75, `Dodge Invulnerable` 0,35, `Dodge Energy Cost` 6, `Dodge Camera Roll` 22.
+**Giro de esquive** (`PlayerController_Base.Dodge.cs`): el pez se desplaza de golpe **7 m hacia el lado** mientras da una
+vuelta completa sobre sí mismo, como las aves: sale rápido, recorre la distancia y frena suave en 0,45 s (lo que iba
+hacia adelante se conserva). Durante 0,35 s las aves no lo pueden golpear. En el aire gasta 6 de combustible; en el agua
+no gasta. En **tercera persona la cámara da la vuelta completa (360°)** con el pez; en primera persona solo se ladea un
+poco (para no marear).
+Campos: `Dodge On Double Tap` ✔, `Dodge Key` E, `Double Tap Time` 0,28, `Dodge Distance` 7, `Dodge Duration` 0,45,
+`Dodge Cooldown` 0,75, `Dodge Invulnerable` 0,35, `Dodge Energy Cost` 6, `Dodge Camera Roll` 22.
 
 ### Movimiento
 | Campo | Defecto | En escena | Qué hace |
@@ -888,12 +893,19 @@ Son peces de otros colores (verde, violeta y turquesa, no naranja como el protag
 En el GameDirector (**Peces defensores**): `Defender Start Level` (10), `Defender Level Step` (3), `Defenders Per Step`
 (2), **`Test Defenders`** (para probarlos en cualquier nivel: pon por ejemplo 2), `Defender Suit Model` (Traje_Defensor) y
 `Defender Materials` (PezVerde, PezVioleta, PezTurquesa en `Assets/Models/PezNormal`).
-**Armas**: la mitad lleva **pistola** (12 de daño por disparo, uno cada 1,1 s) y la otra mitad la **metralleta de
-burbujas** (ráfagas de 8 burbujas de energía de 2 de daño, 9 por segundo, y una pausa de 0,9 s).
+**Armas**: la mitad lleva **pistola** (12 de daño por disparo, uno cada 0,8 s) y la otra mitad la **metralleta de
+burbujas** (ráfagas de 8 burbujas de energía de 2 de daño, 10 por segundo, y una pausa de 0,6 s).
+
+**Las aves responden**: el ave a la que le dispara un defensor (solo esa) a veces (60%) deja al jugador y a su presa y
+se lanza a atrapar al defensor (al atraparlo, la descarga la suelta y el traje pierde vida). Si recibe muchos disparos
+seguidos (3 de pistola o una ráfaga de burbujas), se aleja de ese defensor un par de segundos.
+
+**En el casco** (solo en primera persona): el panel de misión muestra **DEFENSORES 3 / 4** (los que siguen con traje),
+que destella en rojo cuando cae uno, y sale la alerta **DEFENSOR DESTRUIDO // QUEDAN 3**.
 En el componente `DefenderFish` de cada uno (se agrega solo): `Suit Health` 100, `Damage Per Catch` 34,
 `Patrol Speed` 8,5, `Patrol Depth` (0,35-0,7), `Escort Range` 20, `Weapon` (Pistol / Bubbles), `Range` 26,
-`Fire Interval` 1,1, `Damage` 12, `Shot Speed` 90, `Bubble Damage` 2, `Bubble Rate` 9, `Bubble Burst` 8,
-`Bubble Pause` 0,9, `Bubble Speed` 110.
+`Fire Interval` 0,8, `Damage` 12, `Shot Speed` 90, `Bubble Damage` 2, `Bubble Rate` 10, `Bubble Burst` 8,
+`Bubble Pause` 0,6, `Bubble Speed` 110.
 
 ### BirdAI (cada pájaro)
 | Campo | Defecto | Qué hace |
@@ -904,7 +916,14 @@ En el componente `DefenderFish` de cada uno (se agrega solo): `Suit Health` 100,
 | Stalk Altitude | 9 | Altura al acechar un pez |
 | Min Altitude Above Ground | 3 | Altura mínima sobre el terreno |
 | Max Altitude | 55 | Techo sobre el agua (persiguiendo al jugador puede subir hasta 25 m por encima de él) |
-| Leash Margin | 30 | Metros más allá de la orilla a los que se puede alejar antes de volver al lago |
+| Leash Margin | 15 | Metros más allá de la orilla desde los que vuelve al lago |
+| Wall Margin | 28 | **Muro**: por más que la empujen los disparos, no pasa de aquí y vuelve enseguida |
+
+Si un ave persigue al jugador fuera del lago, el muro y la vuelta se corren hasta un poco detrás de él.
+
+**Flanqueo**: si un ave viene de frente al jugador y ya está cerca (6 a 16 m), a veces no sigue recto: se abre hacia un
+costado y lo golpea desde el lado, así hay que girar para seguirla con la mira. Lo hacen las aves de embestida y de
+picada (no los jefes), más seguido las más ágiles (hasta 1 de cada 2 pasadas).
 
 Las aves ya no se van al cielo ni se atascan en los bordes: al chocar con un árbol o una ladera la rodean por un lado (no
 suben sin parar); y si quieren volar pero casi no avanzan durante 3 s, o se alejan demasiado, salen un momento volando
@@ -1109,8 +1128,11 @@ de Iron Man y cuevas submarinas estilizadas). Todo se arma por código al abrir 
 - **El mecánico**: un bagre de canal erguido, con gafas, delantal de cuero, ocho barbillas y una llave inglesa.
 - **Peces del taller**: nadan acostados boca abajo, como los del lago. Uno de los alevines y dos del cardumen llevan el
   traje de los defensores, con sus colores (`Helper Suit Model` y `Helper Materials`).
-- **La escafandra del traje es transparente**: a la pieza "Vidrio" del traje se le pone `Visor Glass Material`
-  (Eskafandra), en el soporte y en las vitrinas.
+- **La escafandra del traje es transparente** en el traje del soporte: a la pieza "Vidrio" se le pone
+  `Visor Glass Material` (Eskafandra).
+- **Los trajes de las vitrinas están vacíos**: sin el pez adentro (se ocultan la cabeza, los ojos, el cuerpo y las aletas)
+  y con la escafandra **blanca**.
+- Al **instalar** una mejora, los planos se desvanecen (el elegido un poco después) para que se vea el taller de fondo.
 
 Modelos (en el componente WorkshopScene, todos hechos con `Herramientas/Modelado/entorno`): `Mechanic Model`
 (Mecanico_Bagre), `Bench Model` (Mesa_Chatarra), `Display Case Model` (Vitrina_Traje), `Holo Table Model` (Mesa_Holo),
@@ -1118,6 +1140,13 @@ Modelos (en el componente WorkshopScene, todos hechos con `Herramientas/Modelado
 y `Crystal Model` (Cristales_Cueva). Si falta alguno se usa una figura simple.
 Para regenerarlos: `python Herramientas/Modelado/entorno/build_all.py Mecanico_Bagre Mesa_Holo ...` (los objetos del
 Taller están todos en `Taller_Props.py`; el traje de los defensores en `Traje_Defensor.py`).
+
+### Pantalla de carga (`LoadingScreen`)
+Sale cada vez que cambias de escena: jugar un nivel, repetirlo, el siguiente, volver al mapa o al menú, e ir al Taller.
+Tapa la pantalla, carga la escena en segundo plano (barra y porcentaje) y se queda hasta que la escena terminó de
+armarse (la vegetación, los peces, las aves y el casco hacen lentos los primeros cuadros); mientras tanto el juego está
+en pausa. Muestra un consejo al azar. Se crea sola (no hay que ponerla en las escenas). Si das Play directo en una escena
+desde el editor no aparece.
 
 ### Otros
 - **Damageable** (cada pájaro): `Max Health` = Health del tipo × multiplicador de la oleada. `Destroy On Death` = ✘ (la muerte la maneja BirdAI).

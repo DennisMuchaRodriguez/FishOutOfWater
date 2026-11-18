@@ -23,7 +23,7 @@ public class VisorMissionHUD : MonoBehaviour
     const int MaxCells = 40;
     const int GuideDashes = 26;
     const float TextX = 30f;          // borde izquierdo de los textos (por dentro de las celdas)
-    const float LabelY = 40f, NumY = 15f, MaxY = -10f, WaveY = -36f, PipY = -50f, BirdsY = -70f, CountY = -89f;
+    const float LabelY = 40f, NumY = 15f, MaxY = -10f, WaveY = -36f, PipY = -50f, BirdsY = -70f, DefY = -86f, CountY = -102f;
     const float NumSize = 34f, MaxSize = 12f, LabelSize = 9f, SmallSize = 9f;
     const float FpMargin = 14f, YOff = 18f;
 
@@ -42,6 +42,7 @@ public class VisorMissionHUD : MonoBehaviour
     public struct Sample
     {
         public int totalFish, fishAlive, maxFishLoss, wave, totalWaves, birds;
+        public int defenders, defendersTotal;   // peces defensores con traje / los que hubo en el nivel (0 = no hay)
         public float countdown;
         public bool waveActive;   // oleada en curso (las pastillas laten)
         public bool waiting;      // calma o descanso entre oleadas (se ve la cuenta atrás)
@@ -50,7 +51,8 @@ public class VisorMissionHUD : MonoBehaviour
         {
             get
             {
-                return new Sample { totalFish = 24, fishAlive = 17, maxFishLoss = 17, wave = 2, totalWaves = 4, birds = 5, waveActive = true };
+                return new Sample { totalFish = 24, fishAlive = 17, maxFishLoss = 17, wave = 2, totalWaves = 4, birds = 5, waveActive = true,
+                                    defenders = 3, defendersTotal = 4 };
             }
         }
 
@@ -64,6 +66,8 @@ public class VisorMissionHUD : MonoBehaviour
                 wave = d.CurrentWave,
                 totalWaves = d.TotalWaves,
                 birds = d.AliveBirds(),
+                defenders = d.DefendersAlive,
+                defendersTotal = d.DefendersSpawned,
                 countdown = d.Countdown,
                 waveActive = d.State == GameDirector.GameState.WaveActive || d.State == GameDirector.GameState.WaveIncoming,
                 waiting = d.State == GameDirector.GameState.Calm || d.State == GameDirector.GameState.Intermission
@@ -81,7 +85,10 @@ public class VisorMissionHUD : MonoBehaviour
     readonly List<RawImage> cells = new List<RawImage>();
     readonly List<RawImage> guide = new List<RawImage>();
     readonly List<Image> pips = new List<Image>();
-    TextMeshProUGUI label, number, maxText, waveText, birdsText, countText;
+    TextMeshProUGUI label, number, maxText, waveText, birdsText, countText, defText;
+    RawImage defIcon;
+    int shownDefenders = -1, lastDefenders = -1;
+    float defFlash;
     int builtCells = -1, builtTotal = -1, fishPerCell = 1, builtWaves = -1, builtLimit = -1;
     int lastAlive = -1, shownAlive = -1, shownTotal = -1, shownWave = -1, shownBirds = -1, shownCount = -1;
     float lossFlash;
@@ -148,6 +155,12 @@ public class VisorMissionHUD : MonoBehaviour
         birdIcon.rectTransform.localEulerAngles = new Vector3(0f, 0f, 180f);
         birdsText = Text("Depredadores", root, SmallSize, MenuUI.BodyFont, 6f);
         PlaceText(birdsText, TextX + 15f, BirdsY, 170f, 14f);
+
+        // Peces defensores que siguen con traje (solo si en el nivel hay)
+        defIcon = Raw("IconoDefensores", root, FXFactory.SoftDot, accent);
+        Place(defIcon.rectTransform, TextX + 5f, DefY, 9f, 9f);
+        defText = Text("Defensores", root, SmallSize, MenuUI.BodyFont, 6f);
+        PlaceText(defText, TextX + 15f, DefY, 170f, 14f);
 
         countText = Text("Cuenta", root, SmallSize, MenuUI.BodyFont, 5f);
         PlaceText(countText, TextX, CountY, 190f, 14f);
@@ -256,6 +269,7 @@ public class VisorMissionHUD : MonoBehaviour
 
         RefreshWaves(d);
         RefreshBirds(d);
+        RefreshDefenders(d, dt);
         RefreshCountdown(d);
     }
 
@@ -299,6 +313,30 @@ public class VisorMissionHUD : MonoBehaviour
         birdIcon.color = new Color(danger.r, danger.g, danger.b, 0.6f + 0.4f * (Mathf.Sin(HelmetVisorHUD.Now * 7f) * 0.5f + 0.5f));
         // Sin depredadores el texto empieza donde iría el triángulo
         birdsText.rectTransform.anchoredPosition = new Vector2(birds > 0 ? TextX + 15f : TextX, BirdsY);
+    }
+
+    void RefreshDefenders(Sample d, float dt)
+    {
+        bool show = d.defendersTotal > 0;
+        if (defText.gameObject.activeSelf != show)
+        {
+            defText.gameObject.SetActive(show);
+            defIcon.gameObject.SetActive(show);
+        }
+        if (!show) return;
+        if (lastDefenders >= 0 && d.defenders < lastDefenders) defFlash = 1.2f;
+        lastDefenders = d.defenders;
+        defFlash = Mathf.Max(0f, defFlash - dt);
+        if (d.defenders != shownDefenders)
+        {
+            defText.text = d.defenders > 0 ? "DEFENSORES  " + d.defenders + " / " + d.defendersTotal : "SIN DEFENSORES";
+            shownDefenders = d.defenders;
+        }
+        // Al caer uno destella en rojo; sin defensores queda apagado
+        bool blink = defFlash > 0f && Mathf.Repeat(HelmetVisorHUD.Now * 6f, 1f) < 0.6f;
+        Color c = blink ? danger : (d.defenders > 0 ? accent : new Color(danger.r, danger.g, danger.b, 0.6f));
+        defText.color = new Color(c.r, c.g, c.b, 0.95f);
+        defIcon.color = new Color(c.r, c.g, c.b, 0.6f + 0.4f * (Mathf.Sin(HelmetVisorHUD.Now * 3f) * 0.5f + 0.5f));
     }
 
     void RefreshCountdown(Sample d)

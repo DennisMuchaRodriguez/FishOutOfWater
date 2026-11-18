@@ -3,7 +3,7 @@
 public enum UpgradeId
 {
     BubbleGun,          // Metralleta de burbujas (arma principal)
-    HomingMissiles,     // Misiles teledirigidos (arma secundaria, tecla E)
+    HomingMissiles,     // Misiles teledirigidos (arma secundaria, tecla F)
     PiercingShot,       // Disparo perforante (el cargado atraviesa aves)
     ExtraTank,          // Tanque extra (más combustible)
     EfficientTurbo,     // Turbo eficiente

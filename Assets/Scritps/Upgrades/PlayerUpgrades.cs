@@ -5,7 +5,7 @@ using UnityEngine.SceneManagement;
 // jugador al cargar cualquier escena que tenga un PlayerController_Base.
 // Guarda los valores del Inspector y calcula todo desde ellos, así aplicar dos veces no acumula.
 //   Metralleta de burbujas  I: arma principal (teclas 1/2 o rueda)   II: +30 % de daño
-//   Misiles teledirigidos   I: 3 misiles, recarga 10 s (tecla E)      II: 4 misiles, 8 s
+//   Misiles teledirigidos   I: 3 misiles, recarga 10 s (tecla F)      II: 4 misiles, 8 s
 //   Disparo perforante      I: el cargado atraviesa 2 aves            II: 4 aves
 //   Tanque extra            I: +40 % de combustible                   II: +80 %
 //   Turbo eficiente         I: el turbo gasta 35 % menos              II: además recarga en el agua +50 %

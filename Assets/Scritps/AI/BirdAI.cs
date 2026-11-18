@@ -39,7 +39,9 @@ public partial class BirdAI : MonoBehaviour
     [Tooltip("Altura máxima sobre el agua (persiguiendo al jugador puede subir hasta 25 m por encima de él)")]
     public float maxAltitude = 55f;
     [Tooltip("Metros más allá de la orilla a los que puede alejarse antes de volver al lago")]
-    public float leashMargin = 30f;
+    public float leashMargin = 15f;
+    [Tooltip("Muro: metros más allá de la orilla de los que no la puede sacar ningún empujón (si persigue al jugador, el muro llega hasta un poco detrás de él)")]
+    public float wallMargin = 28f;
 
     [Header("Caza")]
     public float huntRange = 75f;
@@ -406,6 +408,7 @@ public partial class BirdAI : MonoBehaviour
         TickCombat(dt);
         if (IsBoss) TickBoss(dt);
         TickEvasion(dt);
+        TickDefenderReaction(dt);
 
         lookOverride = Vector3.zero;
         poseTarget = 0f;
@@ -418,6 +421,8 @@ public partial class BirdAI : MonoBehaviour
         if (diving && !diveTicked) diving = false;
         // Esquivas y zigzag encima de lo que pidió la acción (BirdAI.Evasion.cs)
         ApplyEvasion(dt);
+        // Flanqueo: viniendo de frente y ya cerca, a veces se abre y golpea desde un costado (BirdAI.Combat.cs)
+        ApplyFlank(dt);
 
         if (!dead)
         {
@@ -431,6 +436,8 @@ public partial class BirdAI : MonoBehaviour
     bool ShouldFightPlayer()
     {
         if (player == null || player.isDead) return false;
+        // Yendo por un pez defensor que le disparó: por unos segundos el jugador no le interesa
+        if (counterTimer > 0f) return false;
         float dist = Vector3.Distance(transform.position, player.transform.position);
 
         sightTimer -= Time.fixedDeltaTime;
@@ -542,6 +549,7 @@ public partial class BirdAI : MonoBehaviour
         if (away.sqrMagnitude < 0.01f) away = -transform.forward;
         ReleaseTarget();
         CancelSpecialHunt();
+        counterTimer = 0f;
         rb.linearVelocity = away.normalized * 7f + Vector3.up * 9f;
         stunTimer = Mathf.Max(stunTimer, stunSeconds);
         attackTimer = Mathf.Max(attackTimer, stunSeconds + 0.5f);
@@ -687,6 +695,8 @@ public partial class BirdAI : MonoBehaviour
 
     BTStatus Stalk()
     {
+        // La presa pudo soltarse en este mismo paso (un pez defensor la suelta con su descarga): se busca otra
+        if (TargetFish == null) return BTStatus.Failure;
         if (Ability == BirdAbility.HoverDive) return HoverStalk();
 
         tree.MarkActive("Acechar en círculos");
@@ -888,6 +898,8 @@ public partial class BirdAI : MonoBehaviour
 
         // Techo: cerca del límite de altura deja de subir
         if (!arriving && v.y > 0f && transform.position.y > Ceiling() - 2f) v.y *= 0.4f;
+        // Muro: por más que la empujen, no pasa de aquí (y vuelve enseguida)
+        if (!arriving) ApplyWall(ref v);
 
         rb.linearVelocity = v;
 
@@ -921,6 +933,43 @@ public partial class BirdAI : MonoBehaviour
         return c;
     }
 
+    // Distancia al centro del lago hasta la que puede estar (más lejos si persigue al jugador fuera del lago)
+    float RangeLimit(float margin)
+    {
+        float limit = lake.Radius + margin;
+        if (IsAggro && player != null)
+        {
+            Vector3 p = player.transform.position - lake.Center;
+            p.y = 0f;
+            limit = Mathf.Max(limit, p.magnitude + 12f);
+        }
+        return limit;
+    }
+
+    // Muro duro: lo que va hacia afuera se frena antes del borde; si quedó afuera (un empujón fuerte), vuelve
+    void ApplyWall(ref Vector3 v)
+    {
+        Vector3 from = transform.position - lake.Center;
+        from.y = 0f;
+        float d = from.magnitude;
+        if (d < 0.01f) return;
+        float wall = RangeLimit(wallMargin);
+        if (d < wall - 5f) return;
+        Vector3 n = from / d;
+        float outward = Vector3.Dot(v, n);
+        if (outward > 0f) v -= n * outward * Mathf.Clamp01((d - (wall - 5f)) / 5f);
+        if (d > wall)
+        {
+            v -= n * Mathf.Min(14f, (d - wall) * 4f + 4f);
+            if (d > wall + 3f)
+            {
+                Vector3 p = transform.position;
+                Vector3 back = lake.Center + n * (wall + 3f);
+                rb.position = new Vector3(back.x, p.y, back.z);
+            }
+        }
+    }
+
     // Empuje de vuelta: hacia el lago si se alejó demasiado y hacia abajo si subió de más
     Vector3 BoundsSteer()
     {
@@ -929,8 +978,8 @@ public partial class BirdAI : MonoBehaviour
         Vector3 toCenter = lake.Center - pos;
         toCenter.y = 0f;
         float dist = toCenter.magnitude;
-        float limit = lake.Radius + leashMargin;
-        if (dist > limit && dist > 0.01f) steer += toCenter / dist * Mathf.Min(14f, (dist - limit) * 0.5f + 3f);
+        float limit = RangeLimit(leashMargin);
+        if (dist > limit && dist > 0.01f) steer += toCenter / dist * Mathf.Min(16f, (dist - limit) * 0.8f + 5f);
         float ceiling = Ceiling();
         if (pos.y > ceiling) steer.y -= Mathf.Min(12f, (pos.y - ceiling) * 0.8f + 2f);
         return steer;
@@ -951,7 +1000,7 @@ public partial class BirdAI : MonoBehaviour
 
         Vector3 flat = lake.Center - pos;
         flat.y = 0f;
-        bool farAway = flat.magnitude > lake.Radius + leashMargin * 2f;
+        bool farAway = flat.magnitude > RangeLimit(leashMargin) + 15f;
         stuckStrikes = wantsToMove && moved < 2f ? stuckStrikes + 1 : 0;
         if (stuckStrikes < 2 && !farAway) return;
 

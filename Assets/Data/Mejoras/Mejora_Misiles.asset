@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: "Misiles teledirigidos"
   category: 1
   maxLevel: 2
-  description: "Arma secundaria (tecla E): misiles que persiguen a las aves."
+  description: "Arma secundaria (tecla F): misiles que persiguen a las aves."
   levelOne: "3 misiles que buscan aves; el soporte se recarga en 10 s."
   levelTwo: "4 misiles; el soporte se recarga en 8 s."
   suitPart: "Lanzamisiles en los hombros"

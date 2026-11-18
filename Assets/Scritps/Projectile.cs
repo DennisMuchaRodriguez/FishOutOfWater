@@ -15,6 +15,8 @@ public class Projectile : MonoBehaviour
     public float trailLength = 14f;
 
     private PlayerShooting owner;
+    // Si lo disparó un pez defensor: el ave herida puede ir por él (BirdAI.ShotByDefender)
+    [System.NonSerialized] public DefenderFish defenderOwner;
     private bool isCharged;
     private bool isBubble;
     private bool hasHit;
@@ -181,6 +183,7 @@ public class Projectile : MonoBehaviour
             {
                 bool hitKilled = damageable.TakeDamage(damage, contact.point);
                 if (owner != null) owner.NotifyHit(hitKilled);
+                if (!hitKilled) NotifyDefenderHit(damageable);
                 pierceCount--;
                 if (collision.rigidbody != null)
                 {
@@ -204,6 +207,7 @@ public class Projectile : MonoBehaviour
         {
             bool killed = damageable.TakeDamage(damage, contact.point);
             if (owner != null) owner.NotifyHit(killed);
+            if (!killed) NotifyDefenderHit(damageable);
         }
 
         // Empuje físico al objetivo
@@ -228,6 +232,13 @@ public class Projectile : MonoBehaviour
         }
 
         Destroy(gameObject);
+    }
+
+    void NotifyDefenderHit(Damageable target)
+    {
+        if (defenderOwner == null || target == null) return;
+        BirdAI bird = target.GetComponentInParent<BirdAI>();
+        if (bird != null) bird.ShotByDefender(defenderOwner, isBubble ? 0.35f : 1f);
     }
 
     // Las aves livianas salen volando con el impacto; las blindadas (garza, pelícano, jefes) ni se mueven

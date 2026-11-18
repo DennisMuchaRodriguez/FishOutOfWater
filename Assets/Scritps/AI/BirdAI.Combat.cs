@@ -597,4 +597,85 @@ public partial class BirdAI
         if (spreadDeg != 0f) dir = Quaternion.AngleAxis(spreadDeg, Vector3.up) * dir;
         EnemyProjectile.Fire(kind, from, dir * speed, dmg, player);
     }
+
+    // ======================= FLANQUEO =======================
+    // Si viene de frente al jugador y ya está cerca, a veces no sigue recto: se abre hacia un lado y lo golpea desde
+    // el costado, así el jugador tiene que girar para seguirla con la mira. No siempre (depende de lo ágil que es la
+    // especie) y solo en los ataques cuerpo a cuerpo (embestidas, picadas y persecuciones).
+    float flankTimer;         // > 0: haciendo el flanqueo
+    float flankCooldown;
+    int flankSide;
+    const float FlankOut = 0.55f;   // segundos abriéndose hacia el lado
+    const float FlankStrike = 0.5f; // segundos golpeando desde el costado
+
+    float FlankChance { get { return Mathf.Clamp(0.3f * Agility + 0.05f, 0.1f, 0.5f); } }
+
+    bool FlankRole
+    {
+        get
+        {
+            return combatRole == CombatRole.Embestida || combatRole == CombatRole.Rayo || combatRole == CombatRole.Enjambre ||
+                   combatRole == CombatRole.Torpedo || combatRole == CombatRole.Picado;
+        }
+    }
+
+    void ApplyFlank(float dt)
+    {
+        if (flankCooldown > 0f) flankCooldown -= dt;
+        bool able = !dead && !IsBoss && !arriving && !submerged && !diving && stunTimer <= 0f && dodgeTimer <= 0f &&
+                    IsAggro && player != null && !player.isDead && FlankRole && carried.Count == 0 && fleeTimer <= 0f;
+        if (!able)
+        {
+            flankTimer = 0f;
+            return;
+        }
+
+        Vector3 ppos = player.transform.position + Vector3.up * 0.4f;
+        Vector3 to = ppos - transform.position;
+        float dist = to.magnitude;
+        Transform view = player.PlayerCamera != null ? player.PlayerCamera.transform : player.transform;
+        Vector3 fwd = new Vector3(view.forward.x, 0f, view.forward.z);
+        if (fwd.sqrMagnitude < 0.001f) fwd = player.transform.forward;
+        fwd.Normalize();
+        Vector3 right = new Vector3(fwd.z, 0f, -fwd.x);
+
+        if (flankTimer <= 0f)
+        {
+            // ¿Viene de frente (delante de la mira del jugador), acercándose y ya cerca?
+            if (flankCooldown > 0f || dist < 6f || dist > 16f) return;
+            Vector3 fromPlayer = -to;
+            fromPlayer.y = 0f;
+            Vector3 v = rb.linearVelocity;
+            bool inFront = Vector3.Angle(fwd, fromPlayer) < 35f;
+            bool closing = v.sqrMagnitude > 4f && Vector3.Dot(v.normalized, to.normalized) > 0.6f;
+            if (!inFront || !closing) return;
+            flankCooldown = 3f;   // se decide una vez por pasada
+            if (Random.value > FlankChance) return;
+            flankSide = Random.value < 0.5f ? -1 : 1;
+            flankTimer = FlankOut + FlankStrike;
+            Call(0.8f);
+        }
+
+        flankTimer -= dt;
+        float elapsed = FlankOut + FlankStrike - flankTimer;
+        if (elapsed < FlankOut)
+        {
+            // Se abre hacia el costado del jugador, un poco por delante de él
+            Vector3 point = ppos + right * flankSide * 7f + fwd * 1.5f + Vector3.up * 0.6f;
+            point.y = Mathf.Max(point.y, lake.SurfaceY + 1.2f);
+            desiredVelocity = (point - transform.position).normalized * chaseSpeed * 1.5f;
+            lookOverride = to;
+            burst = true;
+        }
+        else
+        {
+            // Golpea desde el costado
+            Vector3 lead = ppos + player.Velocity * 0.15f;
+            desiredVelocity = (lead - transform.position).normalized * chaseSpeed * 2.2f;
+            lookOverride = to;
+            burst = true;
+            if (attackTimer <= 0f && dist < attackReach + 0.4f) HitPlayer(1f, 1f, 0.8f);
+        }
+        if (flankTimer <= 0f) flankCooldown = Random.Range(2.5f, 4f);
+    }
 }

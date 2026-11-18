@@ -103,6 +103,18 @@ public class GameDirector : MonoBehaviour
         }
     }
     public int DefendersSpawned { get; private set; }
+    // Defensores que siguen con el traje puesto
+    public int DefendersAlive
+    {
+        get
+        {
+            int n = 0;
+            foreach (DefenderFish d in defenders)
+                if (d != null && d.SuitIntact && d.Fish != null && d.Fish.IsAlive) n++;
+            return n;
+        }
+    }
+    readonly List<DefenderFish> defenders = new List<DefenderFish>();
 
     // Mensajes para el HUD
     public event System.Action<string, string, Color> Banner;
@@ -196,6 +208,8 @@ public class GameDirector : MonoBehaviour
     {
         State = GameState.Calm;
         yield return null;
+        // Mientras la pantalla de carga tapa el juego no empieza nada (el cartel del nivel sale al destaparse)
+        while (LoadingScreen.IsLoading) yield return null;
         string calmTitle = "NIVEL " + LevelNumber + (string.IsNullOrEmpty(Level.displayName) ? "" : "  ·  " + Level.displayName.ToUpper());
         Banner?.Invoke(calmTitle, "Protege a los peces  //  Recoge cápsulas de munición en el agua", Cyan);
         if (DefendersSpawned > 0)
@@ -457,6 +471,7 @@ public class GameDirector : MonoBehaviour
             DefenderFish.Weapon gun = i % 2 == 0 ? DefenderFish.Weapon.Pistol : DefenderFish.Weapon.Bubbles;
             defender.Setup(defenderSuitModel, scale, projectile, impact, fxMaterialTemplate, i, count, gun, shooting);
             defender.SuitBroken += OnDefenderSuitBroken;
+            defenders.Add(defender);
 
             fish.Died += OnFishDied;
             fish.Rescued += OnFishRescued;
@@ -467,7 +482,12 @@ public class GameDirector : MonoBehaviour
 
     void OnDefenderSuitBroken(DefenderFish d)
     {
-        if (!ended) Toast?.Invoke("¡UN DEFENSOR PERDIÓ SU TRAJE!", Danger);
+        if (ended) return;
+        int left = DefendersAlive;
+        string rest = left > 0 ? "QUEDAN " + left : "NO QUEDAN DEFENSORES";
+        Toast?.Invoke("¡UN DEFENSOR PERDIÓ SU TRAJE!  //  " + rest, Danger);
+        HelmetVisorHUD.ShowAlert("DEFENSOR DESTRUIDO  //  " + rest, 3.5f);
+        Sfx.Play2D(Sonido.Aviso, 0.6f, 0.9f);
     }
 
     void UpdateSchoolAnchors()
