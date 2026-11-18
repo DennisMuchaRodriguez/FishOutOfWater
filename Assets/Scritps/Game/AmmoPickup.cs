@@ -105,7 +105,7 @@ public class AmmoPickup : MonoBehaviour
     void Attract(float dt)
     {
         if (magnetTarget == null) magnetTarget = FindFirstObjectByType<PlayerShooting>();
-        if (magnetTarget == null || !magnetTarget.enabled || magnetTarget.currentAmmo >= magnetTarget.maxAmmo) return;
+        if (magnetTarget == null || !magnetTarget.enabled || !magnetTarget.WantsAmmo) return;
         Vector3 target = magnetTarget.transform.position;
         float range = pickupRadius * MagnetMultiplier;
         if ((target - basePos).sqrMagnitude > range * range) return;
@@ -117,7 +117,7 @@ public class AmmoPickup : MonoBehaviour
     {
         PlayerShooting shooting = other.GetComponentInParent<PlayerShooting>();
         if (shooting == null || !shooting.enabled) return;
-        if (shooting.currentAmmo >= shooting.maxAmmo) return;
+        if (!shooting.WantsAmmo) return;
 
         shooting.AddAmmo(ammo);
         FXFactory.SpawnOneShot(collectPrefab, transform.position, Quaternion.identity, 0.8f, 3f);

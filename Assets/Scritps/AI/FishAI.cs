@@ -9,6 +9,8 @@ using FishGame.AI;
 //  2. Fuera del agua               -> aletea hacia el agua; si tarda mucho, se asfixia
 //  3. Aturdido                     -> flota panza arriba hacia la superficie, sin poder huir
 //                                     (ondas de choque de los jefes: presa fácil para las aves)
+//  3b. Defensor con traje (DefenderFish) -> no huye: patrulla su sector del lago cerca de la superficie y
+//                                     defiende a los peces de las aves (los disparos los hace DefenderFish)
 //  4. Amenaza cerca                -> HUIR (solo por el agua)
 //        a) con energía: escapar hacia lo profundo, en zigzag y lejos del pájaro
 //        b) agotado: huir en horizontal cerca de la superficie (vulnerable)
@@ -69,6 +71,9 @@ public class FishAI : MonoBehaviour
 
     // Pájaro que lo está cazando (para que dos pájaros no persigan el mismo pez)
     [System.NonSerialized] public BirdAI Hunter;
+    // Pez defensor (desde el nivel 10): mientras tenga traje patrulla y, si un ave lo atrapa, se suelta al instante
+    [System.NonSerialized] public DefenderFish Defender;
+    public bool IsDefending { get { return Defender != null && Defender.SuitIntact; } }
 
     public event System.Action<FishAI> Died;
     public event System.Action<FishAI> Rescued;
@@ -165,6 +170,9 @@ public class FishAI : MonoBehaviour
                 new BTSequence("Aturdido",
                     new BTCondition("¿Aturdido?", () => IsStunned),
                     new BTAction("Flotar aturdido", Stunned)),
+                new BTSequence("Defensor",
+                    new BTCondition("¿Defensor con traje?", () => IsDefending),
+                    new BTAction("Patrullar y defender", DefendPatrol)),
                 new BTSequence("Huir",
                     new BTCondition("¿Amenaza cerca?", SenseThreat),
                     new BTSelector("ModoHuida",
@@ -328,6 +336,14 @@ public class FishAI : MonoBehaviour
         return BTStatus.Running;
     }
 
+    // Defensor: rápido y cerca de la superficie, por su sector (o hacia un pez que estén cazando cerca)
+    BTStatus DefendPatrol()
+    {
+        tree.MarkActive("Patrullar y defender");
+        SteerTowards(Defender.PatrolPoint(), Defender.patrolSpeed * speedVariation, true);
+        return BTStatus.Running;
+    }
+
     BTStatus Ascend()
     {
         tree.MarkActive("Subir a respirar");
@@ -407,7 +423,7 @@ public class FishAI : MonoBehaviour
 
     void Move(float dt)
     {
-        float accel = acceleration * (IsFleeing ? 2.2f : 1f);
+        float accel = acceleration * (IsFleeing ? 2.2f : (IsDefending ? 1.7f : 1f));
         velocity = Vector3.MoveTowards(velocity, desiredVelocity, accel * dt);
 
         Vector3 pos = rb.position;
@@ -549,6 +565,13 @@ public class FishAI : MonoBehaviour
     public bool Grab(Transform talons, Vector3 offset)
     {
         if (State != FishState.Swimming || talons == null) return false;
+        // Defensor con traje: la descarga del traje hace que el ave lo suelte al instante (el traje pierde vida)
+        if (IsDefending && Defender.ShakeOff(talons))
+        {
+            Hunter = null;
+            alarmTimer = 1.5f;
+            return false;
+        }
         State = FishState.Grabbed;
         stunTimer = 0f;
         wasGrabbed = true;

@@ -46,6 +46,20 @@ public class GameDirector : MonoBehaviour
              "el menú ⋮ del componente tiene \"Cinemática: ver plano ...\" para mirar por cada una")]
     public WaveCinematic.Settings cinematicShots = new WaveCinematic.Settings();
 
+    [Header("Peces defensores")]
+    [Tooltip("Nivel desde el que aparecen los peces defensores (con traje, disparan a las aves)")]
+    public int defenderStartLevel = 10;
+    [Tooltip("Cada cuántos niveles se suman más defensores")]
+    public int defenderLevelStep = 3;
+    [Tooltip("Defensores que se suman cada vez")]
+    public int defendersPerStep = 2;
+    [Tooltip("Para probar: si es mayor que 0, aparecen estos defensores en cualquier nivel")]
+    public int testDefenders = 0;
+    [Tooltip("Traje de los defensores (Assets/Models/Entorno/Traje_Defensor)")]
+    public GameObject defenderSuitModel;
+    [Tooltip("Colores de los defensores (distintos del naranja del protagonista)")]
+    public Material[] defenderMaterials;
+
     [Header("Munición")]
     public int ammoPickups = 6;
     public int ammoPerPickup = 10;
@@ -77,6 +91,18 @@ public class GameDirector : MonoBehaviour
     public int BirdsKilled { get; private set; }
     public float Countdown { get; private set; }
     public IReadOnlyList<AmmoPickup> Pickups { get { return pickups; } }
+    // Peces defensores de este nivel: desde defenderStartLevel, defendersPerStep más cada defenderLevelStep niveles
+    // (con los valores de fábrica: 2 en los niveles 10-12, 4 en 13-15, 6 en 16-18 y 8 en 19-20)
+    public int DefenderCount
+    {
+        get
+        {
+            if (testDefenders > 0) return testDefenders;
+            if (LevelNumber < defenderStartLevel) return 0;
+            return defendersPerStep * (1 + (LevelNumber - defenderStartLevel) / Mathf.Max(1, defenderLevelStep));
+        }
+    }
+    public int DefendersSpawned { get; private set; }
 
     // Mensajes para el HUD
     public event System.Action<string, string, Color> Banner;
@@ -172,6 +198,8 @@ public class GameDirector : MonoBehaviour
         yield return null;
         string calmTitle = "NIVEL " + LevelNumber + (string.IsNullOrEmpty(Level.displayName) ? "" : "  ·  " + Level.displayName.ToUpper());
         Banner?.Invoke(calmTitle, "Protege a los peces  //  Recoge cápsulas de munición en el agua", Cyan);
+        if (DefendersSpawned > 0)
+            Toast?.Invoke(DefendersSpawned + " PECES DEFENSORES PATRULLAN EL LAGO", Cyan);
 
         for (int i = 0; i < plan.Count; i++)
         {
@@ -384,6 +412,60 @@ public class GameDirector : MonoBehaviour
                 TotalFish++;
             }
         }
+        SpawnDefenders(fishLayer);
+    }
+
+    // Peces defensores: de otro color, con traje gris y blanco; cada uno patrulla un sector del lago
+    void SpawnDefenders(int fishLayer)
+    {
+        DefendersSpawned = 0;
+        int count = DefenderCount;
+        if (count <= 0 || fishPlan.Count == 0) return;
+        FishType type = fishPlan[0].type;
+        PlayerShooting shooting = player != null ? player.GetComponent<PlayerShooting>() : null;
+        GameObject projectile = shooting != null ? shooting.projectilePrefab : null;
+        GameObject impact = shooting != null ? shooting.impactEffectPrefab : null;
+        float scale = type.modelScale / 28f;
+
+        for (int i = 0; i < count; i++)
+        {
+            float a = (i + 0.5f) / count * Mathf.PI * 2f;
+            Vector3 guess = lake.Center + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * lake.Radius * 0.5f;
+            Vector3 pos;
+            if (!lake.TryGetSwimPoint(guess, 12f, 0.35f, 0.7f, 0.6f, out pos))
+                lake.TryGetRandomSwimPoint(0.35f, 0.7f, 0.6f, out pos);
+
+            GameObject go = new GameObject("PezDefensor_" + (i + 1));
+            go.tag = "Fish";
+            if (fishLayer >= 0) go.layer = fishLayer;
+            go.transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+
+            FishAI fish = go.AddComponent<FishAI>();
+            go.GetComponent<SphereCollider>().radius = type.colliderRadius;
+            fish.schoolId = i;
+            Material skin = defenderMaterials != null && defenderMaterials.Length > 0
+                ? defenderMaterials[i % defenderMaterials.Length] : type.materialOverride;
+            fish.visual = CreateVisual(type.model, go.transform, type.modelScale, type.modelRotation, type.modelOffset,
+                                       type.animatorController, skin, fishLayer);
+            fish.ApplyType(type);
+            WaterInteractor wi = go.AddComponent<WaterInteractor>();
+            wi.size = 0.8f;
+            wi.minSpeed = 1f;
+
+            DefenderFish defender = go.AddComponent<DefenderFish>();
+            defender.Setup(defenderSuitModel, scale, projectile, impact, fxMaterialTemplate, i, count);
+            defender.SuitBroken += OnDefenderSuitBroken;
+
+            fish.Died += OnFishDied;
+            fish.Rescued += OnFishRescued;
+            TotalFish++;
+            DefendersSpawned++;
+        }
+    }
+
+    void OnDefenderSuitBroken(DefenderFish d)
+    {
+        if (!ended) Toast?.Invoke("¡UN DEFENSOR PERDIÓ SU TRAJE!", Danger);
     }
 
     void UpdateSchoolAnchors()

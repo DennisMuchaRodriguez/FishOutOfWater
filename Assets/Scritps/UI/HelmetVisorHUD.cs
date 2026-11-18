@@ -37,6 +37,15 @@ public class HelmetVisorHUD : MonoBehaviour
     [Range(0f, 1f)] public float underwaterTintOpacity = 0.45f;
     public int dropletsOnExit = 14;
 
+    [Header("Daño del cristal")]
+    [Tooltip("Opacidad de las grietas del cristal (salen con el traje bajo 60%, 40%, 25% y 12%)")]
+    [Range(0f, 1f)] public float crackOpacity = 0.9f;
+    public Color crackColor = new Color(0.86f, 0.96f, 1f, 1f);
+    [Tooltip("Segundos que parpadea el borde en rojo al quedar con poca vida; después queda un rojo fijo y suave")]
+    public float lowHealthBlinkTime = 2.5f;
+    [Tooltip("Qué tan rojo queda el borde después de parpadear (0 = nada, 1 = rojo pleno)")]
+    [Range(0f, 1f)] public float lowHealthSteadyRed = 0.35f;
+
     [Header("Inercia del HUD")]
     public float swayFromTurn = 0.12f;
     public float swayFromVertical = 1.8f;
@@ -84,6 +93,23 @@ public class HelmetVisorHUD : MonoBehaviour
     float lastYaw;
     float bootTimer;
     float glitchTimer;
+    float lowHealthTime;
+    bool wasCritical;
+
+    // Grietas del cristal: una por cada umbral de traje que se cruza (se van si el traje se repara)
+    static readonly float[] CrackThresholds = { 0.6f, 0.4f, 0.25f, 0.12f };
+    static readonly Vector2[] CrackSpots = { new Vector2(-0.33f, 0.24f), new Vector2(0.31f, -0.26f), new Vector2(0.29f, 0.3f), new Vector2(-0.18f, -0.14f) };
+    static readonly float[] CrackSizes = { 0.36f, 0.42f, 0.38f, 0.55f };
+    static Texture2D[] crackTextures;
+    class Crack
+    {
+        public RawImage img, flash;
+        public float shown;    // 0..1 (aparece creciendo; se borra al repararse)
+        public bool on;
+        public float flashTime;
+    }
+    readonly Crack[] cracks = new Crack[4];
+    RectTransform crackRoot;
     float hitTimer;
     bool lastHitWasKill;
     float lastArmor;
@@ -251,6 +277,7 @@ public class HelmetVisorHUD : MonoBehaviour
         scanlines = CreateRaw("Scanlines", frameRoot, scan, new Color(accent.r, accent.g, accent.b, scanlineOpacity), true);
 
         dropletRoot = CreateRect("Droplets", frameRoot, true);
+        BuildCracks();
 
         frameImage = CreateRaw("HelmetFrame", frameRoot, MakeFrameTexture(), Color.white, true);
         rimSheen = CreateRaw("RimSheen", frameRoot, MakeRimTexture(), new Color(GlintColor.r, GlintColor.g, GlintColor.b, 0.35f), true);
@@ -494,6 +521,7 @@ public class HelmetVisorHUD : MonoBehaviour
         UpdateReticle(dt);
         UpdateTexts();
         UpdateDroplets(dt);
+        UpdateCracks(dt);
         UpdateSplats(dt);
         if (!previewMode) UpdateCursor();   // en el editor no se toca el cursor
     }
@@ -654,10 +682,19 @@ public class HelmetVisorHUD : MonoBehaviour
 
         float armor01 = player.maxArmor > 0f ? player.currentArmor / player.maxArmor : 1f;
         Color rim = Color.white;
-        if (armor01 <= 0.25f || player.isDead)
+        // Poca vida: el borde parpadea en rojo unos segundos (y otra vez al quedar crítico) y después se queda
+        // en un rojo suave y fijo, para avisar sin molestar
+        bool low = armor01 <= 0.25f && !player.isDead;
+        bool critical = armor01 <= 0.12f && !player.isDead;
+        if (critical && !wasCritical) lowHealthTime = 0f;
+        wasCritical = critical;
+        lowHealthTime = low ? lowHealthTime + dt : 0f;
+        if (low || player.isDead)
         {
-            float pulse = player.isDead ? 1f : (Mathf.Sin(Now * 4f) * 0.5f + 0.5f);
-            rim = Color.Lerp(Color.white, new Color(1f, 0.45f, 0.45f, 1f), pulse);
+            float blink = Mathf.Sin(Now * 7f) * 0.5f + 0.5f;
+            float settle = Mathf.Clamp01((lowHealthTime - lowHealthBlinkTime) / 0.8f);
+            float red = player.isDead ? 1f : Mathf.Lerp(blink, lowHealthSteadyRed, settle);
+            rim = Color.Lerp(Color.white, new Color(1f, 0.45f, 0.45f, 1f), red);
         }
 
         if (glitchTimer > 0f)
@@ -775,7 +812,7 @@ public class HelmetVisorHUD : MonoBehaviour
             {
                 msg = shooting.ChargeProgress01 >= 1f ? "DISPARO CARGADO  //  SUELTA" : "CARGANDO DISPARO";
             }
-            else if (shooting != null && shooting.currentAmmo <= 0)
+            else if (shooting != null && shooting.HudAmmo <= 0)
             {
                 msg = "SIN MUNICIÓN  //  BUSCA CÁPSULAS EN EL LAGO"; warn = true;
             }
@@ -784,7 +821,7 @@ public class HelmetVisorHUD : MonoBehaviour
                 msg = energy01 < 0.25f ? "TURBO  //  COMBUSTIBLE BAJO" : "TURBO";
                 warn = energy01 < 0.25f;
             }
-            else if (shooting != null && shooting.currentAmmo <= 5)
+            else if (shooting != null && shooting.HudAmmo <= Mathf.Max(5, shooting.HudMaxAmmo / 6))
             {
                 msg = "MUNICIÓN BAJA  //  BUSCA CÁPSULAS";
             }
@@ -1005,6 +1042,217 @@ public class HelmetVisorHUD : MonoBehaviour
     {
         hitTimer = killed ? 0.3f : 0.18f;
         lastHitWasKill = killed;
+    }
+
+    // ======================= GRIETAS DEL CRISTAL =======================
+
+    void BuildCracks()
+    {
+        if (crackTextures == null)
+        {
+            crackTextures = new Texture2D[CrackThresholds.Length];
+            for (int i = 0; i < crackTextures.Length; i++) crackTextures[i] = MakeCrackTexture(1234 + i * 977);
+        }
+        crackRoot = CreateRect("Grietas", frameRoot, true);
+        for (int i = 0; i < cracks.Length; i++)
+        {
+            Crack c = new Crack();
+            c.flash = CreateRaw("Impacto" + i, crackRoot, FXFactory.SoftDot, new Color(1f, 1f, 1f, 0f), false);
+            c.img = CreateRaw("Grieta" + i, crackRoot, crackTextures[i % crackTextures.Length], new Color(crackColor.r, crackColor.g, crackColor.b, 0f), false);
+            c.img.rectTransform.localEulerAngles = new Vector3(0f, 0f, Random.Range(0f, 360f));
+            c.img.gameObject.SetActive(false);
+            c.flash.gameObject.SetActive(false);
+            cracks[i] = c;
+        }
+    }
+
+    void UpdateCracks(float dt)
+    {
+        if (crackRoot == null) return;
+        float armor01 = player.maxArmor > 0f ? Mathf.Clamp01(player.currentArmor / player.maxArmor) : 1f;
+        Rect r = canvasRect.rect;
+        for (int i = 0; i < cracks.Length; i++)
+        {
+            Crack c = cracks[i];
+            float th = CrackThresholds[i];
+            bool want = armor01 <= th || player.isDead;
+            // Se rompe al cruzar el umbral; solo se va si el traje se repara un poco más allá (sin parpadeos)
+            if (want && !c.on)
+            {
+                c.on = true;
+                c.flashTime = 0.45f;
+                c.img.rectTransform.localEulerAngles = new Vector3(0f, 0f, Random.Range(0f, 360f));
+                if (!previewMode && !player.isThirdPerson) Sfx.Play2D(Sonido.GolpeTraje, 0.7f, 1.75f, 0.08f, 0.15f);
+                glitchTimer = Mathf.Max(glitchTimer, 0.25f);
+            }
+            else if (c.on && armor01 > th + 0.06f && !player.isDead)
+            {
+                c.on = false;
+            }
+
+            c.shown = Mathf.MoveTowards(c.shown, c.on ? 1f : 0f, dt * (c.on ? 7f : 0.8f));
+            c.flashTime = Mathf.Max(0f, c.flashTime - dt);
+            bool visible = c.shown > 0.001f;
+            if (c.img.gameObject.activeSelf != visible) c.img.gameObject.SetActive(visible);
+            bool flashing = c.flashTime > 0f;
+            if (c.flash.gameObject.activeSelf != flashing) c.flash.gameObject.SetActive(flashing);
+            if (!visible) continue;
+
+            Vector2 pos = new Vector2(CrackSpots[i].x * r.width, CrackSpots[i].y * r.height);
+            float size = CrackSizes[i] * r.height;
+            // Al romperse la grieta "corre": crece rápido desde el punto de impacto
+            float grow = Mathf.SmoothStep(0.35f, 1f, Mathf.Clamp01(c.shown * 1.4f));
+            RectTransform rt = c.img.rectTransform;
+            rt.anchoredPosition = pos;
+            rt.sizeDelta = Vector2.one * size;
+            rt.localScale = Vector3.one * (c.on ? grow : 1f);
+            // Bajo el agua se notan menos (el agua llena las grietas)
+            float a = crackOpacity * c.shown * (1f - submergedWeight * 0.35f);
+            float glint = 0.85f + 0.15f * Mathf.Sin(Now * 1.3f + i * 1.7f);
+            c.img.color = new Color(crackColor.r, crackColor.g, crackColor.b, a * glint);
+
+            if (flashing)
+            {
+                float f = c.flashTime / 0.45f;
+                RectTransform fr = c.flash.rectTransform;
+                fr.anchoredPosition = pos;
+                fr.sizeDelta = Vector2.one * size * Mathf.Lerp(0.9f, 0.25f, f);
+                c.flash.color = new Color(1f, 1f, 1f, f * 0.85f);
+            }
+        }
+    }
+
+    // Grieta de vidrio en forma de telaraña: brazos que salen del impacto con quiebres y ramas, anillos
+    // irregulares entre los brazos y el punto de impacto astillado. Blanco con un halo oscuro suave.
+    static Texture2D MakeCrackTexture(int seed)
+    {
+        const int S = 256;
+        float[] core = new float[S * S];
+        float[] halo = new float[S * S];
+        System.Random rng = new System.Random(seed);
+        System.Func<float, float, float> rnd = (a, b) => a + (float)rng.NextDouble() * (b - a);
+        Vector2 center = new Vector2(S * 0.5f, S * 0.5f);
+
+        int arms = 7 + rng.Next(3);
+        float[] armAngle = new float[arms];
+        List<Vector2>[] armPoints = new List<Vector2>[arms];
+        for (int i = 0; i < arms; i++)
+        {
+            float ang = (i + rnd(-0.3f, 0.3f)) / arms * Mathf.PI * 2f;
+            armAngle[i] = ang;
+            float length = S * rnd(0.38f, 0.5f);
+            List<Vector2> pts = new List<Vector2> { center };
+            Vector2 p = center;
+            float traveled = 0f;
+            while (traveled < length)
+            {
+                // Tramos casi rectos con algún quiebre en ángulo (así se raja el vidrio)
+                float seg = rnd(10f, 22f);
+                ang += rng.NextDouble() < 0.22 ? rnd(-0.45f, 0.45f) : rnd(-0.1f, 0.1f);
+                Vector2 q = p + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * seg;
+                float w = Mathf.Lerp(2.6f, 0.7f, traveled / length);
+                CrackLine(core, halo, S, p, q, w);
+                // Ramas cortas que se abren hacia los lados
+                if (traveled > S * 0.08f && rng.NextDouble() < 0.18)
+                {
+                    float bang = ang + (rng.NextDouble() < 0.5 ? -1f : 1f) * rnd(0.45f, 0.9f);
+                    Vector2 b0 = q;
+                    float blen = rnd(12f, 34f);
+                    for (float t = 0f; t < blen; t += 8f)
+                    {
+                        bang += rnd(-0.08f, 0.08f);
+                        Vector2 b1 = b0 + new Vector2(Mathf.Cos(bang), Mathf.Sin(bang)) * 8f;
+                        CrackLine(core, halo, S, b0, b1, Mathf.Lerp(w * 0.7f, 0.4f, t / blen));
+                        b0 = b1;
+                    }
+                }
+                p = q;
+                traveled += seg;
+                pts.Add(p);
+            }
+            armPoints[i] = pts;
+        }
+
+        // Anillos de la telaraña: tramos rectos entre brazos vecinos a tres distancias del centro
+        float[] ringRadius = { S * rnd(0.07f, 0.1f), S * rnd(0.16f, 0.21f), S * rnd(0.27f, 0.33f) };
+        foreach (float rr in ringRadius)
+        {
+            for (int i = 0; i < arms; i++)
+            {
+                if (rng.NextDouble() < (rr < S * 0.12f ? 0.1 : 0.3)) continue;   // anillos incompletos
+                Vector2 a = PointAtRadius(armPoints[i], center, rr * rnd(0.9f, 1.1f));
+                Vector2 b = PointAtRadius(armPoints[(i + 1) % arms], center, rr * rnd(0.9f, 1.1f));
+                CrackLine(core, halo, S, a, b, 1f);
+            }
+        }
+
+        // Impacto: un círculo astillado
+        for (int k = 0; k < 14; k++)
+        {
+            float ang = rnd(0f, Mathf.PI * 2f);
+            Vector2 a = center + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * rnd(1f, 4f);
+            Vector2 b = center + new Vector2(Mathf.Cos(ang + rnd(-0.6f, 0.6f)), Mathf.Sin(ang + rnd(-0.6f, 0.6f))) * rnd(5f, 10f);
+            CrackLine(core, halo, S, a, b, 1.1f);
+        }
+
+        Color32[] px = new Color32[S * S];
+        for (int i = 0; i < px.Length; i++)
+        {
+            float c = Mathf.Clamp01(core[i]);
+            float h = Mathf.Clamp01(halo[i]) * 0.4f;
+            float alpha = Mathf.Max(c, h);
+            // Núcleo blanco; el halo es más oscuro (da relieve a la grieta)
+            float bright = alpha > 0.001f ? Mathf.Lerp(0.25f, 1f, c / alpha) : 0f;
+            byte v = (byte)(bright * 255f);
+            px[i] = new Color32(v, v, v, (byte)(alpha * 255f));
+        }
+        Texture2D tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
+        tex.name = "FX_GrietaCristal";
+        tex.wrapMode = TextureWrapMode.Clamp;
+        tex.SetPixels32(px);
+        tex.Apply(false, true);
+        return tex;
+    }
+
+    static Vector2 PointAtRadius(List<Vector2> pts, Vector2 center, float radius)
+    {
+        for (int i = 1; i < pts.Count; i++)
+        {
+            if ((pts[i] - center).magnitude >= radius)
+            {
+                float d0 = (pts[i - 1] - center).magnitude, d1 = (pts[i] - center).magnitude;
+                float t = d1 - d0 > 0.001f ? (radius - d0) / (d1 - d0) : 0f;
+                return Vector2.Lerp(pts[i - 1], pts[i], Mathf.Clamp01(t));
+            }
+        }
+        return pts[pts.Count - 1];
+    }
+
+    // Línea con borde suave (antialias) en el núcleo y un halo más ancho
+    static void CrackLine(float[] core, float[] halo, int S, Vector2 a, Vector2 b, float width)
+    {
+        float hw = width * 0.5f;
+        float haloW = width * 0.5f + 2.2f;
+        int x0 = Mathf.Max(0, Mathf.FloorToInt(Mathf.Min(a.x, b.x) - haloW - 1f));
+        int x1 = Mathf.Min(S - 1, Mathf.CeilToInt(Mathf.Max(a.x, b.x) + haloW + 1f));
+        int y0 = Mathf.Max(0, Mathf.FloorToInt(Mathf.Min(a.y, b.y) - haloW - 1f));
+        int y1 = Mathf.Min(S - 1, Mathf.CeilToInt(Mathf.Max(a.y, b.y) + haloW + 1f));
+        Vector2 ab = b - a;
+        float len2 = Mathf.Max(0.0001f, ab.sqrMagnitude);
+        for (int y = y0; y <= y1; y++)
+        {
+            for (int x = x0; x <= x1; x++)
+            {
+                Vector2 p = new Vector2(x + 0.5f, y + 0.5f);
+                float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / len2);
+                float d = (p - (a + ab * t)).magnitude;
+                int i = y * S + x;
+                float c = Mathf.Clamp01(hw + 0.6f - d);
+                if (c > core[i]) core[i] = c;
+                float h = Mathf.Clamp01(1f - d / haloW);
+                if (h > halo[i]) halo[i] = h;
+            }
+        }
     }
 
     // ======================= VISTA PREVIA EN EL EDITOR =======================

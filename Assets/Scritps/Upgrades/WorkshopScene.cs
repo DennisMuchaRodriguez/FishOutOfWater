@@ -7,8 +7,12 @@ using System.Collections.Generic;
 // El Taller (escena propia, GDD "El Taller"): una cueva bajo el lago donde el mecánico ofrece 3 planos de
 // mejora y se instala solo 1. Todo se construye por código (como el menú principal); basta con este
 // componente en la escena Taller. Si falta un modelo, se usa una figura simple.
-//  - Cueva con algas que brillan, burbujas y rayos de luz que bajan desde la entrada.
-//  - Mesa de chatarra, el traje en un soporte que gira, el mecánico (bagre con lentes) y alevines ayudantes.
+//  - Cueva bajo el lago: estalactitas y estalagmitas, cristales que brillan, algas, la superficie del lago que
+//    se ve arriba con rayos de luz que bajan, cáusticas que se mueven en el suelo, burbujas y un cardumen.
+//  - Guarida de inventor (referencia: el taller de Tony Stark): sala de armaduras en una repisa con tres
+//    vitrinas iluminadas (trajes viejos Mk I, II y III), mesa holográfica con el traje en holograma, brazo
+//    robótico que suelda junto al traje, monitores y lámparas colgantes.
+//  - Mesa de chatarra con herramientas, el traje en un soporte que gira, el mecánico (bagre con gafas) y alevines.
 //  - Los 3 planos son hologramas: clic = elegir, INSTALAR (o clic otra vez) = instalar.
 //  - Esc o VOLVER AL MAPA sin elegir: la visita queda pendiente (botón IR AL TALLER en el mapa).
 // Abrir la escena directo en el Editor muestra una visita de prueba (testLevelIndex).
@@ -27,6 +31,22 @@ public class WorkshopScene : MonoBehaviour
     public GameObject[] rockModels;
     public GameObject[] algaeModels;
     public GameObject glowAlgaModel;
+
+    [Header("Guarida (cueva y taller de inventor)")]
+    [Tooltip("Vitrina para los trajes viejos (Vitrina_Traje)")]
+    public GameObject displayCaseModel;
+    [Tooltip("Mesa holográfica (Mesa_Holo)")]
+    public GameObject holoTableModel;
+    [Tooltip("Monitores (Pantallas_Taller)")]
+    public GameObject monitorsModel;
+    [Tooltip("Brazo robótico: base, tramo y pinza (BrazoRobot_*)")]
+    public GameObject armBaseModel;
+    public GameObject armSegmentModel;
+    public GameObject armClawModel;
+    [Tooltip("Racimo de estalactitas (también sirve de estalagmitas)")]
+    public GameObject stalactiteModel;
+    [Tooltip("Cristales que brillan (Cristales_Cueva)")]
+    public GameObject crystalModel;
 
     [Header("Efectos")]
     [Tooltip("Material base de las partículas (el mismo del lago)")]
@@ -54,6 +74,12 @@ public class WorkshopScene : MonoBehaviour
     WorkshopCritter mechanic;
     readonly List<WorkshopCritter> fry = new List<WorkshopCritter>();
     readonly List<Light> algaeLights = new List<Light>();
+    // Guarida
+    Transform armYaw, armShoulder, armElbow, armWrist, armTip, hologram;
+    ParticleSystem weldSparks;
+    Light weldLight;
+    Material hologramMat, skylightMat, causticMatA, causticMatB;
+    readonly List<Transform> holoRings = new List<Transform>();
 
     // ---- UI ----
     RectTransform ui;
@@ -160,6 +186,8 @@ public class WorkshopScene : MonoBehaviour
         BuildBench(env);
         BuildSuit(env);
         BuildCritters(env);
+        BuildCaveDetails(env);
+        BuildLair(env);
     }
 
     void BuildRocks(Transform env)
@@ -273,7 +301,7 @@ public class WorkshopScene : MonoBehaviour
         Transform bench = new GameObject("Mesa").transform;
         bench.SetParent(env, false);
         bench.position = BenchPos;
-        bench.rotation = Quaternion.Euler(0f, 18f, 0f);
+        bench.rotation = Quaternion.Euler(0f, benchModel != null ? 198f : 18f, 0f);
         if (WorkshopKit.PlaceModel(benchModel, bench, 2.2f, false) == null)
         {
             Material wood = WorkshopKit.Lit(new Color(0.36f, 0.27f, 0.2f), null, 0.15f, "Taller_Tabla");
@@ -374,11 +402,12 @@ public class WorkshopScene : MonoBehaviour
     {
         Transform mech = new GameObject("Mecanico").transform;
         mech.SetParent(env, false);
-        mech.position = new Vector3(-1.9f, 1.55f, 0.2f);
+        // Con el modelo (bagre erguido) flota sobre la arena junto a la mesa; el provisional va a la altura de antes
+        mech.position = mechanicModel != null ? new Vector3(-1.55f, 0.3f, 0.1f) : new Vector3(-1.9f, 1.55f, 0.2f);
         mech.rotation = Quaternion.LookRotation(new Vector3(0.35f, 0f, -1f));
         Transform model = new GameObject("Modelo").transform;
         model.SetParent(mech, false);
-        if (WorkshopKit.PlaceModel(mechanicModel, model, 1.4f, true) == null)
+        if (WorkshopKit.PlaceModel(mechanicModel, model, 1.7f, true) == null)
         {
             // Bagre provisional: cuerpo, lentes y bigotes
             Material skin = WorkshopKit.Lit(new Color(0.45f, 0.38f, 0.3f), null, 0.3f, "Taller_Bagre");
@@ -420,6 +449,454 @@ public class WorkshopScene : MonoBehaviour
             c.direction = i % 2 == 0 ? 1f : -1f;
             fry.Add(c);
         }
+    }
+
+    // ======================= CUEVA BAJO EL LAGO =======================
+
+    // Altura del techo de la cueva (la malla es un elipsoide de 11 x 7,5 x 11 m centrado en (0, 0, 2))
+    static float CeilingAt(float x, float z)
+    {
+        float k = 1f - (x * x + (z - 2f) * (z - 2f)) / 121f;
+        return 7.5f * Mathf.Sqrt(Mathf.Max(0.05f, k)) - 0.55f;
+    }
+
+    void BuildCaveDetails(Transform env)
+    {
+        Transform cave = new GameObject("DetallesCueva").transform;
+        cave.SetParent(env, false);
+
+        // Estalactitas colgando del techo y estalagmitas junto a las paredes
+        Vector2[] up = { new Vector2(-4f, 3f), new Vector2(5.8f, 4.6f), new Vector2(0.4f, 8.6f), new Vector2(-6.2f, 6.8f),
+                         new Vector2(6.3f, 2.4f), new Vector2(-2.2f, 9.2f), new Vector2(5.2f, 8.4f), new Vector2(-1.6f, 3.2f) };
+        for (int i = 0; i < up.Length; i++)
+        {
+            Transform h = new GameObject("Estalactita" + i).transform;
+            h.SetParent(cave, false);
+            h.position = new Vector3(up[i].x, CeilingAt(up[i].x, up[i].y), up[i].y);
+            h.rotation = Quaternion.Euler(0f, i * 53f, 0f);
+            float sc = 1f + (i % 3) * 0.35f;
+            if (!PlaceRaw(stalactiteModel, h, sc))
+                WorkshopKit.Shape(PrimitiveType.Capsule, "Punta", h, Vector3.down * 0.6f * sc, new Vector3(0.25f, 0.6f, 0.25f) * sc,
+                                  WorkshopKit.Lit(new Color(0.2f, 0.28f, 0.3f), null, 0.1f, "Taller_Estalactita"));
+        }
+        Vector3[] down = { new Vector3(-7.4f, 0f, 4.2f), new Vector3(7.7f, 0f, 5.1f), new Vector3(-5.2f, 0f, 8.6f),
+                           new Vector3(5.6f, 0f, 8.9f), new Vector3(-8.2f, 0f, -0.8f) };
+        for (int i = 0; i < down.Length && stalactiteModel != null; i++)
+        {
+            Transform h = new GameObject("Estalagmita" + i).transform;
+            h.SetParent(cave, false);
+            h.position = down[i] + Vector3.down * 0.15f;
+            h.rotation = Quaternion.Euler(180f, i * 71f, 0f);   // dadas vuelta: crecen desde el suelo
+            PlaceRaw(stalactiteModel, h, 0.9f + (i % 2) * 0.4f);
+        }
+
+        // Cristales que brillan (con una luz suave cada uno)
+        Vector3[] crystals = { new Vector3(-6.3f, 0f, 1.6f), new Vector3(6.5f, 0f, 0.4f), new Vector3(0.9f, 0f, 8.9f),
+                               new Vector3(-3.9f, 3.02f, 6.3f), new Vector3(4.3f, 3.02f, 6.4f), new Vector3(-7.2f, 0f, 6.3f) };
+        Color crystalGlow = new Color(0.4f, 0.9f, 1f);
+        for (int i = 0; i < crystals.Length && crystalModel != null; i++)
+        {
+            Transform h = new GameObject("Cristales" + i).transform;
+            h.SetParent(cave, false);
+            h.position = crystals[i];
+            h.rotation = Quaternion.Euler(0f, i * 97f, 0f);
+            PlaceRaw(crystalModel, h, 1.2f + (i % 3) * 0.35f);
+            Light l = new GameObject("LuzCristal").AddComponent<Light>();
+            l.transform.SetParent(h, false);
+            l.transform.localPosition = Vector3.up * 0.7f;
+            l.type = LightType.Point;
+            l.color = crystalGlow;
+            l.intensity = 1.1f;
+            l.range = 3.5f;
+            l.shadows = LightShadows.None;
+            algaeLights.Add(l);
+        }
+
+        // La superficie del lago vista desde abajo: un claro brillante en el techo que ondula
+        skylightMat = WorkshopKit.Glow(fxMaterialTemplate, RippleTexture(), new Color(0.65f, 0.92f, 1f, 0.55f));
+        GameObject sky = WorkshopKit.Shape(PrimitiveType.Cylinder, "SuperficieDelLago", cave, new Vector3(0.6f, CeilingAt(0.6f, 4f) + 0.35f, 4f),
+                                           new Vector3(4.2f, 0.01f, 3.4f), skylightMat);
+        sky.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+        // Cáusticas: la luz que atraviesa el agua dibuja una red que se mueve en el suelo (dos capas cruzadas)
+        Texture2D caustic = CausticTexture();
+        causticMatA = WorkshopKit.Glow(fxMaterialTemplate, caustic, new Color(0.55f, 0.85f, 1f, 0.22f));
+        causticMatB = WorkshopKit.Glow(fxMaterialTemplate, caustic, new Color(0.55f, 0.85f, 1f, 0.16f));
+        for (int k = 0; k < 2; k++)
+        {
+            GameObject q = WorkshopKit.Shape(PrimitiveType.Quad, "Causticas" + k, cave, new Vector3(0f, 0.04f + k * 0.01f, 3f),
+                                             new Vector3(16f, 14f, 1f), k == 0 ? causticMatA : causticMatB, new Vector3(90f, 0f, 0f));
+            q.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+        SetTiling(causticMatA, new Vector2(3f, 2.6f));
+        SetTiling(causticMatB, new Vector2(2.2f, 1.9f));
+
+        // Un cardumen chico nadando arriba, cerca del techo
+        for (int i = 0; i < 6; i++)
+        {
+            Transform f = new GameObject("Cardumen" + i).transform;
+            f.SetParent(cave, false);
+            GameObject inst = WorkshopKit.PlaceModel(fryModel, f, 0.38f, false);
+            if (inst == null) continue;
+            if (fryMaterial != null)
+                foreach (Renderer r in inst.GetComponentsInChildren<Renderer>()) r.sharedMaterial = fryMaterial;
+            Animator anim = inst.GetComponentInChildren<Animator>();
+            if (anim == null && fryAnimator != null) anim = inst.AddComponent<Animator>();
+            if (anim != null && fryAnimator != null) anim.runtimeAnimatorController = fryAnimator;
+            WorkshopCritter c = f.gameObject.AddComponent<WorkshopCritter>();
+            c.kind = WorkshopCritter.Kind.Fry;
+            c.center = new Vector3(0.5f, 0f, 4.5f);
+            c.radius = 5f + (i % 3) * 0.5f;
+            c.height = 4.4f + (i % 2) * 0.5f + i * 0.08f;
+            c.speed = 0.22f + (i % 3) * 0.02f;
+            c.direction = 1f;
+        }
+    }
+
+    // ======================= GUARIDA DEL INVENTOR =======================
+
+    void BuildLair(Transform env)
+    {
+        Transform lair = new GameObject("Guarida").transform;
+        lair.SetParent(env, false);
+        Material metal = WorkshopKit.Lit(new Color(0.26f, 0.3f, 0.34f), null, 0.6f, "Taller_Pasarela");
+        Texture2D ledgeTex = WorkshopKit.NoiseTexture(128, 7f, 1.5f, new Color(0.08f, 0.13f, 0.15f), new Color(0.22f, 0.31f, 0.32f), "Taller_RocaRepisa", 13);
+        Material rock = WorkshopKit.Lit(Color.white, ledgeTex, 0.1f, "Taller_Repisa");
+        Material strip = WorkshopKit.Glow(fxMaterialTemplate, FXFactory.White, new Color(0.35f, 0.9f, 1f, 0.8f));
+
+        // --- Sala de armaduras: repisa de roca al fondo con pasarela de metal y tres vitrinas ---
+        // (alta, para que se vea por encima de los planos de la interfaz, como la sala de armaduras de Stark)
+        WorkshopKit.Shape(PrimitiveType.Cube, "Repisa", lair, new Vector3(0.2f, 1.4f, 6.9f), new Vector3(11f, 3f, 2.4f), rock);
+        WorkshopKit.Shape(PrimitiveType.Cube, "Pasarela", lair, new Vector3(0.2f, 2.94f, 6.4f), new Vector3(10.4f, 0.12f, 1.9f), metal);
+        WorkshopKit.Shape(PrimitiveType.Cube, "LuzBorde", lair, new Vector3(0.2f, 2.9f, 5.44f), new Vector3(10.4f, 0.035f, 0.035f), strip);
+        for (int i = 0; i < 9; i++)
+            WorkshopKit.Shape(PrimitiveType.Cylinder, "Baranda" + i, lair, new Vector3(-4.8f + i * 1.25f, 3.35f, 5.5f),
+                              new Vector3(0.05f, 0.4f, 0.05f), metal);
+        WorkshopKit.Shape(PrimitiveType.Cube, "Pasamanos", lair, new Vector3(0.2f, 3.75f, 5.5f), new Vector3(10.2f, 0.06f, 0.06f), metal);
+
+        // Trajes viejos: Mk I (hierro gris), Mk II (plata) y Mk III (rojo y oro)
+        Color[] tints = { new Color(0.55f, 0.55f, 0.58f), new Color(0.88f, 0.9f, 0.96f), new Color(1f, 0.5f, 0.32f) };
+        string[] names = { "MkI", "MkIII", "MkII" };
+        float[] xs = { -3.3f, 0.2f, 3.7f };
+        int[] tintIndex = { 0, 2, 1 };
+        for (int i = 0; i < 3; i++)
+        {
+            Transform h = new GameObject("Vitrina" + names[i]).transform;
+            h.SetParent(lair, false);
+            h.position = new Vector3(xs[i], 3.0f, 6.55f);
+            h.rotation = Quaternion.Euler(0f, 180f - xs[i] * 3f, 0f);
+            if (WorkshopKit.PlaceModel(displayCaseModel, h, 2.7f, true) == null)
+                WorkshopKit.Shape(PrimitiveType.Cube, "Nicho", h, new Vector3(0f, 1.3f, -0.5f), new Vector3(1.5f, 2.6f, 0.1f), metal);
+            Transform inner = new GameObject("Traje").transform;
+            inner.SetParent(h, false);
+            inner.localPosition = new Vector3(0f, 0.17f, 0.05f);
+            GameObject old = WorkshopKit.PlaceModel(suitModel, inner, 1.45f, true);
+            if (old != null)
+            {
+                foreach (Animator a in old.GetComponentsInChildren<Animator>()) a.enabled = false;
+                TintModel(old, tints[tintIndex[i]]);
+            }
+            Light l = new GameObject("LuzVitrina").AddComponent<Light>();
+            l.transform.SetParent(h, false);
+            l.transform.localPosition = new Vector3(0f, 2.3f, 0.3f);
+            l.type = LightType.Point;
+            l.color = new Color(0.75f, 0.92f, 1f);
+            l.intensity = 2.2f;
+            l.range = 3.4f;
+            l.shadows = LightShadows.None;
+        }
+
+        // --- Mesa holográfica con el traje en holograma ---
+        Transform table = new GameObject("MesaHolografica").transform;
+        table.SetParent(lair, false);
+        table.position = new Vector3(-1.1f, 0f, 3.3f);
+        if (WorkshopKit.PlaceModel(holoTableModel, table, 1.0f, true) == null)
+            WorkshopKit.Shape(PrimitiveType.Cylinder, "Mesa", table, new Vector3(0f, 0.48f, 0f), new Vector3(1.2f, 0.48f, 1.2f), metal);
+        hologramMat = WorkshopKit.Glow(fxMaterialTemplate, FXFactory.White, new Color(0.3f, 0.85f, 1f, 0.22f));
+        hologram = new GameObject("Holograma").transform;
+        hologram.SetParent(table, false);
+        hologram.localPosition = Vector3.up * 1.45f;
+        GameObject holo = WorkshopKit.PlaceModel(suitModel, hologram, 1.5f, true);
+        if (holo != null)
+        {
+            foreach (Animator a in holo.GetComponentsInChildren<Animator>()) a.enabled = false;
+            foreach (Renderer r in holo.GetComponentsInChildren<Renderer>())
+            {
+                Material[] mats = r.sharedMaterials;
+                for (int k = 0; k < mats.Length; k++) mats[k] = hologramMat;
+                r.sharedMaterials = mats;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+        }
+        Material ringMat = WorkshopKit.Glow(fxMaterialTemplate, FXFactory.White, new Color(0.35f, 0.9f, 1f, 0.6f));
+        for (int k = 0; k < 3; k++)
+        {
+            GameObject ring = WorkshopKit.MeshObject("AnilloHolo" + k, table, WorkshopKit.RingMesh(0.55f + k * 0.12f, 0.58f + k * 0.12f, 48), ringMat);
+            ring.transform.localPosition = Vector3.up * (1.2f + k * 0.65f);
+            holoRings.Add(ring.transform);
+        }
+        Material beamMat = WorkshopKit.Glow(fxMaterialTemplate, WorkshopKit.BeamTexture(), new Color(0.4f, 0.9f, 1f, 0.18f));
+        GameObject beam = WorkshopKit.MeshObject("HazHolo", table, WorkshopKit.BeamMesh(), beamMat);
+        beam.transform.localPosition = Vector3.up * 0.98f;
+        beam.transform.localScale = new Vector3(1.1f, 2.4f, 1f);
+        beam.AddComponent<WorkshopSway>().amount = 1f;
+
+        // --- Monitores a la izquierda, mirando al taller ---
+        Transform mon = new GameObject("Monitores").transform;
+        mon.SetParent(lair, false);
+        mon.position = new Vector3(-4.6f, 0f, 3.9f);
+        mon.rotation = Quaternion.Euler(0f, 180f + 28f, 0f);
+        WorkshopKit.PlaceModel(monitorsModel, mon, 2.6f, true);
+
+        // --- Brazo robótico junto al traje (suelda durante la instalación) ---
+        BuildArm(lair, new Vector3(3.9f, 0f, 1.7f));
+
+        // --- Lámparas colgantes sobre la mesa y el traje ---
+        HangingLamp(lair, new Vector3(-2.5f, 4.3f, 1.4f));
+        HangingLamp(lair, new Vector3(1.3f, 4.7f, 1.6f));
+    }
+
+    void BuildArm(Transform parent, Vector3 pos)
+    {
+        Transform root = new GameObject("BrazoRobot").transform;
+        root.SetParent(parent, false);
+        root.position = pos;
+        root.localScale = Vector3.one * 1.25f;
+        Material yellow = WorkshopKit.Lit(new Color(0.85f, 0.64f, 0.23f), null, 0.4f, "Taller_Brazo");
+
+        armYaw = new GameObject("Giro").transform;
+        armYaw.SetParent(root, false);
+        if (!PlaceRaw(armBaseModel, armYaw, 1f))
+            WorkshopKit.Shape(PrimitiveType.Cylinder, "Base", armYaw, new Vector3(0f, 0.25f, 0f), new Vector3(0.5f, 0.25f, 0.5f), yellow);
+
+        armShoulder = new GameObject("Hombro").transform;
+        armShoulder.SetParent(armYaw, false);
+        armShoulder.localPosition = Vector3.up * 0.5f;
+        if (!PlaceRaw(armSegmentModel, armShoulder, 1f))
+            WorkshopKit.Shape(PrimitiveType.Cube, "Tramo", armShoulder, new Vector3(0f, 0.5f, 0f), new Vector3(0.16f, 1f, 0.2f), yellow);
+
+        armElbow = new GameObject("Codo").transform;
+        armElbow.SetParent(armShoulder, false);
+        armElbow.localPosition = Vector3.up * 1f;
+        if (!PlaceRaw(armSegmentModel, armElbow, 1f))
+            WorkshopKit.Shape(PrimitiveType.Cube, "Tramo", armElbow, new Vector3(0f, 0.5f, 0f), new Vector3(0.16f, 1f, 0.2f), yellow);
+
+        armWrist = new GameObject("Muneca").transform;
+        armWrist.SetParent(armElbow, false);
+        armWrist.localPosition = Vector3.up * 1f;
+        if (!PlaceRaw(armClawModel, armWrist, 1f))
+            WorkshopKit.Shape(PrimitiveType.Cube, "Pinza", armWrist, new Vector3(0f, 0.2f, 0f), new Vector3(0.2f, 0.4f, 0.12f), yellow);
+
+        armTip = new GameObject("Punta").transform;
+        armTip.SetParent(armWrist, false);
+        armTip.localPosition = Vector3.up * 0.45f;
+
+        Material sparkMat = FXFactory.ParticleMaterial(fxMaterialTemplate, FXFactory.SoftDot, Color.white);
+        weldSparks = FXFactory.CreateParticleSystem("ChispasSoldadura", null, sparkMat);
+        var main = weldSparks.main;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.2f, 0.55f);
+        main.startSpeed = 0f;
+        main.startSize = new ParticleSystem.MinMaxCurve(0.03f, 0.08f);
+        main.gravityModifier = 0.7f;
+        main.maxParticles = 400;
+        weldSparks.Play();
+        weldLight = new GameObject("LuzSoldadura").AddComponent<Light>();
+        weldLight.transform.SetParent(armTip, false);
+        weldLight.type = LightType.Point;
+        weldLight.color = new Color(0.6f, 0.9f, 1f);
+        weldLight.range = 3f;
+        weldLight.intensity = 0f;
+        weldLight.shadows = LightShadows.None;
+    }
+
+    void HangingLamp(Transform parent, Vector3 pos)
+    {
+        Material dark = WorkshopKit.Lit(new Color(0.12f, 0.13f, 0.15f), null, 0.4f, "Taller_Cable");
+        Material shade = WorkshopKit.Lit(new Color(0.85f, 0.45f, 0.18f), null, 0.5f, "Taller_Lampara");
+        float top = CeilingAt(pos.x, pos.z);
+        float len = Mathf.Max(0.3f, top - pos.y);
+        Transform lamp = new GameObject("Lampara").transform;
+        lamp.SetParent(parent, false);
+        lamp.position = new Vector3(pos.x, top, pos.z);
+        WorkshopKit.Shape(PrimitiveType.Cylinder, "Cable", lamp, Vector3.down * len * 0.5f, new Vector3(0.025f, len * 0.5f, 0.025f), dark);
+        WorkshopKit.Shape(PrimitiveType.Cylinder, "Pantalla", lamp, Vector3.down * (len + 0.08f), new Vector3(0.45f, 0.1f, 0.45f), shade);
+        Material bulbMat = WorkshopKit.Lit(new Color(1f, 0.9f, 0.7f), null, 0.8f, "Taller_Foco");
+        WorkshopKit.SetEmission(bulbMat, new Color(1f, 0.85f, 0.55f) * 2.5f);
+        WorkshopKit.Shape(PrimitiveType.Sphere, "Foco", lamp, Vector3.down * (len + 0.2f), Vector3.one * 0.16f, bulbMat);
+        Light l = new GameObject("Luz").AddComponent<Light>();
+        l.transform.SetParent(lamp, false);
+        l.transform.localPosition = Vector3.down * (len + 0.35f);
+        l.type = LightType.Point;
+        l.color = new Color(1f, 0.82f, 0.6f);
+        l.intensity = 1.8f;
+        l.range = 5.5f;
+        l.shadows = LightShadows.None;
+        lamp.gameObject.AddComponent<WorkshopSway>().amount = 1.5f;
+    }
+
+    void AnimateLair(float time, float dt)
+    {
+        // Brazo: en reposo se mece apuntando al traje; durante la instalación suelda (chispas y destellos)
+        if (armYaw != null)
+        {
+            Vector3 to = SuitPos - armYaw.position;
+            float yaw = Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg + Mathf.Sin(time * 0.6f) * (installing ? 4f : 9f);
+            armYaw.rotation = Quaternion.Euler(0f, yaw, 0f);
+            float work = installing ? 1f : 0f;
+            armShoulder.localRotation = Quaternion.Euler(28f + Mathf.Sin(time * 0.7f) * 6f + work * 6f, 0f, 0f);
+            armElbow.localRotation = Quaternion.Euler(62f + Mathf.Sin(time * 0.9f + 1f) * 8f - work * 4f, 0f, 0f);
+            armWrist.localRotation = Quaternion.Euler(28f + Mathf.Sin(time * 2.1f) * (installing ? 14f : 6f), Mathf.Sin(time * 1.3f) * 20f, 0f);
+
+            bool weld = installing ? Mathf.Repeat(time * 1.7f, 1f) < 0.55f : Mathf.Repeat(time * 0.23f, 1f) < 0.08f;
+            if (weld && weldSparks != null)
+            {
+                ParticleSystem.EmitParams ep = new ParticleSystem.EmitParams();
+                int n = installing ? 4 : 2;
+                for (int i = 0; i < n; i++)
+                {
+                    ep.position = armTip.position;
+                    ep.velocity = (Random.insideUnitSphere + Vector3.up * 0.6f) * Random.Range(1.5f, 4f);
+                    ep.startColor = Color.Lerp(new Color(1f, 0.85f, 0.45f), new Color(0.6f, 0.95f, 1f), Random.value);
+                    weldSparks.Emit(ep, 1);
+                }
+            }
+            if (weldLight != null)
+                weldLight.intensity = weld ? Random.Range(2f, 5f) * (installing ? 1.2f : 0.6f) : Mathf.MoveTowards(weldLight.intensity, 0f, dt * 30f);
+        }
+
+        // Holograma: gira, parpadea como una proyección y los anillos suben y bajan
+        if (hologram != null)
+        {
+            hologram.Rotate(0f, (installing ? 60f : 22f) * dt, 0f, Space.World);
+            float flicker = 0.18f + 0.04f * Mathf.Sin(time * 23f) + (Random.value < 0.03f ? -0.1f : 0f);
+            SetGlowAlpha(hologramMat, new Color(0.3f, 0.85f, 1f), installing ? flicker + 0.1f : flicker);
+            for (int i = 0; i < holoRings.Count; i++)
+            {
+                Transform r = holoRings[i];
+                Vector3 lp = r.localPosition;
+                lp.y = 1.2f + Mathf.Repeat(time * 0.35f + i / 3f, 1f) * 1.95f;
+                r.localPosition = lp;
+                r.Rotate(0f, (20f + i * 15f) * dt, 0f, Space.Self);
+            }
+        }
+
+        // Agua: la superficie del lago ondula arriba y las cáusticas se mueven en el suelo
+        if (skylightMat != null) SetOffset(skylightMat, new Vector2(time * 0.012f, time * 0.008f));
+        if (causticMatA != null) SetOffset(causticMatA, new Vector2(time * 0.018f, time * 0.011f));
+        if (causticMatB != null) SetOffset(causticMatB, new Vector2(-time * 0.013f, time * 0.016f));
+    }
+
+    // ======================= AYUDAS DE LA GUARIDA =======================
+
+    // Pone un modelo con su pivote original (sin recentrar) y escalado; false si no hay modelo
+    static bool PlaceRaw(GameObject model, Transform parent, float scale)
+    {
+        if (model == null) return false;
+        GameObject inst = Instantiate(model, parent, false);
+        inst.transform.localPosition = Vector3.zero;
+        inst.transform.localRotation = Quaternion.identity;
+        inst.transform.localScale = inst.transform.localScale * scale;
+        WorkshopKit.StripColliders(inst);
+        return true;
+    }
+
+    // Tiñe un modelo con copias de sus materiales (los archivos no se tocan)
+    static void TintModel(GameObject go, Color tint)
+    {
+        foreach (Renderer r in go.GetComponentsInChildren<Renderer>())
+        {
+            if (r is ParticleSystemRenderer) continue;
+            Material[] mats = r.materials;
+            foreach (Material m in mats)
+            {
+                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", m.GetColor("_BaseColor") * tint);
+                if (m.HasProperty("_Color")) m.SetColor("_Color", m.GetColor("_Color") * tint);
+                if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0.6f);
+                if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.65f);
+            }
+            r.materials = mats;
+        }
+    }
+
+    static void SetGlowAlpha(Material m, Color c, float a)
+    {
+        if (m == null) return;
+        Color col = new Color(c.r, c.g, c.b, Mathf.Clamp01(a));
+        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", col);
+        if (m.HasProperty("_Color")) m.SetColor("_Color", col);
+    }
+
+    static void SetOffset(Material m, Vector2 offset)
+    {
+        if (m.HasProperty("_BaseMap")) m.SetTextureOffset("_BaseMap", offset);
+        if (m.HasProperty("_MainTex")) m.SetTextureOffset("_MainTex", offset);
+    }
+
+    static void SetTiling(Material m, Vector2 tiling)
+    {
+        if (m.HasProperty("_BaseMap")) m.SetTextureScale("_BaseMap", tiling);
+        if (m.HasProperty("_MainTex")) m.SetTextureScale("_MainTex", tiling);
+    }
+
+    // Red de cáusticas (que se repite sin cortes): líneas brillantes donde dos celdas de Voronoi se tocan
+    static Texture2D CausticTexture()
+    {
+        const int S = 256, N = 28;
+        System.Random rng = new System.Random(77);
+        Vector2[] pts = new Vector2[N];
+        for (int i = 0; i < N; i++) pts[i] = new Vector2((float)rng.NextDouble(), (float)rng.NextDouble());
+        Color32[] px = new Color32[S * S];
+        for (int y = 0; y < S; y++)
+        {
+            for (int x = 0; x < S; x++)
+            {
+                Vector2 p = new Vector2((x + 0.5f) / S, (y + 0.5f) / S);
+                float f1 = 9f, f2 = 9f;
+                for (int i = 0; i < N; i++)
+                {
+                    Vector2 d = p - pts[i];
+                    d.x -= Mathf.Round(d.x);
+                    d.y -= Mathf.Round(d.y);
+                    float dist = d.magnitude;
+                    if (dist < f1) { f2 = f1; f1 = dist; }
+                    else if (dist < f2) f2 = dist;
+                }
+                float edge = f2 - f1;
+                float v = Mathf.Pow(Mathf.Clamp01(1f - edge / 0.06f), 2.2f);
+                byte b = (byte)(v * 255f);
+                px[y * S + x] = new Color32(255, 255, 255, b);
+            }
+        }
+        Texture2D tex = new Texture2D(S, S, TextureFormat.RGBA32, true);
+        tex.name = "Taller_Causticas";
+        tex.wrapMode = TextureWrapMode.Repeat;
+        tex.SetPixels32(px);
+        tex.Apply(true, true);
+        return tex;
+    }
+
+    // Superficie del agua vista desde abajo: manchas claras que ondulan (se repite sin cortes)
+    static Texture2D RippleTexture()
+    {
+        const int S = 128;
+        Color32[] px = new Color32[S * S];
+        for (int y = 0; y < S; y++)
+        {
+            for (int x = 0; x < S; x++)
+            {
+                float u = x / (float)S * Mathf.PI * 2f, v = y / (float)S * Mathf.PI * 2f;
+                float w = Mathf.Sin(u * 2f + Mathf.Sin(v * 3f) * 0.8f) * 0.5f + Mathf.Sin(v * 2f + Mathf.Sin(u * 2f) * 1.1f) * 0.5f;
+                float a = Mathf.Clamp01(0.5f + 0.45f * w);
+                px[y * S + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+            }
+        }
+        Texture2D tex = new Texture2D(S, S, TextureFormat.RGBA32, true);
+        tex.name = "Taller_SuperficieLago";
+        tex.wrapMode = TextureWrapMode.Repeat;
+        tex.SetPixels32(px);
+        tex.Apply(true, true);
+        return tex;
     }
 
     // ======================= INTERFAZ =======================
@@ -730,6 +1207,7 @@ public class WorkshopScene : MonoBehaviour
         if (suitSpin != null) suitSpin.Rotate(0f, (installing ? 120f : 14f) * Time.deltaTime, 0f, Space.World);
         for (int i = 0; i < algaeLights.Count; i++)
             algaeLights[i].intensity = 1.2f + Mathf.Sin(time * 1.3f + i * 1.7f) * 0.35f;
+        AnimateLair(time, Time.deltaTime);
 
         if (ComicViewer.IsShowing || Time.frameCount == ComicViewer.ClosedFrame || leaving) return;
         if (Input.GetKeyDown(KeyCode.Escape))

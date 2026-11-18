@@ -207,8 +207,9 @@ public class VisorAmmoHUD : MonoBehaviour
         root.anchoredPosition = new Vector2(-inset, YOff * s);
         root.localScale = Vector3.one * s;
 
-        int maxAmmo = Mathf.Max(1, shooting.maxAmmo);
-        int ammo = Mathf.Clamp(shooting.currentAmmo, 0, maxAmmo);
+        // Con la metralleta se ve su tanque de burbujas (y las balas si el tanque se vació)
+        int maxAmmo = Mathf.Max(1, shooting.HudMaxAmmo);
+        int ammo = Mathf.Clamp(shooting.HudAmmo, 0, maxAmmo);
         if (maxAmmo != builtMax) BuildCells(maxAmmo);
         if (ammo > lastAmmo) pickupFlash = Mathf.Max(pickupFlash, 0.15f);   // recarga en el agua: brillo suave
         lastAmmo = ammo;
@@ -216,7 +217,7 @@ public class VisorAmmoHUD : MonoBehaviour
         shotFlash = Mathf.Max(0f, shotFlash - dt);
         pickupFlash = Mathf.Max(0f, pickupFlash - dt);
 
-        bool low = ammo <= 5;
+        bool low = ammo <= Mathf.Max(5, maxAmmo / 6);
         bool empty = ammo <= 0;
         bool blinkOn = !low || Mathf.Repeat(HelmetVisorHUD.Now * 4f, 1f) < 0.6f;
         Color baseC = low ? danger : accent;
@@ -400,10 +401,11 @@ public class VisorAmmoHUD : MonoBehaviour
         }
         if (cells.Count > n) cells.RemoveRange(n, cells.Count - n);
 
-        // Marcas cada 10 balas por fuera del arco
+        // Marcas cada 10 balas por fuera del arco (cada 40 burbujas con el tanque de la metralleta)
         foreach (RawImage t in ticks) HelmetVisorHUD.Kill(t.gameObject);
         ticks.Clear();
-        for (int b = 10; b < maxAmmo; b += 10)
+        int tickStep = maxAmmo > 80 ? 40 : 10;
+        for (int b = tickStep; b < maxAmmo; b += tickStep)
         {
             float phi = -Half + b / (float)maxAmmo * 2f * Half;
             float rad = phi * Mathf.Deg2Rad;

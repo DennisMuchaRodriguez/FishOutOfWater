@@ -83,8 +83,14 @@ public class PlayerShooting : MonoBehaviour
     public float bubbleDamageFactor = 0.4f;
     public float bubbleSpeedMultiplier = 1.35f;
     public float bubbleScale = 0.55f;
-    [Tooltip("Burbujas que salen por cada bala del cargador")]
-    public int bubblesPerAmmo = 3;
+    [Tooltip("Cuando el tanque de burbujas está vacío, burbujas que salen por cada bala del cargador")]
+    public int bubblesPerAmmo = 8;
+    [Tooltip("Burbujas que caben en el tanque propio de la metralleta (se gasta antes que las balas)")]
+    public int bubbleCapacity = 240;
+    [Tooltip("Burbujas por segundo que recarga el tanque dentro del agua")]
+    public float bubbleWaterRefill = 30f;
+    [Tooltip("Burbujas que da cada bala de una cápsula de munición")]
+    public int bubblesPerPickupAmmo = 8;
     [Tooltip("Teclas para cambiar de arma principal (también la rueda del mouse)")]
     public KeyCode pistolKey = KeyCode.Alpha1;
     public KeyCode bubbleKey = KeyCode.Alpha2;
@@ -96,12 +102,21 @@ public class PlayerShooting : MonoBehaviour
     public string CurrentWeaponName { get { return usingBubbleGun ? "METRALLETA DE BURBUJAS" : "PISTOLA DE AGUA"; } }
     public bool IsBubbleGun { get { return usingBubbleGun; } }
     public bool HasBubbleGun { get { return bubbleUnlocked; } }
+    // Burbujas en el tanque de la metralleta
+    public int CurrentBubbles { get; private set; }
+    // Lo que muestra el HUD: con la metralleta, el tanque de burbujas (si se vació, las balas que está gastando)
+    public bool ShowingBubbles { get { return usingBubbleGun && CurrentBubbles > 0; } }
+    public int HudAmmo { get { return ShowingBubbles ? CurrentBubbles : currentAmmo; } }
+    public int HudMaxAmmo { get { return ShowingBubbles ? Mathf.Max(1, bubbleCapacity) : maxAmmo; } }
+    // ¿Le sirve una cápsula? (balas que faltan o, con la metralleta, burbujas que faltan)
+    public bool WantsAmmo { get { return currentAmmo < maxAmmo || (bubbleUnlocked && CurrentBubbles < bubbleCapacity); } }
     public event System.Action<string> OnWeaponChanged;
 
     bool bubbleUnlocked;
     bool usingBubbleGun;
     float bubbleDamageBonus = 1f;
     int bubbleShotsSinceAmmo;
+    float bubbleRefillAcc;
     Material bubbleMaterial;
     ParticleSystem bubbleTrail;
 
@@ -215,18 +230,27 @@ public class PlayerShooting : MonoBehaviour
 
         // --- Disparo normal ---
         bool wantsFire = (holdToFire || usingBubbleGun) ? Input.GetKey(shootKey) : Input.GetKeyDown(shootKey);
-        if (wantsFire && !IsCharging && Time.time >= nextFireTime && currentAmmo > 0)
+        bool hasShot = usingBubbleGun ? (CurrentBubbles > 0 || currentAmmo > 0) : currentAmmo > 0;
+        if (wantsFire && !IsCharging && Time.time >= nextFireTime && hasShot)
         {
             if (usingBubbleGun)
             {
-                // Metralleta: 10 burbujas por segundo; cada 3 burbujas gastan una bala
+                // Metralleta: 10 burbujas por segundo. Primero gasta su propio tanque de burbujas;
+                // vacío, cada bubblesPerAmmo burbujas gastan una bala del cargador
                 Shoot(false, true);
                 nextFireTime = Time.time + 1f / Mathf.Max(1f, bubbleShotsPerSecond);
-                bubbleShotsSinceAmmo++;
-                if (bubbleShotsSinceAmmo >= Mathf.Max(1, bubblesPerAmmo))
+                if (CurrentBubbles > 0)
                 {
-                    bubbleShotsSinceAmmo = 0;
-                    currentAmmo -= 1;
+                    CurrentBubbles--;
+                }
+                else
+                {
+                    bubbleShotsSinceAmmo++;
+                    if (bubbleShotsSinceAmmo >= Mathf.Max(1, bubblesPerAmmo))
+                    {
+                        bubbleShotsSinceAmmo = 0;
+                        currentAmmo -= 1;
+                    }
                 }
             }
             else
@@ -275,6 +299,22 @@ public class PlayerShooting : MonoBehaviour
             muzzleLight.intensity = Mathf.MoveTowards(muzzleLight.intensity, 0f, dt * 80f);
         }
 
+        // --- El tanque de burbujas se rellena solo dentro del agua ---
+        if (bubbleUnlocked && isInWaterForAmmo && CurrentBubbles < bubbleCapacity)
+        {
+            bubbleRefillAcc += bubbleWaterRefill * dt;
+            int add = Mathf.FloorToInt(bubbleRefillAcc);
+            if (add > 0)
+            {
+                bubbleRefillAcc -= add;
+                CurrentBubbles = Mathf.Min(bubbleCapacity, CurrentBubbles + add);
+            }
+        }
+        else
+        {
+            bubbleRefillAcc = 0f;
+        }
+
         // --- Recarga de munición en agua ---
         if (rechargeAmmoInWater && isInWaterForAmmo && currentAmmo < maxAmmo)
         {
@@ -303,7 +343,10 @@ public class PlayerShooting : MonoBehaviour
         int before = currentAmmo;
         currentAmmo = Mathf.Min(currentAmmo + amount, maxAmmo);
         int added = currentAmmo - before;
-        if (added > 0) OnAmmoPickup?.Invoke(added);
+        // Las cápsulas también llenan bastante el tanque de burbujas
+        int bubblesBefore = CurrentBubbles;
+        if (bubbleUnlocked && amount > 0) CurrentBubbles = Mathf.Min(bubbleCapacity, CurrentBubbles + amount * Mathf.Max(0, bubblesPerPickupAmmo));
+        if (added > 0 || CurrentBubbles > bubblesBefore) OnAmmoPickup?.Invoke(Mathf.Max(added, 1));
         return added;
     }
 
@@ -319,6 +362,7 @@ public class PlayerShooting : MonoBehaviour
         bool was = bubbleUnlocked;
         bubbleUnlocked = unlocked;
         bubbleDamageBonus = Mathf.Max(0.1f, damageBonus);
+        if (unlocked && !was) CurrentBubbles = bubbleCapacity;   // recién instalada: tanque lleno
         if (unlocked && !was) SelectWeapon(true);      // recién instalada: se estrena
         if (!unlocked && usingBubbleGun) SelectWeapon(false);
     }

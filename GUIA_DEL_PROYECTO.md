@@ -474,6 +474,15 @@ En **PlayerBase**.
 | **Fly Force** | 15 | 15 | Empuje hacia arriba del propulsor |
 | **Max Fly Speed** | 8 | 8 | Velocidad máxima de subida |
 | **Air Control** | 0.7 | 0.7 | Control al caer sin propulsor (multiplica la velocidad) |
+| **Air Grip** | 3 | 3 | Qué tan rápido el rumbo en el aire sigue hacia dónde mira el pez: al girar con turbo traza la curva en vez de derrapar de lado |
+| **High Speed Turn Factor** | 0.7 | 0.7 | Giro en el aire a velocidad máxima comparado con el normal (curvas más abiertas y estables) |
+| **Air Turn Response** | 6 | 6 | Suavizado del giro en el aire (más bajo = más suave) |
+
+El turbo en el aire empuja menos al acercarse a su velocidad máxima: llega a tope sin pasarse ni dar tirones.
+
+**No atraviesa el terreno**: el Rigidbody usa detección continua. Además hay una red de seguridad: si entre un paso
+de física y el siguiente el pez cruzó el suelo, un árbol o una roca, vuelve al punto del choque (por fuera) y pierde la
+velocidad que lo metía adentro. Si de todos modos quedara debajo del terreno (fuera del lago), sube a la superficie.
 
 ### Referencias
 | Campo | En escena | Qué hace |
@@ -635,6 +644,14 @@ La munición **no se recarga con el agua** (salvo que actives `Recharge Ammo In 
 - Con un ave fijada, las marcas de la retícula se cierran en diagonal, se pone blanca y gira más rápido.
 - Una bala que llega en menos de 0.1 s (de cerca) no da tiempo a que el ave la esquive.
 
+**Metralleta de burbujas** (mejora del Taller): cada burbuja hace poco daño, así que tiene **su propio tanque de 240
+burbujas** que se gasta antes que las balas. El tanque **se rellena solo dentro del agua** (30 burbujas por segundo) y
+cada cápsula de munición también lo llena (8 burbujas por cada bala de la cápsula). Si el tanque se vacía, sigue
+disparando con las balas del cargador: 8 burbujas por bala. Con la metralleta, el arco de munición del casco muestra el
+tanque (marcas cada 40 burbujas).
+Campos (no están en la escena, usan estos valores): `Bubble Shots Per Second` 10, `Bubble Damage Factor` 0.4,
+`Bubble Capacity` 240, `Bubble Water Refill` 30, `Bubbles Per Pickup Ammo` 8, `Bubbles Per Ammo` 8.
+
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
 | **Shoot Key** | Mouse0 | Mouse0 | Disparo |
@@ -708,16 +725,33 @@ Las grietas y el filtro rojo de daño siguen saliendo de aquí.
 | **Low Ammo Threshold** | 5 | Parpadea con estas balas o menos |
 | **Low Energy Threshold** | 25 | Parpadea con este % de combustible o menos |
 | **Armor Slider / Fill Image / Icon / Text** | elementos UI | Barra de armadura |
-| **Crack Overlay** | imagen | Grietas en pantalla con poca armadura |
+| **Crack Overlay** | imagen | Grieta vieja (imagen fija). Ya no se usa: ahora el cristal del casco se agrieta solo (HelmetVisorHUD) |
+| **Use Old Crack** | ✘ | Vuelve a mostrar la grieta vieja con poca armadura |
 | **Red Filter** | imagen | Filtro rojo al recibir daño o morir |
 | **Armor Low Color** | rojo | Color con poca armadura |
 | **Armor Low Threshold** | 25 | Armadura baja por debajo de este valor |
 | **Red Filter Intensity** | 0.3 | Intensidad del filtro rojo |
+| **Low Blink Time** | 2.5 | Con poca armadura el filtro rojo parpadea estos segundos y después queda fijo |
+| **Low Steady Factor** | 0.35 | Intensidad del rojo fijo (fracción de Red Filter Intensity): avisa sin molestar |
 | **Ui Panel Rect** | panel del HUD | Panel que se sacude |
 | **Ui Shake Duration** / **Ui Shake Magnitude** | 0.5 / 18.5 | Sacudida del panel al recibir daño |
 
 ### HelmetVisorHUD (en VistaInterior): vista desde el casco
 Construye el marco, el cristal, la retícula y los textos por código. **Durante la cinemática se apaga entero.**
+
+**Grietas del cristal**: el cristal del casco se raja de a poco. Sale una grieta en forma de telaraña cada vez que el
+traje baja del 60%, 40%, 25% y 12%. Cada grieta aparece con un destello, un crujido y una sacudida, y crece desde el
+punto del golpe. Se borran si el traje se repara un poco más allá de ese umbral. Bajo el agua se notan menos.
+Las grietas se dibujan por código (brazos rectos con quiebres, ramas y anillos), cuatro distintas.
+
+**Poca vida**: el borde del visor, la barra del traje y el filtro rojo de pantalla parpadean unos segundos al bajar del
+25% (y otra vez al bajar del 12%). Después quedan en un rojo fijo y suave.
+
+| Campo | Defecto | Qué hace |
+|---|---|---|
+| **Crack Opacity** / **Crack Color** | 0.9 / blanco azulado | Opacidad y color de las grietas |
+| **Low Health Blink Time** | 2.5 | Segundos que parpadea el rojo de poca vida (borde y barra del traje) |
+| **Low Health Steady Red** | 0.35 | Qué tan rojo queda el borde después de parpadear |
 
 **Verlo en el editor sin darle Play**: menú **Herramientas > Casco > Vista previa del casco**.
 - Abre una ventana y arma el casco como en el juego: marco, cristal, munición, propulsor, traje, misión, retícula y textos.
@@ -822,6 +856,26 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
 | Suffocate Time | 6 | Segundos fuera del agua antes de morir |
 | Visual / Procedural Wiggle / Wiggle Amount | auto / **por tipo** | Modelo y coleteo |
 
+### Peces defensores (`DefenderFish`, desde el nivel 10)
+Desde el nivel 10 se suman **2 peces defensores cada 3 niveles**: 2 en los niveles 10-12, 4 en 13-15, 6 en 16-18 y 8 en 19-20.
+Son peces de otros colores (verde, violeta y turquesa, no naranja como el protagonista) con un **traje gris y blanco**
+(`Traje_Defensor`): casco con visor, mochila con tanques y un cañón de agua en la espalda.
+- **No vuelan**: nadan rápido (8,5 m/s; los demás pasean a ~3 m/s) cerca de la superficie, sin hundirse mucho, cada uno
+  por su **sector** del lago. Si un ave caza a un pez cerca, van hacia ese pez a defenderlo.
+- **Disparan** a las aves que los siguen o que cazan peces cerca (apuntan adelante del ave).
+- **Si los atrapan, se sueltan al instante**: la descarga del traje hace que el ave lo suelte, salga despedida y quede
+  aturdida un momento (buen momento para dispararle). Cada vez el traje pierde un tercio.
+- Al tercer atrapón **el traje se rompe** ("¡UN DEFENSOR PERDIÓ SU TRAJE!") y queda como un pez normal: huye y se lo
+  pueden comer como a los demás.
+- Cuentan como peces a salvo (están en el total de la misión).
+
+En el GameDirector (**Peces defensores**): `Defender Start Level` (10), `Defender Level Step` (3), `Defenders Per Step`
+(2), **`Test Defenders`** (para probarlos en cualquier nivel: pon por ejemplo 2), `Defender Suit Model` (Traje_Defensor) y
+`Defender Materials` (PezVerde, PezVioleta, PezTurquesa en `Assets/Models/PezNormal`).
+En el componente `DefenderFish` de cada uno (se agrega solo): `Suit Health` 100, `Damage Per Catch` 34,
+`Patrol Speed` 8,5, `Patrol Depth` (0,35-0,7), `Escort Range` 20, `Range` 26, `Fire Interval` 0,6, `Damage` 6,
+`Shot Speed` 90.
+
 ### BirdAI (cada pájaro)
 | Campo | Defecto | Qué hace |
 |---|---|---|
@@ -830,6 +884,12 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
 | Patrol Altitude | (12, 20) | Altura de patrulla sobre el agua |
 | Stalk Altitude | 9 | Altura al acechar un pez |
 | Min Altitude Above Ground | 3 | Altura mínima sobre el terreno |
+| Max Altitude | 55 | Techo sobre el agua (persiguiendo al jugador puede subir hasta 25 m por encima de él) |
+| Leash Margin | 60 | Metros más allá de la orilla a los que se puede alejar antes de volver al lago |
+
+Las aves ya no se van al cielo ni se atascan en los bordes: al chocar con un árbol o una ladera la rodean por un lado (no
+suben sin parar); y si quieren volar pero casi no avanzan durante 3 s, o se alejan demasiado, salen un momento volando
+hacia el centro del lago a una altura segura.
 | Hunt Range | 75 | Distancia máxima a la que elige presa |
 | Stalk Time | (1, 2) | Segundos acechando antes de lanzarse |
 | Max Dive Distance | 22 | Distancia máxima para lanzarse en picada |
@@ -1014,6 +1074,27 @@ Flores, Juncos, Totora, Nenufar y Pasto_Acuatico (más los del fondo). Cada uno 
 - **Polen y motas de luz** cálidas flotando despacio alrededor de la cámara.
 - **Niebla baja** sobre el agua: velos suaves que se mueven con el viento, siempre a más de 14 m de la cámara.
 - **Bajo el agua**: partículas en suspensión flotando alrededor de la cámara, rayos de luz que bajan desde la superficie (más fuertes cerca de ella) y burbujas que suben.
+
+### El Taller (escena Taller, `WorkshopScene`)
+Una **cueva bajo el lago** convertida en el taller de un inventor (referencias: el taller de Tony Stark en las películas
+de Iron Man y cuevas submarinas estilizadas). Todo se arma por código al abrir la escena:
+- **Cueva**: estalactitas en el techo y estalagmitas junto a las paredes, cristales que brillan (con luz), algas, la
+  **superficie del lago** vista desde abajo en el techo (ondula), rayos de luz, **cáusticas** que se mueven en el suelo,
+  burbujas y un cardumen nadando cerca del techo.
+- **Sala de armaduras**: una repisa alta al fondo con pasarela, baranda y luz de borde, y tres **vitrinas** iluminadas con
+  trajes viejos: Mk I (hierro gris), Mk II (plata) y Mk III (rojo y oro).
+- **Mesa holográfica** con el traje en holograma girando, parpadeando y con anillos que suben.
+- **Brazo robótico** junto al traje: se mece apuntando al traje y **suelda** (chispas y destellos) durante la instalación.
+- **Monitores** con interfaces que brillan, **lámparas colgantes** y la **mesa de chatarra** con tablero de herramientas,
+  morsa, flexo y cajonero.
+- **El mecánico**: un bagre de canal erguido, con gafas, delantal de cuero, ocho barbillas y una llave inglesa.
+
+Modelos (en el componente WorkshopScene, todos hechos con `Herramientas/Modelado/entorno`): `Mechanic Model`
+(Mecanico_Bagre), `Bench Model` (Mesa_Chatarra), `Display Case Model` (Vitrina_Traje), `Holo Table Model` (Mesa_Holo),
+`Monitors Model` (Pantallas_Taller), `Arm Base / Segment / Claw Model` (BrazoRobot_*), `Stalactite Model` (Estalactitas)
+y `Crystal Model` (Cristales_Cueva). Si falta alguno se usa una figura simple.
+Para regenerarlos: `python Herramientas/Modelado/entorno/build_all.py Mecanico_Bagre Mesa_Holo ...` (los objetos del
+Taller están todos en `Taller_Props.py`; el traje de los defensores en `Traje_Defensor.py`).
 
 ### Otros
 - **Damageable** (cada pájaro): `Max Health` = Health del tipo × multiplicador de la oleada. `Destroy On Death` = ✘ (la muerte la maneja BirdAI).

@@ -14,6 +14,13 @@ public partial class PlayerController_Base : MonoBehaviour
     public float flyForce = 15f;
     public float maxFlySpeed = 8f;
     public float airControl = 0.7f;
+    [Tooltip("Qué tan rápido el rumbo en el aire sigue hacia dónde mira el pez (más alto = traza curvas limpias, sin derrapar)")]
+    public float airGrip = 3f;
+    [Tooltip("Giro en el aire a velocidad máxima comparado con el normal (más bajo = curvas más abiertas y estables)")]
+    [Range(0.3f, 1f)] public float highSpeedTurnFactor = 0.7f;
+    [Tooltip("Qué tan rápido responde el giro en el aire (más bajo = más suave)")]
+    public float airTurnResponse = 6f;
+    float airTurn;   // giro en el aire suavizado
 
     [Header("Referencias")]
     public Transform modeloPez;
@@ -200,6 +207,8 @@ public partial class PlayerController_Base : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         rb.useGravity = true;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
+        // Detección continua: a mucha velocidad no atraviesa el terreno, los árboles ni las rocas
+        rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
         currentArmor = maxArmor;
         dashChargesLeft = Mathf.Max(1, dashCharges);
@@ -301,6 +310,7 @@ public partial class PlayerController_Base : MonoBehaviour
     void FixedUpdate()
     {
         if (isDead || rb == null || rb.isKinematic) return;
+        PreventTunneling();
         UpdateWaterContact();
         // Límite de la zona: durante el giro en U el traje se maneja solo
         if (UpdateBoundary(Time.fixedDeltaTime))
@@ -333,7 +343,15 @@ public partial class PlayerController_Base : MonoBehaviour
             bool canFly = HandleJetpack(wantsToFly);
             HandleTurbo(canFly);
             HandleGroundAndAirMovement(canFly);
-            HandleTurning(turnSpeed);
+            if (isGrounded)
+            {
+                HandleTurning(turnSpeed);
+                airTurn = TurnInput;
+            }
+            else
+            {
+                HandleAirTurning();
+            }
             SwimSpeed01 = Mathf.MoveTowards(SwimSpeed01, 0f, Time.fixedDeltaTime * 2f);
         }
 
@@ -426,7 +444,10 @@ public partial class PlayerController_Base : MonoBehaviour
         if (!turbo) return;
 
         currentJetpackEnergy = Mathf.Max(currentJetpackEnergy - turboDrainRate * Time.fixedDeltaTime, 0f);
-        rb.AddForce(transform.forward * turboThrust, ForceMode.Acceleration);
+        // El empuje se suaviza al acercarse a la velocidad máxima: llega a tope sin pasarse ni dar tirones
+        float forwardSpeed = Vector3.Dot(rb.linearVelocity, transform.forward);
+        float taper = Mathf.Clamp01((turboAirSpeed - forwardSpeed) / (turboAirSpeed * 0.35f));
+        rb.AddForce(transform.forward * turboThrust * Mathf.Lerp(0.15f, 1f, taper), ForceMode.Acceleration);
         // Un poco de sustentación para no clavarse en el suelo al ir rápido
         if (!canFly && rb.linearVelocity.y < 0f) rb.AddForce(Vector3.up * flyForce * 0.4f, ForceMode.Acceleration);
     }
@@ -450,6 +471,9 @@ public partial class PlayerController_Base : MonoBehaviour
 
         if (IsKnockedBack) return;
 
+        // En el aire el rumbo sigue al pez: al girar a toda velocidad traza la curva en vez de derrapar de lado
+        if (!isGrounded) CarveAirVelocity();
+
         if (moveInput.magnitude < 0.1f && isGrounded && !IsTurbo)
         {
             Vector3 horizontalVel = new Vector3(rb.linearVelocity.x, 0, rb.linearVelocity.z);
@@ -466,6 +490,41 @@ public partial class PlayerController_Base : MonoBehaviour
             flatVel = Vector3.MoveTowards(flatVel, flatVel.normalized * maxHorizontalSpeed, 12f * Time.fixedDeltaTime);
             rb.linearVelocity = new Vector3(flatVel.x, rb.linearVelocity.y, flatVel.z);
         }
+    }
+
+    // Giro en el aire: suavizado y algo más abierto cuanto más rápido vuela (no da bandazos con el turbo)
+    void HandleAirTurning()
+    {
+        float dt = Time.fixedDeltaTime;
+        airTurn = Mathf.MoveTowards(airTurn, TurnInput, airTurnResponse * dt);
+        Vector3 flat = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+        float speed01 = Mathf.Clamp01((flat.magnitude - walkSpeed) / Mathf.Max(1f, turboAirSpeed - walkSpeed));
+        float rate = turnSpeed * Mathf.Lerp(1f, highSpeedTurnFactor, speed01);
+        if (Mathf.Abs(airTurn) > 0.01f)
+        {
+            rb.MoveRotation(rb.rotation * Quaternion.Euler(0f, airTurn * rate * dt, 0f));
+            rb.angularVelocity = Vector3.zero;
+        }
+        else
+        {
+            rb.angularVelocity = new Vector3(0f, Mathf.Lerp(rb.angularVelocity.y, 0f, deceleration * dt), 0f);
+        }
+    }
+
+    // Gira la velocidad horizontal hacia el frente del pez (solo si va hacia adelante, no al retroceder)
+    void CarveAirVelocity()
+    {
+        Vector3 v = rb.linearVelocity;
+        Vector3 flat = new Vector3(v.x, 0f, v.z);
+        float speed = flat.magnitude;
+        if (speed < 2f || airGrip <= 0f) return;
+        Vector3 fwd = new Vector3(transform.forward.x, 0f, transform.forward.z);
+        if (fwd.sqrMagnitude < 0.001f) return;
+        fwd.Normalize();
+        if (Vector3.Dot(flat / speed, fwd) < -0.2f) return;
+        float grip = airGrip * Mathf.Lerp(0.5f, 1f, Mathf.Clamp01(speed / Mathf.Max(1f, turboAirSpeed)));
+        Vector3 carved = Vector3.RotateTowards(flat, fwd * speed, grip * Time.fixedDeltaTime, 0f);
+        rb.linearVelocity = new Vector3(carved.x, v.y, carved.z);
     }
 
     void HandleTurning(float speed)

@@ -10,7 +10,12 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 TODOS = ['Pino_A', 'Pino_B', 'Abeto', 'Arbol_Hoja', 'Abedul', 'Sauce', 'Arbusto', 'Helecho', 'Hierba', 'Flores',
          'Juncos', 'Totora', 'Nenufar', 'Pasto_Acuatico',
          'Roca_A', 'Piedras_Fondo', 'Tronco_Hundido', 'Alga_A', 'Alga_B', 'Alga_Brillante', 'Lata', 'Bateria',
-         'Rueda_Bici']
+         'Rueda_Bici', 'Traje_Defensor', 'Mecanico_Bagre',
+         # Objetos del Taller: se generan con Taller_Props.py (un solo script para todos)
+         'Mesa_Chatarra', 'Vitrina_Traje', 'Mesa_Holo', 'BrazoRobot_Base', 'BrazoRobot_Tramo', 'BrazoRobot_Pinza',
+         'Estalactitas', 'Cristales_Cueva', 'Pantallas_Taller']
+TALLER = {'Mesa_Chatarra', 'Vitrina_Traje', 'Mesa_Holo', 'BrazoRobot_Base', 'BrazoRobot_Tramo', 'BrazoRobot_Pinza',
+          'Estalactitas', 'Cristales_Cueva', 'Pantallas_Taller'}
 
 
 def main():
@@ -18,13 +23,14 @@ def main():
     nombres = [a for a in sys.argv[1:] if not a.startswith('--')] or TODOS
     fallos = []
     for n in nombres:
-        script = os.path.join(AQUI, n + '.py')
+        script = os.path.join(AQUI, 'Taller_Props.py' if n in TALLER else n + '.py')
         if not os.path.exists(script):
             print('FALTA', script)
             fallos.append(n)
             continue
         t = time.time()
-        r = subprocess.run([sys.executable, script] + extra, capture_output=True, text=True)
+        args = [n] if n in TALLER else []
+        r = subprocess.run([sys.executable, script] + args + extra, capture_output=True, text=True)
         lineas = [l for l in r.stdout.splitlines() if l.startswith(('TRIANGULOS', 'TAMANO_UNITY', 'HOJA'))]
         print('%-16s %s  %.0f s' % (n, 'OK' if r.returncode == 0 else 'ERROR', time.time() - t))
         for l in lineas:

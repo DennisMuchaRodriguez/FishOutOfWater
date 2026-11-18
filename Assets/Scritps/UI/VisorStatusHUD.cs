@@ -168,6 +168,8 @@ public class VisorStatusHUD : MonoBehaviour
         g.guide.color = new Color(baseC.r, baseC.g, baseC.b, 0.3f);
     }
 
+    float suitLowTime;
+
     void UpdateSuit(float v, float dt)
     {
         Gauge g = suit;
@@ -182,7 +184,10 @@ public class VisorStatusHUD : MonoBehaviour
         g.heal = Mathf.Max(0f, g.heal - dt * 1.5f);
 
         bool low = v <= Low;
-        bool blinkOn = !low || Mathf.Repeat(HelmetVisorHUD.Now * 4f, 1f) < 0.6f;
+        // Poca vida: parpadea al principio y después queda en rojo fijo (sin molestar)
+        suitLowTime = low ? suitLowTime + dt : 0f;
+        float blinkTime = visor != null ? visor.lowHealthBlinkTime : 2.5f;
+        bool blinkOn = !low || suitLowTime > blinkTime || Mathf.Repeat(HelmetVisorHUD.Now * 4f, 1f) < 0.6f;
         Color baseC = low ? danger : g.color;
         float lit = v * Cells, ghostLit = g.ghost * Cells;
         float hit = g.ghostWait > 0f ? 1f : 0.6f;

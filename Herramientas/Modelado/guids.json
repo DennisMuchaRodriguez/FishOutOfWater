@@ -311,6 +311,74 @@
    "png": "331af67fbe6640c7b6e74c5d07177ad4",
    "mat": "7383719bcdc74be4a560f8975625af5e",
    "folder_meta": "5090a85bca574a97a85f0dacf9a3833c"
+  },
+  "Traje_Defensor": {
+   "folder": "Assets/Models/Entorno/Traje_Defensor",
+   "fbx": "7be11d519d444fa1ba1a18bab62d185e",
+   "png": "eb99de7a789b4561a8b1aff14ee35dc4",
+   "mat": "67cb4a96521442d7b7db2591353fdcf3",
+   "folder_meta": "cc57e67d0fb84fa4a622ba0fb5a5af65",
+   "png_emission": "67d89f8cd7804f0599196bfa9ade2ae4"
+  },
+  "BrazoRobot_Base": {
+   "folder": "Assets/Models/Entorno/BrazoRobot_Base",
+   "fbx": "27b1d43163924573a818bb50ec4cf2b4",
+   "png": "bc6fff080c944169bd8354593d185894",
+   "mat": "a471cac190964173b1a4824094643161",
+   "folder_meta": "0ffdbd6aea7f460d8f7eded0cc1ed029"
+  },
+  "BrazoRobot_Tramo": {
+   "folder": "Assets/Models/Entorno/BrazoRobot_Tramo",
+   "fbx": "7d18834bf418450f8f7e2edab683bc3c",
+   "png": "a103abf438334d6bad625d8fa14f11b8",
+   "mat": "d8455989d1d944148e49e7fa3a1b152c",
+   "folder_meta": "bfdea6a7201d42649fc6da165d2c65cf"
+  },
+  "BrazoRobot_Pinza": {
+   "folder": "Assets/Models/Entorno/BrazoRobot_Pinza",
+   "fbx": "72feeb0abdea404698d112b28b60c54f",
+   "png": "393b9000ac3c44679211cd43c926c151",
+   "mat": "57104ce33f814679b30378d2178a8b82",
+   "folder_meta": "b87717952a204418bd40d2660825c6e4"
+  },
+  "Vitrina_Traje": {
+   "folder": "Assets/Models/Entorno/Vitrina_Traje",
+   "fbx": "6e73852df4e74f53a812b44d3b599241",
+   "png": "caa614c3aec44d45b9634b096315764a",
+   "mat": "431cf750e84f4dc7baa1288d0f8155e2",
+   "folder_meta": "d38e16d1b04849388764d42459227f52",
+   "png_emission": "36d165e8827c4f7190d71ed450310686"
+  },
+  "Mesa_Holo": {
+   "folder": "Assets/Models/Entorno/Mesa_Holo",
+   "fbx": "439fecebc30c49bd82152f8d77cf4361",
+   "png": "f6e18b8a017d4e73bb8c41a70c400ba1",
+   "mat": "2617aed33ccb4195bb06c414770ec0cf",
+   "folder_meta": "800bc2ebfbc2428ba1edfca1652ddcc0",
+   "png_emission": "8da2c6c685cc45f795794463d35705f3"
+  },
+  "Estalactitas": {
+   "folder": "Assets/Models/Entorno/Estalactitas",
+   "fbx": "14850af57d8b496a98b4a09a8cd31f5c",
+   "png": "424e5053b85d4a8e8a81446966a230ff",
+   "mat": "a0d6a723f10440afb5cc5fccf9a2570d",
+   "folder_meta": "ab683c5567f64e27bdfceab85490ed59"
+  },
+  "Cristales_Cueva": {
+   "folder": "Assets/Models/Entorno/Cristales_Cueva",
+   "fbx": "1f8f375275fe40b5ad740d897b9d65d5",
+   "png": "3e890f3136d84bbaa81d250be572a5ff",
+   "mat": "d97269a90c3e46e2bb1d5440a2a72e30",
+   "folder_meta": "39378b2ecbaa4745b3b82b58b9694c4b",
+   "png_emission": "db6a2ee9d3fa4c6a92ef1a6190db9f94"
+  },
+  "Pantallas_Taller": {
+   "folder": "Assets/Models/Entorno/Pantallas_Taller",
+   "fbx": "1e934eea6ef548ad81380d16d5e410a5",
+   "png": "b97beb9c4f8f4833ba03d9d20359ae93",
+   "mat": "a93cb8990e0f4b48aa8ff95630450dad",
+   "folder_meta": "499afa7e33ae49c0bd0efaa185728b7b",
+   "png_emission": "0412e8560e7c49b992958d9ea25a4548"
   }
  },
  "scripts": {},

@@ -42,6 +42,12 @@ public class UI_PlayerStatus : MonoBehaviour
     public Color armorLowColor = Color.red;
     public float armorLowThreshold = 25f;
     public float redFilterIntensity = 0.3f;
+    [Tooltip("Segundos que parpadea el filtro rojo al quedar con poca vida; después queda fijo y suave")]
+    public float lowBlinkTime = 2.5f;
+    [Tooltip("Intensidad del filtro rojo fijo después de parpadear (fracción de Red Filter Intensity)")]
+    [Range(0f, 1f)] public float lowSteadyFactor = 0.35f;
+    [Tooltip("La grieta vieja (imagen fija). Ahora el cristal del casco se agrieta solo (HelmetVisorHUD)")]
+    public bool useOldCrack = false;
 
     private bool isArmorBlinking = false;
     private Coroutine armorBlinkCoroutine;
@@ -194,7 +200,7 @@ public class UI_PlayerStatus : MonoBehaviour
             if (armorBlinkCoroutine != null) StopCoroutine(armorBlinkCoroutine);
             armorBlinkCoroutine = StartCoroutine(BlinkArmor());
 
-            if (crackOverlay != null) crackOverlay.gameObject.SetActive(true);
+            if (crackOverlay != null && useOldCrack) crackOverlay.gameObject.SetActive(true);
             if (redFilter != null) StartCoroutine(PulseRedFilter());
         }
         else if (!shouldBlink && isArmorBlinking)
@@ -225,9 +231,19 @@ public class UI_PlayerStatus : MonoBehaviour
     IEnumerator BlinkArmor()
     {
         isArmorBlinking = true;
+        float blinkStart = Time.time;
 
         while (isArmorBlinking)
         {
+            // Después de parpadear un rato queda en el color de poca vida, fijo
+            if (Time.time - blinkStart > lowBlinkTime)
+            {
+                if (armorFillImage != null) armorFillImage.color = armorLowColor;
+                if (armorText != null) armorText.color = armorLowColor;
+                if (armorIcon != null) armorIcon.color = armorLowColor;
+                yield return null;
+                continue;
+            }
 
             if (armorFillImage != null) armorFillImage.color = armorLowColor;
             if (armorText != null) armorText.color = armorLowColor;
@@ -257,10 +273,13 @@ public class UI_PlayerStatus : MonoBehaviour
 
     IEnumerator PulseRedFilter()
     {
+        float start = Time.time;
         while (playerController.currentArmor > 0 && playerController.currentArmor / playerController.maxArmor * 100 <= armorLowThreshold)
         {
-            float pulse = Mathf.Sin(Time.time * blinkSpeed) * 0.5f + 0.5f;
-            float alpha = pulse * redFilterIntensity;
+            // Parpadea al principio y después se queda en un rojo suave y fijo
+            float pulse = Mathf.Sin((Time.time - start) * blinkSpeed - Mathf.PI * 0.5f) * 0.5f + 0.5f;
+            float settle = Mathf.Clamp01((Time.time - start - lowBlinkTime) / 0.8f);
+            float alpha = Mathf.Lerp(pulse * redFilterIntensity, redFilterIntensity * lowSteadyFactor, settle);
 
             if (redFilter != null)
             {

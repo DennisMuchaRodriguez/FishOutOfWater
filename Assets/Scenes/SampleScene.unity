@@ -2521,6 +2521,15 @@ MonoBehaviour:
   playArrivalCinematic: 1
   cinematicOnlyFirstWave: 1
   cinematicDuration: 6.5
+  defenderStartLevel: 10
+  defenderLevelStep: 3
+  defendersPerStep: 2
+  testDefenders: 0
+  defenderSuitModel: {fileID: 919132149155446097, guid: 7be11d519d444fa1ba1a18bab62d185e, type: 3}
+  defenderMaterials:
+  - {fileID: 2100000, guid: d7f8a7e24d7149bf84c5a91b393d677c, type: 2}
+  - {fileID: 2100000, guid: 87ef13f814724feea27cd0fd45f59040, type: 2}
+  - {fileID: 2100000, guid: 19a227bc982245aea000b20841d46f8e, type: 2}
   ammoPickups: 6
   ammoPerPickup: 10
   pickupRespawnTime: 12

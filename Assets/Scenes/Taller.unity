@@ -275,6 +275,14 @@ MonoBehaviour:
   - {fileID: 919132149155446097, guid: a1fa5acc9f11469c833dbbe760d0a489, type: 3}
   - {fileID: 919132149155446097, guid: 7093acf29cde4e0fa2dec42c6d9ead79, type: 3}
   glowAlgaModel: {fileID: 919132149155446097, guid: dc83eb6603584e50abcfa2fad2f190c1, type: 3}
+  displayCaseModel: {fileID: 919132149155446097, guid: 6e73852df4e74f53a812b44d3b599241, type: 3}
+  holoTableModel: {fileID: 919132149155446097, guid: 439fecebc30c49bd82152f8d77cf4361, type: 3}
+  monitorsModel: {fileID: 919132149155446097, guid: 1e934eea6ef548ad81380d16d5e410a5, type: 3}
+  armBaseModel: {fileID: 919132149155446097, guid: 27b1d43163924573a818bb50ec4cf2b4, type: 3}
+  armSegmentModel: {fileID: 919132149155446097, guid: 7d18834bf418450f8f7e2edab683bc3c, type: 3}
+  armClawModel: {fileID: 919132149155446097, guid: 72feeb0abdea404698d112b28b60c54f, type: 3}
+  stalactiteModel: {fileID: 919132149155446097, guid: 14850af57d8b496a98b4a09a8cd31f5c, type: 3}
+  crystalModel: {fileID: 919132149155446097, guid: 1f8f375275fe40b5ad740d897b9d65d5, type: 3}
   fxMaterialTemplate: {fileID: 2100000, guid: 6a354c1417c134944959abf12f5b0f22, type: 2}
   glowColor: {r: 0.35, g: 1, b: 0.8, a: 1}
   testLevelIndex: 2

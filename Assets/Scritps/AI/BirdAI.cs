@@ -36,6 +36,10 @@ public partial class BirdAI : MonoBehaviour
     public Vector2 patrolAltitude = new Vector2(12f, 20f);
     public float stalkAltitude = 9f;
     public float minAltitudeAboveGround = 3f;
+    [Tooltip("Altura máxima sobre el agua (persiguiendo al jugador puede subir hasta 25 m por encima de él)")]
+    public float maxAltitude = 55f;
+    [Tooltip("Metros más allá de la orilla a los que puede alejarse antes de volver al lago")]
+    public float leashMargin = 60f;
 
     [Header("Caza")]
     public float huntRange = 75f;
@@ -138,6 +142,12 @@ public partial class BirdAI : MonoBehaviour
     float patrolHeight;
     float groundCacheY = float.NegativeInfinity;
     float groundCacheTimer;
+    // Atascos: si quiere volar pero casi no avanza, sale volando hacia el lago un momento
+    Vector3 stuckCheckPos;
+    float stuckCheckTimer = 1.5f;
+    int stuckStrikes;
+    float unstickTimer;
+    Vector3 unstickDir;
     float sightTimer;
     bool canSeePlayer;
     float bodyRadius = 1.3f;
@@ -523,6 +533,21 @@ public partial class BirdAI : MonoBehaviour
         return d.magnitude < maxDiveDistance && (IsDiver || TargetFish.Depth <= catchDepth + 0.4f);
     }
 
+    // Descarga del traje de un pez defensor: lo suelta, sale despedida hacia arriba y queda aturdida un momento
+    public void Repel(Vector3 from, float stunSeconds)
+    {
+        if (dead) return;
+        Vector3 away = transform.position - from;
+        away.y = 0f;
+        if (away.sqrMagnitude < 0.01f) away = -transform.forward;
+        ReleaseTarget();
+        CancelSpecialHunt();
+        rb.linearVelocity = away.normalized * 7f + Vector3.up * 9f;
+        stunTimer = Mathf.Max(stunTimer, stunSeconds);
+        attackTimer = Mathf.Max(attackTimer, stunSeconds + 0.5f);
+        diveCooldownTimer = Mathf.Max(diveCooldownTimer, 2.5f);
+    }
+
     void ReleaseTarget()
     {
         if (TargetFish != null && TargetFish.Hunter == this) TargetFish.Hunter = null;
@@ -815,6 +840,18 @@ public partial class BirdAI : MonoBehaviour
         }
         Vector3 desired = desiredVelocity + push * 2f;
 
+        // Límites: ni muy alto ni lejos del lago; y si quedó atascado, sale hacia el lago
+        CheckStuck(dt);
+        if (unstickTimer > 0f)
+        {
+            unstickTimer -= dt;
+            desired = unstickDir * Mathf.Max(9f, desiredVelocity.magnitude);
+        }
+        else if (!arriving)
+        {
+            desired += BoundsSteer();
+        }
+
         v = Vector3.MoveTowards(v, desired, accel * dt);
 
         // Altura mínima: sobre el agua (salvo en la picada o buceando) y sobre el terreno
@@ -841,9 +878,16 @@ public partial class BirdAI : MonoBehaviour
             if (Physics.SphereCast(transform.position, 0.8f, v.normalized, out hit, Mathf.Max(4f, v.magnitude * 0.6f), ~0, QueryTriggerInteraction.Ignore)
                 && hit.collider.attachedRigidbody == null)
             {
-                v += Vector3.up * accel * dt * 2f;
+                // Lo rodea por un lado y sube un poco (no sube sin parar: así no se van al cielo frente a una ladera)
+                Vector3 away = hit.normal;
+                away.y = 0f;
+                if (away.sqrMagnitude > 0.01f) v += away.normalized * accel * dt * 1.5f;
+                if (arriving || transform.position.y < Ceiling() - 3f) v += Vector3.up * accel * dt * 1.4f;
             }
         }
+
+        // Techo: cerca del límite de altura deja de subir
+        if (!arriving && v.y > 0f && transform.position.y > Ceiling() - 2f) v.y *= 0.4f;
 
         rb.linearVelocity = v;
 
@@ -866,6 +910,57 @@ public partial class BirdAI : MonoBehaviour
             targetRot *= Quaternion.Euler(0f, 0f, bank);
             rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRot, 1f - Mathf.Exp(-turnSpeed * dt)));
         }
+    }
+
+    // ======================= LÍMITES DEL VUELO =======================
+
+    float Ceiling()
+    {
+        float c = lake.SurfaceY + maxAltitude;
+        if (IsAggro && player != null) c = Mathf.Max(c, player.transform.position.y + 25f);
+        return c;
+    }
+
+    // Empuje de vuelta: hacia el lago si se alejó demasiado y hacia abajo si subió de más
+    Vector3 BoundsSteer()
+    {
+        Vector3 steer = Vector3.zero;
+        Vector3 pos = transform.position;
+        Vector3 toCenter = lake.Center - pos;
+        toCenter.y = 0f;
+        float dist = toCenter.magnitude;
+        float limit = lake.Radius + leashMargin;
+        if (dist > limit && dist > 0.01f) steer += toCenter / dist * Mathf.Min(14f, (dist - limit) * 0.5f + 3f);
+        float ceiling = Ceiling();
+        if (pos.y > ceiling) steer.y -= Mathf.Min(12f, (pos.y - ceiling) * 0.8f + 2f);
+        return steer;
+    }
+
+    // Cada 1.5 s: si quiere volar y casi no se movió (contra un árbol, una ladera o el borde del mapa) dos veces
+    // seguidas, o está muy lejos del lago, sale un momento volando hacia el centro y a una altura segura
+    void CheckStuck(float dt)
+    {
+        stuckCheckTimer -= dt;
+        if (stuckCheckTimer > 0f) return;
+        stuckCheckTimer = 1.5f;
+        Vector3 pos = transform.position;
+        bool wantsToMove = desiredVelocity.sqrMagnitude > 9f && !hovering && !lurking && !submerged && stunTimer <= 0f;
+        float moved = (pos - stuckCheckPos).magnitude;
+        stuckCheckPos = pos;
+        if (arriving || unstickTimer > 0f) { stuckStrikes = 0; return; }
+
+        Vector3 flat = lake.Center - pos;
+        flat.y = 0f;
+        bool farAway = flat.magnitude > lake.Radius + leashMargin * 2f;
+        stuckStrikes = wantsToMove && moved < 2f ? stuckStrikes + 1 : 0;
+        if (stuckStrikes < 2 && !farAway) return;
+
+        stuckStrikes = 0;
+        Vector3 safe = lake.Center;
+        safe.y = Mathf.Max(lake.SurfaceY + 14f, groundCacheY + 8f);
+        unstickDir = (safe - pos).normalized;
+        unstickTimer = 1.8f;
+        rb.linearVelocity = rb.linearVelocity * 0.3f + Vector3.up * 4f + unstickDir * 4f;
     }
 
     float GroundBelow()

@@ -36,6 +36,11 @@ public partial class PlayerController_Base
     [Tooltip("Espera mínima entre coletazos")]
     public float flopCooldown = 0.28f;
 
+    // ---- Red de seguridad contra atravesar el terreno ----
+    Vector3 lastSafePosition;
+    bool hasSafePosition;
+    float bodyRadius = -1f;
+
     [Header("Límite de la zona - NUEVO")]
     [Tooltip("Hasta cuántos metros más allá de la orilla del lago se puede ir")]
     public float boundaryMargin = 170f;
@@ -258,5 +263,79 @@ public partial class PlayerController_Base
             roll += Mathf.Sin((1f - k) * Mathf.PI * 2f) * 22f * k * flopSide;
             targetPitch = Mathf.Max(targetPitch, 14f * k);
         }
+    }
+
+    // ======================= NO ATRAVESAR EL TERRENO =======================
+    // El Rigidbody ya usa detección continua; esto es una red de seguridad por si igual se cuela a mucha velocidad:
+    //  1. Si entre el paso anterior y este el centro del pez cruzó el suelo, una pared, un árbol o una roca,
+    //     vuelve al punto del choque (por fuera) y pierde la velocidad que lo metía adentro.
+    //  2. Si de todos modos quedó debajo del terreno (fuera del lago), sube a la superficie.
+    void PreventTunneling()
+    {
+        if (bodyRadius < 0f)
+        {
+            bodyRadius = 0.4f;
+            Collider own = GetComponent<Collider>();
+            if (own != null) bodyRadius = Mathf.Clamp(Mathf.Min(own.bounds.extents.x, own.bounds.extents.z), 0.2f, 1f);
+        }
+
+        Vector3 pos = rb.position;
+        Vector3 v = rb.linearVelocity;
+        bool moved = false;
+        if (hasSafePosition)
+        {
+            Vector3 step = pos - lastSafePosition;
+            float dist = step.magnitude;
+            // Más de 30 m en un paso es un teletransporte a propósito: no se revisa
+            if (dist > 0.05f && dist < 30f)
+            {
+                RaycastHit[] hits = Physics.RaycastAll(lastSafePosition, step / dist, dist, ~0, QueryTriggerInteraction.Ignore);
+                float best = float.MaxValue;
+                RaycastHit hit = default(RaycastHit);
+                foreach (RaycastHit h in hits)
+                {
+                    if (h.collider.attachedRigidbody != null) continue;   // el propio pez, aves, peces, balas
+                    if (h.distance < best)
+                    {
+                        best = h.distance;
+                        hit = h;
+                    }
+                }
+                if (best < float.MaxValue)
+                {
+                    pos = hit.point + hit.normal * (bodyRadius + 0.05f);
+                    float into = Vector3.Dot(v, hit.normal);
+                    if (into < 0f) v -= hit.normal * into;
+                    moved = true;
+                }
+            }
+        }
+
+        // Debajo del terreno (fuera del agua del lago): a la superficie
+        Terrain terrain = Terrain.activeTerrain;
+        if (terrain != null && !isInWater && LakeWater.FindAt(pos) == null)
+        {
+            Vector3 tp = terrain.transform.position;
+            Vector3 size = terrain.terrainData != null ? terrain.terrainData.size : Vector3.zero;
+            if (pos.x > tp.x && pos.z > tp.z && pos.x < tp.x + size.x && pos.z < tp.z + size.z)
+            {
+                float ground = terrain.SampleHeight(pos) + tp.y;
+                if (pos.y < ground - 0.6f)
+                {
+                    pos.y = ground + bodyRadius + 0.3f;
+                    if (v.y < 0f) v.y = 0f;
+                    moved = true;
+                }
+            }
+        }
+
+        if (moved)
+        {
+            rb.position = pos;
+            transform.position = pos;
+            rb.linearVelocity = v;
+        }
+        lastSafePosition = pos;
+        hasSafePosition = true;
     }
 }
