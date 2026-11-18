@@ -27,7 +27,7 @@ public class LoadingScreen : MonoBehaviour
     static readonly string[] Tips =
     {
         "El agua recarga el propulsor del traje. Sin agua, arrástrate con ESPACIO.",
-        "Pulsa E para el giro de esquive: con A o D eliges el lado.",
+        "Esquiva con Q (izquierda) y E (derecha): el pez sale disparado de lado dando una vuelta.",
         "La metralleta de burbujas se recarga sola dentro del agua.",
         "Si un ave atrapa un pez, dispárale: lo soltará.",
         "Los peces defensores disparan a las aves, pero su traje no aguanta para siempre.",

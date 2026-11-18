@@ -461,16 +461,18 @@ En **PlayerBase**.
 - **F**: lanzar los misiles teledirigidos (si tienes la mejora).
 - **1 / 2** (o la rueda del ratón): cambiar entre la pistola y la metralleta de burbujas.
 - **Clic izquierdo**: disparar. **Clic derecho**: disparo cargado. **Esc**: pausa.
-- **E**: giro de esquive. El lado lo eliges con **A / D** mantenidas; sin dirección, va hacia el lado de la mira (y si
-  la mira está al centro, alterna). También sirve el **doble toque de A o D**.
+- **Q**: esquive a la izquierda. **E**: esquive a la derecha.
 
-**Giro de esquive** (`PlayerController_Base.Dodge.cs`): el pez se desplaza de golpe **7 m hacia el lado** mientras da una
-vuelta completa sobre sí mismo, como las aves: sale rápido, recorre la distancia y frena suave en 0,45 s (lo que iba
-hacia adelante se conserva). Durante 0,35 s las aves no lo pueden golpear. En el aire gasta 6 de combustible; en el agua
-no gasta. En **tercera persona la cámara da la vuelta completa (360°)** con el pez; en primera persona solo se ladea un
-poco (para no marear).
-Campos: `Dodge On Double Tap` ✔, `Dodge Key` E, `Double Tap Time` 0,28, `Dodge Distance` 7, `Dodge Duration` 0,45,
-`Dodge Cooldown` 0,75, `Dodge Invulnerable` 0,35, `Dodge Energy Cost` 6, `Dodge Camera Roll` 22.
+**Esquive** (`PlayerController_Base.Dodge.cs`): un **impulso brusco de lado** (sin tener que girar) mientras el pez da
+una **vuelta completa de 360°**. Sale de golpe a toda velocidad y frena enseguida: recorre 7,5 m en 0,42 s. Funciona
+igual si vuela hacia adelante o hacia atrás, si sube, si cae o si nada: solo cambia el movimiento de lado (lo demás se
+conserva). Durante 0,35 s las aves no lo pueden golpear. En el aire gasta 4 de combustible si tiene (sin combustible
+igual esquiva); en el agua no gasta.
+- **Tercera persona**: solo gira el modelo del pez; la cámara no gira (lo sigue de lado).
+- **Primera persona**: toda la pantalla da la vuelta completa.
+Campos: `Dodge Left Key` Q, `Dodge Right Key` E, `Dodge On Double Tap` ✘ (si lo activas, también con doble toque de
+A / D), `Double Tap Time` 0,28, `Dodge Distance` 7,5, `Dodge Duration` 0,42, `Dodge Cooldown` 0,6,
+`Dodge Invulnerable` 0,35, `Dodge Energy Cost` 4.
 
 ### Movimiento
 | Campo | Defecto | En escena | Qué hace |

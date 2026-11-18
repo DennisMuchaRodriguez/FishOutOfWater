@@ -836,12 +836,9 @@ public partial class PlayerController_Base : MonoBehaviour
         pitch -= recoilPitch;
 
         currentRoll = Mathf.Lerp(currentRoll, rollTarget, 1f - Mathf.Exp(-6f * dt));
-        // Giro de esquive: en tercera persona la cámara da la vuelta completa con el pez (gira alrededor de él);
-        // en primera persona solo se ladea un poco
-        float dodgeCam = DodgeCameraRoll();
-        if (isThirdPerson && IsDodging)
-            pos = transform.position + Quaternion.AngleAxis(dodgeCam, transform.forward) * (pos - transform.position);
-        Quaternion rot = Quaternion.Euler(pitch, yaw, currentRoll + dodgeCam);
+        // Esquive: en primera persona toda la pantalla da la vuelta completa; en tercera persona la cámara no gira
+        // (solo gira el modelo del pez, en UpdateModelTilt)
+        Quaternion rot = Quaternion.Euler(pitch, yaw, currentRoll + DodgeCameraRoll());
 
         // FOV dinámico: se abre con la velocidad de nado, el dash y el turbo
         fovKick = Mathf.Lerp(fovKick, 0f, 1f - Mathf.Exp(-3f * dt));
