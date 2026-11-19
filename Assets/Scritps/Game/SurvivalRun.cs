@@ -87,11 +87,18 @@ public static class SurvivalRun
         Upgrades.NotifyChanged();
     }
 
+    // Mejoras que no se ofrecen en Supervivencia: la Reparación acuática curaría el traje nadando, y en este modo
+    // el traje SOLO se repara en el Taller (cada 5 oleadas)
+    public static bool IsAllowed(UpgradeId id)
+    {
+        return id != UpgradeId.WaterRepair;
+    }
+
     // ¿Le queda algo por mejorar al traje en esta partida?
     public static bool HasUpgradesLeft()
     {
         foreach (UpgradeId id in UpgradeCatalog.OrderedIds())
-            if (UpgradeLevel(id) < UpgradeCatalog.MaxLevelOf(id)) return true;
+            if (IsAllowed(id) && UpgradeLevel(id) < UpgradeCatalog.MaxLevelOf(id)) return true;
         return false;
     }
 

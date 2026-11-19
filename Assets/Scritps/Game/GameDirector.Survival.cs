@@ -4,14 +4,15 @@ using UnityEngine;
 
 // Modo SUPERVIVENCIA del GameDirector (oleadas sin fin, mismo lago que la historia).
 // Lo que dura toda la partida vive en SurvivalRun; las oleadas las arma SurvivalWaves. Flujo:
-//  1. Al cargar el lago: los peces que quedan (los cazados no vuelven), los defensores que tocan a esta oleada y la
+//  1. Al cargar el lago: los peces que quedan (los cazados no vuelven), los defensores (uno más cada 5 oleadas) y la
 //     hora del día donde quedó.
 //  2. Cuenta atrás y llega la oleada: a veces toda junta, a veces por grupos que llegan por distintos lados (avisa
 //     por dónde viene cada grupo). Cinemática en la primera oleada y en las de jefe.
 //  3. Oleada superada: se guarda el récord y la siguiente llega aquí mismo, SIN reparar el traje (la armadura que
-//     perdiste no vuelve). Cada 5 oleadas (después de cada jefe) se va al Taller: se elige una mejora (estilo
-//     roguelike: solo para esta partida) y el traje vuelve reparado y recargado. Con el traje ya al máximo igual se
-//     baja al Taller a repararlo. Al vencer a un jefe llegan unos peces nuevos al lago.
+//     perdiste no vuelve). CADA 5 OLEADAS (después de cada jefe) pasan las tres cosas juntas: se va al Taller a elegir
+//     una mejora (estilo roguelike: solo para esta partida), el traje vuelve reparado y recargado (es la ÚNICA vez que
+//     te curas) y llega 1 pez defensor más. Con el traje ya al máximo igual se baja al Taller a repararlo.
+//     Al vencer a un jefe llegan unos peces nuevos al lago.
 //  4. Se pierde si el traje se destruye o si cazan demasiados peces (el 75 % de los del lago).
 // Para probar sin pasar por el menú: marca "Test Survival" y dale Play en la escena del lago.
 public partial class GameDirector
@@ -25,7 +26,8 @@ public partial class GameDirector
     [Range(0.3f, 1f)] public float survivalLossFraction = 0.75f;
     [Tooltip("Peces nuevos que llegan al lago al vencer una oleada con jefe (sin pasar de los del principio)")]
     [Min(0)] public int survivalFishPerBoss = 3;
-    [Tooltip("Ir al Taller cada cuántas oleadas superadas (5 = después de cada jefe). Solo ahí se repara el traje")]
+    [Tooltip("Cada cuántas oleadas superadas se va al Taller (5 = después de cada jefe). Solo ahí se repara el traje, " +
+             "y cada vez llega 1 pez defensor más")]
     [Min(1)] public int survivalWorkshopEvery = 5;
     [Tooltip("Segundos de calma antes de cada oleada")]
     public float survivalCalm = 10f;
@@ -125,7 +127,8 @@ public partial class GameDirector
         else
             Banner?.Invoke("SE ACERCA LA OLEADA " + n, "Traje reparado  //  Quedan " + FishAlive + " peces en el lago", Cyan);
         if (DefendersSpawned > 0)
-            Toast?.Invoke(DefendersSpawned + " PECES DEFENSORES PATRULLAN EL LAGO", Cyan);
+            Toast?.Invoke(DefendersSpawned == 1 ? "LLEGÓ UN PEZ DEFENSOR A PATRULLAR EL LAGO"
+                                                : DefendersSpawned + " PECES DEFENSORES PATRULLAN EL LAGO (UNO NUEVO)", Cyan);
 
         float calm = survivalCalm + (n == 1 ? 3f : 0f);
         bool firstHere = true;
@@ -221,7 +224,7 @@ public partial class GameDirector
             {
                 State = GameState.Intermission;
                 Countdown = 0f;
-                Banner?.Invoke("OLEADA " + cleared + " SUPERADA", news + "Baja al Taller: mejora y traje reparado", Cyan);
+                Banner?.Invoke("OLEADA " + cleared + " SUPERADA", news + "Al Taller: una mejora, traje reparado y un defensor más", Cyan);
                 Sfx.Play2D(Sonido.PezRescatado, 0.8f, 0.85f);
                 float wait = 3.5f;
                 while (wait > 0f)
@@ -248,7 +251,7 @@ public partial class GameDirector
                            news + next + (hurt ? "  //  El traje no se repara hasta entonces" : "  //  Recarga munición"), Cyan);
             Sfx.Play2D(Sonido.PezRescatado, 0.8f, 0.85f);
             int before = DefendersSpawned;
-            AddDefenders(fishLayer, SurvivalWaves.DefendersFor(n));
+            AddDefenders(fishLayer, SurvivalWaves.DefendersFor(n, every));
             if (DefendersSpawned > before)
                 Toast?.Invoke("¡LLEGAN " + (DefendersSpawned - before) + " PECES DEFENSORES!", Cyan);
             calm = survivalCalm;

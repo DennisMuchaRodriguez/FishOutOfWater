@@ -51,7 +51,7 @@ public class WorkshopPlan : ScriptableObject
         {
             List<UpgradeId> open = new List<UpgradeId>();
             foreach (UpgradeId id in order)
-                if (Upgrades.Level(id) < UpgradeCatalog.MaxLevelOf(id)) open.Add(id);
+                if (SurvivalRun.IsAllowed(id) && Upgrades.Level(id) < UpgradeCatalog.MaxLevelOf(id)) open.Add(id);
             while (open.Count > 0 && result.Count < OffersPerVisit)
             {
                 int i = rng.Next(open.Count);
@@ -87,6 +87,7 @@ public class WorkshopPlan : ScriptableObject
     static bool IsValid(UpgradeId id, int plannedLevel, List<WorkshopOffer> taken)
     {
         int current = Upgrades.Level(id);
+        if (SurvivalRun.InSurvival && !SurvivalRun.IsAllowed(id)) return false;   // en Supervivencia no se ofrece
         if (current >= UpgradeCatalog.MaxLevelOf(id)) return false;   // ya al máximo
         if (plannedLevel >= 2 && current < 1) return false;           // nivel II sin el I
         foreach (WorkshopOffer t in taken) if (t.upgrade == id) return false;

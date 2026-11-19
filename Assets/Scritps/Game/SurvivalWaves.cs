@@ -79,11 +79,13 @@ public static class SurvivalWaves
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics() { species = null; }
 
-    // Peces defensores en el lago: 2 desde la oleada 3 y 2 más cada 4 oleadas (4 en la 7, 6 en la 11, 8 desde la 15)
-    public static int DefendersFor(int wave)
+    public const int MaxDefenders = 8;
+
+    // Peces defensores en el lago: uno más cada tramo de 'every' oleadas (cada visita al Taller), hasta 8.
+    // Con every = 5: ninguno en las oleadas 1-5, 1 en las 6-10, 2 en las 11-15, 3 en las 16-20...
+    public static int DefendersFor(int wave, int every)
     {
-        if (wave < 3) return 0;
-        return Mathf.Min(8, 2 * (1 + (wave - 3) / 4));
+        return Mathf.Clamp((wave - 1) / Mathf.Max(1, every), 0, MaxDefenders);
     }
 
     public static float HealthFor(int wave)

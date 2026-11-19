@@ -163,7 +163,7 @@ public class WorkshopScene : MonoBehaviour
             if (!SurvivalRun.HasUpgradesLeft())
                 return "Ya no me queda nada que ponerle a ese traje. Te lo dejo como nuevo y vuelves arriba.";
             if (visitNumber <= 1)
-                return "¡Así que tú eres el pez del traje! Cada vez que despejes cinco oleadas, bajas: te reparo el traje y te armo una mejora. Elige una.";
+                return "¡Así que tú eres el pez del traje! Cada cinco oleadas bajas aquí: te reparo el traje, te armo una mejora y te mando un pez defensor. Elige una.";
             int pick = visitNumber + SurvivalRun.Seed;
             return SurvivalRun.LastWasBoss ? SurvivalBossLines[pick % SurvivalBossLines.Length] : SurvivalLines[pick % SurvivalLines.Length];
         }

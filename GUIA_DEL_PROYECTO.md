@@ -235,8 +235,9 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 
 ### Modo Supervivencia (oleadas sin fin)
 El mismo lago, los mismos peces, aves y jefes de la historia, pero las oleadas no se acaban: cada una trae más aves y más
-fuertes. Se juega en **tramos de 5 oleadas**: al final de cada tramo hay un jefe y después bajas al **Taller** a elegir
-una mejora (estilo roguelike) y a reparar el traje. Código: `SurvivalRun` (la partida, que sigue viva entre el lago y el
+fuertes. Se juega en **tramos de 5 oleadas**: al final de cada tramo hay un jefe y después pasan **tres cosas juntas**:
+bajas al **Taller** a elegir una mejora (estilo roguelike), **se repara el traje** (la única vez que te curas) y llega
+**1 pez defensor más**. Código: `SurvivalRun` (la partida, que sigue viva entre el lago y el
 Taller), `SurvivalWaves` (arma cada oleada) y `GameDirector.Survival.cs` (el flujo en el lago).
 
 **Cómo es una partida**
@@ -245,8 +246,9 @@ Taller), `SurvivalWaves` (arma cada oleada) y `GameDirector.Survival.cs` (el flu
 2. Cuenta atrás de calma (13 s la primera vez, 10 s después) y llega la oleada. Cinemática de llegada en la oleada 1 y
    en las de jefe.
 3. **Oleada superada** → la siguiente llega en el mismo lago, **sin reparar el traje**: la armadura que perdiste no
-   vuelve hasta el Taller (la única excepción es la mejora Reparación acuática, que repara nadando). El cartel dice
-   después de qué oleada toca el Taller. La munición sí se recarga con las cápsulas y el combustible en el agua.
+   vuelve hasta el Taller. Por eso en Supervivencia **no se ofrece la mejora Reparación acuática** (curaría nadando).
+   El cartel dice después de qué oleada toca el Taller. La munición sí se recarga con las cápsulas y el combustible en
+   el agua.
 4. **Cada 5 oleadas** (después de vencer al jefe: oleadas 5, 10, 15...) el cartel avisa ("Baja al Taller") y a los
    3,5 s vas al Taller:
    - Es **el mismo Taller de la historia**: las primeras 6 visitas ofrecen los mismos 3 planos que las 6 visitas de la
@@ -299,8 +301,8 @@ la cantidad sube más despacio y la oleada 4 de cada tramo es la más dura antes
   DERECHA, POR DETRÁS). Si derribas a todas antes de tiempo, el grupo siguiente llega a los 3 s (no hay que esperar).
 - La oleada no termina hasta que llegaron y cayeron todos los grupos.
 
-**Peces defensores**: 2 desde la oleada 3 y 2 más cada 4 oleadas (4 en la 7, 6 en la 11, 8 desde la 15); los nuevos
-llegan entre oleadas. Al volver del Taller todos tienen el traje reparado. No cuentan entre los 28 peces del lago (si cazan a uno no suma a la derrota).
+**Peces defensores**: **1 más cada 5 oleadas**, al volver del Taller (ninguno en las oleadas 1-5, 1 en las 6-10, 2 en
+las 11-15, 3 en las 16-20... hasta 8). Al volver del Taller todos tienen el traje reparado. No cuentan entre los 28 peces del lago (si cazan a uno no suma a la derrota).
 
 **El casco**: en Supervivencia el panel de misión dice "OLEADA n" y las 5 pastillas son el tramo hasta el próximo jefe
 y el Taller (la última, roja, es la del jefe).
@@ -313,7 +315,7 @@ y el Taller (la última, roja, es la del jefe).
 | Survival Fish | 28 | Peces del lago al empezar (tipos y cardúmenes del último nivel de la historia) |
 | Survival Loss Fraction | 0.75 | Pierdes si cazan este porcentaje |
 | Survival Fish Per Boss | 3 | Peces nuevos al vencer una oleada con jefe |
-| Survival Workshop Every | 5 | Ir al Taller (mejora y reparación) cada cuántas oleadas superadas |
+| Survival Workshop Every | 5 | Cada cuántas oleadas se va al Taller (mejora, reparación y 1 defensor más) |
 | Survival Calm | 10 s | Calma antes de cada oleada (+3 s en la primera) |
 
 ---

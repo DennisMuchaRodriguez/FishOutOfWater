@@ -100,7 +100,7 @@ public partial class GameDirector : MonoBehaviour
         get
         {
             if (testDefenders > 0) return testDefenders;
-            if (IsSurvival) return SurvivalWaves.DefendersFor(Mathf.Max(1, CurrentWave > 0 ? CurrentWave : SurvivalRun.NextWave));
+            if (IsSurvival) return SurvivalWaves.DefendersFor(Mathf.Max(1, CurrentWave > 0 ? CurrentWave : SurvivalRun.NextWave), survivalWorkshopEvery);
             if (LevelNumber < defenderStartLevel) return 0;
             return defendersPerStep * (1 + (LevelNumber - defenderStartLevel) / Mathf.Max(1, defenderLevelStep));
         }
