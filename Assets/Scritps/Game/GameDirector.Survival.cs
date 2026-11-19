@@ -26,9 +26,6 @@ public partial class GameDirector
     [Range(0.3f, 1f)] public float survivalLossFraction = 0.75f;
     [Tooltip("Peces nuevos que llegan al lago al vencer una oleada con jefe (sin pasar de los del principio)")]
     [Min(0)] public int survivalFishPerBoss = 3;
-    [Tooltip("Cada cuántas oleadas superadas se va al Taller (5 = después de cada jefe). Solo ahí se repara el traje, " +
-             "y cada vez llega 1 pez defensor más")]
-    [Min(1)] public int survivalWorkshopEvery = 5;
     [Tooltip("Segundos de calma antes de cada oleada")]
     public float survivalCalm = 10f;
 
@@ -122,8 +119,8 @@ public partial class GameDirector
         int n = SurvivalRun.NextWave;
         int fishLayer = LayerMask.NameToLayer("Fish");
         if (n == 1)
-            Banner?.Invoke("SUPERVIVENCIA", "Oleadas sin fin  //  Taller cada " + Mathf.Max(1, survivalWorkshopEvery) +
-                           " oleadas: una mejora y el traje reparado", Cyan);
+            Banner?.Invoke("SUPERVIVENCIA", "Oleadas sin fin  //  Cada " + SurvivalWaves.WorkshopEvery +
+                           " oleadas: Taller, traje reparado y un defensor más", Cyan);
         else
             Banner?.Invoke("SE ACERCA LA OLEADA " + n, "Traje reparado  //  Quedan " + FishAlive + " peces en el lago", Cyan);
         if (DefendersSpawned > 0)
@@ -215,9 +212,9 @@ public partial class GameDirector
             string news = record ? "¡NUEVO RÉCORD!  //  " : "";
             n++;
 
-            // Cada 'survivalWorkshopEvery' oleadas: al Taller (mejora y traje reparado). Con todo mejorado igual se baja
-            // a repararlo
-            int every = Mathf.Max(1, survivalWorkshopEvery);
+            // Cada 5 oleadas (SurvivalWaves.WorkshopEvery, después de cada jefe): al Taller (mejora y traje reparado).
+            // Con todo mejorado igual se baja a repararlo. Entre medio, nada de Taller ni de curarse
+            int every = SurvivalWaves.WorkshopEvery;
             int cleared = n - 1;
             bool workshop = cleared % every == 0 && Application.CanStreamedLevelBeLoaded(WorkshopFlow.WorkshopScene);
             if (workshop)

@@ -79,6 +79,9 @@ public static class SurvivalWaves
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics() { species = null; }
 
+    // Cada 5 oleadas (después de cada jefe): Taller con una mejora, el traje reparado (la única vez que te curas) y
+    // 1 pez defensor más. Es fijo en el código a propósito: un valor del Inspector guardado en la escena no lo cambia
+    public const int WorkshopEvery = BossEvery;
     public const int MaxDefenders = 8;
 
     // Peces defensores en el lago: uno más cada tramo de 'every' oleadas (cada visita al Taller), hasta 8.

@@ -309,13 +309,16 @@ y el Taller (la última, roja, es la del jefe).
 
 **Para probarlo sin pasar por el menú**: en el `GameDirector` marca **Test Survival** y dale Play en la escena del lago.
 
+**Las 5 oleadas son fijas en el código** (`SurvivalWaves.WorkshopEvery`, igual a `BossEvery`): no hay campo en el
+Inspector a propósito. Antes hubo uno (`Survival Workshop Every`) y una escena guardada con el valor viejo (1) mandaba al
+Taller después de cada oleada.
+
 | Campo del GameDirector (Supervivencia) | Defecto | Qué hace |
 |---|---|---|
 | Test Survival | ✘ | Play directo en la escena = partida de Supervivencia |
 | Survival Fish | 28 | Peces del lago al empezar (tipos y cardúmenes del último nivel de la historia) |
 | Survival Loss Fraction | 0.75 | Pierdes si cazan este porcentaje |
 | Survival Fish Per Boss | 3 | Peces nuevos al vencer una oleada con jefe |
-| Survival Workshop Every | 5 | Cada cuántas oleadas se va al Taller (mejora, reparación y 1 defensor más) |
 | Survival Calm | 10 s | Calma antes de cada oleada (+3 s en la primera) |
 
 ---
