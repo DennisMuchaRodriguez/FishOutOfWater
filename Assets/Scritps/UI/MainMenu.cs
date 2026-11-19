@@ -102,14 +102,23 @@ public partial class MainMenu : MonoBehaviour
         mapScreen = BuildMapScreen();
         controlsScreen = BuildControlsScreen();
         archiveScreen = BuildArchiveScreen();
-        foreach (CanvasGroup g in new[] { titleScreen, modesScreen, mapScreen, controlsScreen, archiveScreen }) Hide(g);
+        coopScreen = BuildCoopScreen();
+        foreach (CanvasGroup g in new[] { titleScreen, modesScreen, mapScreen, controlsScreen, archiveScreen, coopScreen }) Hide(g);
 
         fade = MenuUI.Panel("Fundido", root, MenuUI.Ink);
         fade.raycastTarget = false;
 
         bool openMap = GameSession.OpenLevelMap && catalog != null;
         GameSession.OpenLevelMap = false;
-        ShowInstant(openMap ? mapScreen : titleScreen);
+        // Volviendo de una sala cooperativa que se cerró: la pantalla cooperativa con el motivo
+        string coopMessage = CoopSession.PendingMenuMessage;
+        CoopSession.PendingMenuMessage = null;
+        if (!string.IsNullOrEmpty(coopMessage))
+        {
+            ShowInstant(coopScreen);
+            OnCoopStatus(coopMessage);
+        }
+        else ShowInstant(openMap ? mapScreen : titleScreen);
         StartCoroutine(FadeTo(0f, 0.7f));
     }
 
@@ -300,7 +309,7 @@ public partial class MainMenu : MonoBehaviour
                  best > 0 ? "RÉCORD: " + best + (best == 1 ? " OLEADA" : " OLEADAS") : "SIN RÉCORD TODAVÍA", true,
                  GameSession.PlaySurvival, false);
         ModeCard(s, new Vector2(380f, -30f), "COOPERATIVO", MenuUI.Purple,
-                 "Hasta 4 jugadores online\nChat de voz tipo radio", "", false, null, false);
+                 "Hasta 4 jugadores en línea\nSalas con código", "OLEADAS SIN FIN EN EQUIPO", true, () => Go(coopScreen), false);
 
         MenuUI.ComicButton("VOLVER", s, new Vector2(0f, 0f), new Vector2(130f, 52f), new Vector2(200f, 52f), MenuUI.BlueDark, () => Go(titleScreen), 24f);
         return g;
@@ -812,6 +821,7 @@ public partial class MainMenu : MonoBehaviour
     {
         float dt = Time.unscaledDeltaTime;
         float time = Time.unscaledTime;
+        UpdateCoopScreen();
 
         // Burbujas, algas y rayos de luz
         float top = bubbleLayer.rect.height + 40f;

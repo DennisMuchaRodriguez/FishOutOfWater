@@ -15,6 +15,17 @@ public class Damageable : MonoBehaviour
     public event System.Action<int, Vector3> Damaged;
     public event System.Action Died;
 
+    // Cooperativo: en los clientes las aves son "marionetas" del anfitrión. Los golpes no se aplican aquí: se mandan
+    // al anfitrión (CoopGame), que tiene el ave de verdad. PendingPush lo deja el proyectil justo antes de golpear
+    [System.NonSerialized] public System.Action<int, Vector3, Vector3> NetForward;
+    public static Vector3 PendingPush;
+
+    // Cooperativo: la vida que dice el anfitrión (sin eventos ni muerte)
+    public void SetHealthSilently(int value)
+    {
+        currentHealth = Mathf.Clamp(value, 0, Mathf.Max(1, maxHealth));
+    }
+
     void Awake()
     {
         currentHealth = maxHealth;
@@ -34,6 +45,13 @@ public class Damageable : MonoBehaviour
     public bool TakeDamage(int amount, Vector3 hitPoint)
     {
         if (IsDead) return false;
+        if (NetForward != null)
+        {
+            NetForward(amount, hitPoint, PendingPush);
+            PendingPush = Vector3.zero;
+            return false;
+        }
+        PendingPush = Vector3.zero;
         currentHealth -= amount;
         onDamage?.Invoke();
         Damaged?.Invoke(amount, hitPoint);

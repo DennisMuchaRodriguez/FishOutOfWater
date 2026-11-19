@@ -212,7 +212,13 @@ public partial class BirdAI : MonoBehaviour
     void Start()
     {
         if (lake == null) lake = LakeVolume.Instance;
-        if (player == null) player = FindFirstObjectByType<PlayerController_Base>();
+        // Cooperativo: la marioneta solo arma su modelo (no piensa ni escucha su vida: eso lo maneja el anfitrión)
+        if (IsNetPuppet)
+        {
+            SetupVisual();
+            return;
+        }
+        if (player == null) player = PlayerController_Base.FindLocal();
         if (health != null)
         {
             health.Damaged += OnDamaged;
@@ -397,6 +403,11 @@ public partial class BirdAI : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (IsNetPuppet)
+        {
+            PuppetStep(Time.fixedDeltaTime);
+            return;
+        }
         if (lake == null) { lake = LakeVolume.Instance; if (lake == null) return; }
         float dt = Time.fixedDeltaTime;
 
@@ -1097,7 +1108,7 @@ public partial class BirdAI : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
-        if (dead) return;
+        if (dead || IsNetPuppet) return;
         if (collision.collider.GetComponentInParent<PlayerController_Base>() != null && attackTimer <= 0f)
         {
             HitPlayer();

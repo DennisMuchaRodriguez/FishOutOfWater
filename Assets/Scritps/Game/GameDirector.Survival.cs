@@ -116,6 +116,23 @@ public partial class GameDirector
         // Mientras la pantalla de carga tapa el juego no empieza nada
         while (LoadingScreen.IsLoading) yield return null;
 
+        // Cooperativo: se espera a que todos terminen de cargar el lago (como mucho 30 s)
+        if (IsCoop)
+        {
+            float waitAll = 0f;
+            bool told = false;
+            while (!CoopSession.AllInScene(gameObject.scene.name) && waitAll < 30f)
+            {
+                if (!told && waitAll > 1.5f)
+                {
+                    told = true;
+                    Banner?.Invoke("ESPERANDO AL EQUIPO", "Algunos compañeros todavía están cargando el lago…", Cyan);
+                }
+                waitAll += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+
         int n = SurvivalRun.NextWave;
         int fishLayer = LayerMask.NameToLayer("Fish");
         if (n == 1)
@@ -160,7 +177,7 @@ public partial class GameDirector
             PendingGroups = later.Count;
 
             Banner?.Invoke("OLEADA " + n, SurvivalWaves.Describe(wave), Danger);
-            Sfx.Play2D(Sonido.Oleada, 0.9f);
+            Play2DAll(Sonido.Oleada, 0.9f);
             bool showCinematic = playArrivalCinematic && (n == 1 || wave.IsBossWave) && spawned.Count > 0
                                  && player != null && player.PlayerCamera != null && !player.isDead;
             if (showCinematic)
@@ -222,7 +239,7 @@ public partial class GameDirector
                 State = GameState.Intermission;
                 Countdown = 0f;
                 Banner?.Invoke("OLEADA " + cleared + " SUPERADA", news + "Al Taller: una mejora, traje reparado y un defensor más", Cyan);
-                Sfx.Play2D(Sonido.PezRescatado, 0.8f, 0.85f);
+                Play2DAll(Sonido.PezRescatado, 0.8f, 0.85f);
                 float wait = 3.5f;
                 while (wait > 0f)
                 {
@@ -234,7 +251,9 @@ public partial class GameDirector
                 // Desde aquí ya no se pierde: se va al Taller (y vuelve con la oleada siguiente)
                 ended = true;
                 StopCinematic();
-                WorkshopFlow.OpenSurvival();
+                // Cooperativo: todos al Taller (cada uno elige su mejora; vuelven cuando están todos listos)
+                if (IsCoop) CoopSession.HostGoWorkshop(SurvivalRun.WavesCleared, wave.IsBossWave, SurvivalRun.TimeOfDay);
+                else WorkshopFlow.OpenSurvival();
                 yield break;
             }
 
@@ -246,7 +265,7 @@ public partial class GameDirector
             bool hurt = player != null && player.currentArmor < player.maxArmor - 0.5f;
             Banner?.Invoke("OLEADA " + cleared + " SUPERADA",
                            news + next + (hurt ? "  //  El traje no se repara hasta entonces" : "  //  Recarga munición"), Cyan);
-            Sfx.Play2D(Sonido.PezRescatado, 0.8f, 0.85f);
+            Play2DAll(Sonido.PezRescatado, 0.8f, 0.85f);
             int before = DefendersSpawned;
             AddDefenders(fishLayer, SurvivalWaves.DefendersFor(n, every));
             if (DefendersSpawned > before)
@@ -263,16 +282,22 @@ public partial class GameDirector
         for (int i = 0; i < count; i++)
         {
             FishPlan entry = fishPlan[Random.Range(0, fishPlan.Count)];
-            SpawnOneFish(entry.type, Random.Range(0, FishAI.SchoolAnchors.Length), 100 + i, fishLayer);
+            SpawnOneFish(entry.type, Random.Range(0, FishAI.SchoolAnchors.Length), 100 + i, fishLayer, true);
         }
     }
 
     // Aviso de un grupo que llega más tarde: por qué lado (respecto a hacia dónde mira el jugador)
     void AnnounceGroup(SurvivalWaves.Group group, float yaw)
     {
+        AnnounceGroupLocal(yaw, group.HasBoss, group.birds.Count);
+        // Cooperativo: cada compañero calcula el lado según hacia dónde mira él
+        if (IsCoop && coop != null) coop.HostGroupIncoming(yaw, group.HasBoss, group.birds.Count);
+    }
+
+    public void AnnounceGroupLocal(float yaw, bool boss, int count)
+    {
         string side = SideFromPlayer(yaw);
-        bool boss = group.HasBoss;
-        Toast?.Invoke(boss ? "¡OTRO JEFE LLEGA " + side + "!" : "¡OTRO GRUPO LLEGA " + side + "!  (" + group.birds.Count + " aves)", Danger);
+        LocalToast(boss ? "¡OTRO JEFE LLEGA " + side + "!" : "¡OTRO GRUPO LLEGA " + side + "!  (" + count + " aves)", Danger);
         HelmetVisorHUD.ShowAlert((boss ? "OTRO JEFE" : "NUEVO GRUPO") + "  //  " + side, 3f);
         Sfx.Play2D(Sonido.Oleada, 0.55f, 1.15f);
     }

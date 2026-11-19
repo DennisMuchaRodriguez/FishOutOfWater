@@ -56,7 +56,7 @@ public class GameHUD : MonoBehaviour
     {
         director = GetComponent<GameDirector>();
         if (director == null) director = GameDirector.Instance;
-        player = director != null ? director.player : FindFirstObjectByType<PlayerController_Base>();
+        player = director != null ? director.player : PlayerController_Base.FindLocal();
         if (player != null) shooting = player.GetComponent<PlayerShooting>();
 
         Canvas canvas = MenuUI.CreateCanvas("GameHUDCanvas", 20);

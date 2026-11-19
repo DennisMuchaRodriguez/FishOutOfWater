@@ -17,6 +17,11 @@ public class Projectile : MonoBehaviour
     private PlayerShooting owner;
     // Si lo disparó un pez defensor: el ave herida puede ir por él (BirdAI.ShotByDefender)
     [System.NonSerialized] public DefenderFish defenderOwner;
+    // Cooperativo: copia de un disparo de otro jugador. Se ve igual, pero no hace daño (el daño lo avisa quien disparó)
+    [System.NonSerialized] public bool IsReplica;
+    public bool IsCharged { get { return isCharged; } }
+    public bool IsBubble { get { return isBubble; } }
+    public Color ShotColor { get { return color; } }
     private bool isCharged;
     private bool isBubble;
     private bool hasHit;
@@ -131,6 +136,9 @@ public class Projectile : MonoBehaviour
 
         // Si se dispara bajo el agua no cuenta como "entrar"
         inWater = LakeWater.IsUnderwater(transform.position);
+
+        // Cooperativo: los demás ven este disparo
+        if (!IsReplica) CoopGame.NotifyProjectile(this, lastVelocity);
     }
 
     void Update()
@@ -174,6 +182,17 @@ public class Projectile : MonoBehaviour
         if (hasHit) return;
 
         ContactPoint contact = collision.GetContact(0);
+
+        // Copia de otro jugador: solo el efecto
+        if (IsReplica)
+        {
+            hasHit = true;
+            FXFactory.SpawnOneShot(impactEffectPrefab, contact.point + contact.normal * 0.05f,
+                                   Quaternion.LookRotation(contact.normal), isCharged ? 1.2f : (isBubble ? 0.3f : 0.6f), 3f);
+            Destroy(gameObject);
+            return;
+        }
+
         Damageable damageable = collision.collider.GetComponentInParent<Damageable>();
 
         // Disparo perforante: atraviesa el ave, sigue con su velocidad y ya no choca con ella
@@ -181,6 +200,7 @@ public class Projectile : MonoBehaviour
         {
             if (!damageable.IsDead)
             {
+                Damageable.PendingPush = lastVelocity.normalized * 2.5f;
                 bool hitKilled = damageable.TakeDamage(damage, contact.point);
                 if (owner != null) owner.NotifyHit(hitKilled);
                 if (!hitKilled) NotifyDefenderHit(damageable);
@@ -205,6 +225,8 @@ public class Projectile : MonoBehaviour
 
         if (damageable != null)
         {
+            Vector3 travel = rb != null && rb.linearVelocity.sqrMagnitude > 0.01f ? rb.linearVelocity : lastVelocity;
+            Damageable.PendingPush = travel.normalized * (isCharged ? 5f : (isBubble ? 0.3f : 1.2f));
             bool killed = damageable.TakeDamage(damage, contact.point);
             if (owner != null) owner.NotifyHit(killed);
             if (!killed) NotifyDefenderHit(damageable);

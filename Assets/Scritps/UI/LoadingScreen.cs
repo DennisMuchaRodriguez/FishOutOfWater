@@ -38,7 +38,9 @@ public class LoadingScreen : MonoBehaviour
         "Supervivencia: cada 5 oleadas, el Taller: una mejora, el traje reparado y un pez defensor más.",
         "Supervivencia: el traje solo se repara en el Taller. Cuida la armadura hasta entonces.",
         "Supervivencia: cada 5 oleadas llega un jefe, y más adelante llegan dos o tres a la vez.",
-        "Supervivencia: a veces las aves llegan en grupos por distintos lados. Escucha el aviso del casco."
+        "Supervivencia: a veces las aves llegan en grupos por distintos lados. Escucha el aviso del casco.",
+        "Cooperativo: si tu traje se destruye, miras a tus compañeros y vuelves reparado en el próximo Taller.",
+        "Cooperativo: crea la sala y pásale el código a tus amigos (hasta 4 peces)."
     };
 
     bool busy;

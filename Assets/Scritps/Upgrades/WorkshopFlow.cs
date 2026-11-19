@@ -16,7 +16,9 @@ public static class WorkshopFlow
     public static bool ContinueToNextLevel { get; private set; }
     // Visita de Supervivencia (después de superar una oleada; al terminar sigue la oleada siguiente)
     public static bool IsSurvivalVisit { get; private set; }
-    public static bool HasVisit { get { return VisitLevelIndex >= 0 || IsSurvivalVisit; } }
+    // Cooperativo: el Taller hace de sala de espera (los 4 peces delante, el código de la sala, LISTO / EMPEZAR)
+    public static bool IsCoopLobby { get; private set; }
+    public static bool HasVisit { get { return VisitLevelIndex >= 0 || IsSurvivalVisit || IsCoopLobby; } }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
@@ -24,6 +26,7 @@ public static class WorkshopFlow
         VisitLevelIndex = -1;
         ContinueToNextLevel = false;
         IsSurvivalVisit = false;
+        IsCoopLobby = false;
     }
 
     // ¿El nivel (índice del catálogo) da una visita al Taller que todavía no se usó?
@@ -57,6 +60,7 @@ public static class WorkshopFlow
         VisitLevelIndex = -1;
         ContinueToNextLevel = true;
         IsSurvivalVisit = true;
+        IsCoopLobby = false;
         Time.timeScale = 1f;
         if (!Application.CanStreamedLevelBeLoaded(WorkshopScene))
         {
@@ -68,12 +72,24 @@ public static class WorkshopFlow
         LoadingScreen.Load(WorkshopScene);
     }
 
+    // Cooperativo: la sala de espera en el Taller
+    public static void OpenCoopLobby()
+    {
+        VisitLevelIndex = -1;
+        ContinueToNextLevel = false;
+        IsSurvivalVisit = false;
+        IsCoopLobby = true;
+        Time.timeScale = 1f;
+        LoadingScreen.Load(WorkshopScene);
+    }
+
     // Se olvida la visita en curso (al salir del Taller)
     public static void ClearVisit()
     {
         VisitLevelIndex = -1;
         ContinueToNextLevel = false;
         IsSurvivalVisit = false;
+        IsCoopLobby = false;
     }
 
     // ---- Niveles con Taller (salen de "Workshop After" de cada nivel) ----

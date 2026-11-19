@@ -10,6 +10,9 @@ using System.Collections;
 //    SIGUIENTE NIVEL / REPETIR / MAPA DE NIVELES. Si el nivel da visita al Taller: IR AL TALLER.
 //  - Derrota o muerte: REINTENTAR / MAPA DE NIVELES.
 //  - Supervivencia: fin de la partida con las oleadas superadas y el récord; NUEVA PARTIDA / MENÚ PRINCIPAL.
+//  - Cooperativo: la pausa NO detiene el juego (los demás siguen jugando), solo tus controles. Si tu traje se
+//    destruye miras a tus compañeros (SEGUIR MIRANDO) hasta el Taller. Al final, el anfitrión elige NUEVA PARTIDA
+//    o VOLVER A LA SALA; SALIR DE LA SALA vuelve al menú.
 public class PauseMenu : MonoBehaviour
 {
     public static bool IsPaused { get; private set; }
@@ -26,6 +29,8 @@ public class PauseMenu : MonoBehaviour
     RectTransform pauseGroup;
     RectTransform deathGroup;
     TextMeshProUGUI deathSub;
+    bool deathDismissed;
+    static bool Coop { get { return CoopSession.InGame; } }
     float deathTimer;
 
     void Awake()
@@ -37,7 +42,7 @@ public class PauseMenu : MonoBehaviour
 
     void Start()
     {
-        if (player == null) player = FindFirstObjectByType<PlayerController_Base>();
+        if (player == null) player = PlayerController_Base.FindLocal();
 
         Canvas canvas = MenuUI.CreateCanvas("PauseCanvas", 100);
         canvas.transform.SetParent(transform, false);
@@ -52,10 +57,26 @@ public class PauseMenu : MonoBehaviour
         MenuUI.ComicButton("CONTINUAR", card, new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), new Vector2(340f, 62f), MenuUI.Orange, Resume, 28f);
         // En Supervivencia no hay mapa: NUEVA PARTIDA y MENÚ PRINCIPAL (que termina la partida)
         bool survival = GameSession.IsSurvival;
-        MenuUI.ComicButton(survival ? "NUEVA PARTIDA" : "REINICIAR NIVEL", card, new Vector2(0.5f, 0.5f), new Vector2(0f, -18f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.ReplayLevel, 24f);
-        if (!survival)
-            MenuUI.ComicButton("MAPA DE NIVELES", card, new Vector2(0.5f, 0.5f), new Vector2(0f, -90f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToLevelMap, 24f);
-        MenuUI.ComicButton("MENÚ PRINCIPAL", card, new Vector2(0.5f, 0.5f), new Vector2(0f, survival ? -90f : -162f), new Vector2(340f, 56f), MenuUI.BlueDark, GameSession.GoToMainMenu, 24f);
+        bool coop = Coop;
+        if (coop)
+        {
+            // Cooperativo: solo el anfitrión puede empezar otra partida (para todos)
+            float y = -18f;
+            if (CoopSession.IsHost)
+            {
+                MenuUI.ComicButton("NUEVA PARTIDA", card, new Vector2(0.5f, 0.5f), new Vector2(0f, y), new Vector2(340f, 56f), MenuUI.Blue, GameSession.ReplayLevel, 24f);
+                y -= 72f;
+            }
+            MenuUI.ComicButton("SALIR DE LA SALA", card, new Vector2(0.5f, 0.5f), new Vector2(0f, y), new Vector2(340f, 56f), MenuUI.BlueDark, CoopSession.Leave, 24f);
+            MenuUI.Text("Aviso", card, "El juego sigue mientras estás en pausa", 16f, new Vector2(0.5f, 0f), new Vector2(0f, 30f), new Vector2(420f, 24f), MenuUI.TextDim);
+        }
+        else
+        {
+            MenuUI.ComicButton(survival ? "NUEVA PARTIDA" : "REINICIAR NIVEL", card, new Vector2(0.5f, 0.5f), new Vector2(0f, -18f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.ReplayLevel, 24f);
+            if (!survival)
+                MenuUI.ComicButton("MAPA DE NIVELES", card, new Vector2(0.5f, 0.5f), new Vector2(0f, -90f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToLevelMap, 24f);
+            MenuUI.ComicButton("MENÚ PRINCIPAL", card, new Vector2(0.5f, 0.5f), new Vector2(0f, survival ? -90f : -162f), new Vector2(340f, 56f), MenuUI.BlueDark, GameSession.GoToMainMenu, 24f);
+        }
         pauseGroup.gameObject.SetActive(false);
 
         // ---- Muerte ----
@@ -66,11 +87,21 @@ public class PauseMenu : MonoBehaviour
         MenuUI.Title("Titulo", dcard, "TRAJE DESTRUIDO", 64f, new Vector2(0.5f, 1f), new Vector2(0f, -62f), new Vector2(520f, 90f), MenuUI.Red);
         deathSub = MenuUI.Text("Sub", dcard, "La armadura llegó a cero", 24f, new Vector2(0.5f, 1f), new Vector2(0f, -122f), new Vector2(500f, 40f), MenuUI.TextDim);
         deathSub.characterSpacing = 2f;
-        MenuUI.ComicButton(survival ? "NUEVA PARTIDA" : "REINTENTAR", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(340f, 62f), MenuUI.Orange, GameSession.ReplayLevel, 28f);
-        if (survival)
-            MenuUI.ComicButton("MENÚ PRINCIPAL", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 74f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToMainMenu, 24f);
+        if (coop)
+        {
+            // Cooperativo: sigues mirando a tus compañeros; vuelves reparado en el próximo Taller
+            deathSub.text = "Mira a tus compañeros: vuelves reparado en el próximo Taller";
+            MenuUI.ComicButton("SEGUIR MIRANDO", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(340f, 62f), MenuUI.Orange, DismissDeath, 28f);
+            MenuUI.ComicButton("SALIR DE LA SALA", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 74f), new Vector2(340f, 56f), MenuUI.Blue, CoopSession.Leave, 24f);
+        }
         else
-            MenuUI.ComicButton("MAPA DE NIVELES", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 74f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToLevelMap, 24f);
+        {
+            MenuUI.ComicButton(survival ? "NUEVA PARTIDA" : "REINTENTAR", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(340f, 62f), MenuUI.Orange, GameSession.ReplayLevel, 28f);
+            if (survival)
+                MenuUI.ComicButton("MENÚ PRINCIPAL", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 74f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToMainMenu, 24f);
+            else
+                MenuUI.ComicButton("MAPA DE NIVELES", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 74f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToLevelMap, 24f);
+        }
         deathGroup.gameObject.SetActive(false);
     }
 
@@ -79,13 +110,14 @@ public class PauseMenu : MonoBehaviour
         if (GameEnded || ComicViewer.IsShowing) return;
         bool dead = player != null && player.isDead;
 
-        if (dead)
+        // Cooperativo: después de SEGUIR MIRANDO, la pausa funciona normal (para poder salir de la sala)
+        if (dead && !(Coop && deathDismissed))
         {
             deathTimer += Time.unscaledDeltaTime;
             if (deathTimer >= deathScreenDelay && !deathGroup.gameObject.activeSelf)
             {
                 // Supervivencia: hasta qué oleada se llegó y el récord
-                if (GameSession.IsSurvival && deathSub != null)
+                if (GameSession.IsSurvival && !Coop && deathSub != null)
                 {
                     GameDirector d = GameDirector.Instance;
                     int wave = d != null ? Mathf.Max(1, d.CurrentWave) : SurvivalRun.NextWave;
@@ -143,6 +175,11 @@ public class PauseMenu : MonoBehaviour
 
     void BuildResults(bool victory, GameDirector director, LevelDefinition level)
     {
+        if (director != null && director.IsCoop)
+        {
+            BuildCoopResults(director);
+            return;
+        }
         if (director != null && director.IsSurvival)
         {
             BuildSurvivalResults(director);
@@ -268,6 +305,42 @@ public class PauseMenu : MonoBehaviour
         StartCoroutine(PopIn(card));
     }
 
+    // Fin de una partida cooperativa: lo que lograron entre todos; el anfitrión elige qué sigue
+    void BuildCoopResults(GameDirector director)
+    {
+        RectTransform group = MenuUI.Stretch("Resultado", root);
+        Backdrop(group, new Color(0.16f, 0f, 0f, 0.68f));
+        RectTransform card = Card("Ficha", group, new Vector2(0f, -6f), new Vector2(640f, 560f), MenuUI.Purple, MenuUI.Glass);
+
+        MenuUI.Text("Modo", card, "COOPERATIVO  ·  " + CoopSession.PlayerCount + " JUGADORES", 22f, new Vector2(0.5f, 1f), new Vector2(0f, -36f),
+                    new Vector2(600f, 34f), MenuUI.TextDim).characterSpacing = 3f;
+        MenuUI.Title("Titulo", card, "FIN DE LA PARTIDA", 56f, new Vector2(0.5f, 1f), new Vector2(0f, -92f), new Vector2(600f, 80f), MenuUI.Red);
+        int cleared = SurvivalRun.WavesCleared;
+        MenuUI.Title("Oleadas", card, cleared + (cleared == 1 ? " OLEADA SUPERADA" : " OLEADAS SUPERADAS"), 40f,
+                     new Vector2(0.5f, 1f), new Vector2(0f, -170f), new Vector2(600f, 60f), MenuUI.Orange);
+        string o = "<color=" + MenuUI.HexOrange + ">";
+        string stats = "Llegaron a la oleada " + o + Mathf.Max(1, director.CurrentWave) + "</color>\n" +
+                       "Aves derribadas: " + o + director.BirdsKilled + "</color>      " +
+                       "Peces rescatados: " + o + director.FishRescued + "</color>\n" +
+                       "Peces que quedaban: " + o + director.FishAlive + " de " + director.TotalFish + "</color>";
+        MenuUI.Text("Resumen", card, stats, 22f, new Vector2(0.5f, 1f), new Vector2(0f, -258f), new Vector2(600f, 100f), MenuUI.Cream).lineSpacing = 8f;
+
+        Button first;
+        if (CoopSession.IsHost)
+        {
+            first = MenuUI.ComicButton("NUEVA PARTIDA", card, new Vector2(0.5f, 0f), new Vector2(0f, 190f), new Vector2(380f, 60f), MenuUI.Orange, GameSession.ReplayLevel, 28f);
+            MenuUI.ComicButton("VOLVER A LA SALA", card, new Vector2(0.5f, 0f), new Vector2(0f, 118f), new Vector2(340f, 52f), MenuUI.Purple, CoopSession.HostBackToLobby, 22f);
+            MenuUI.ComicButton("SALIR DE LA SALA", card, new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(300f, 48f), MenuUI.BlueDark, CoopSession.Leave, 20f);
+        }
+        else
+        {
+            MenuUI.Text("Espera", card, "El anfitrión elige si juegan otra partida", 19f, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(560f, 30f), MenuUI.Yellow);
+            first = MenuUI.ComicButton("SALIR DE LA SALA", card, new Vector2(0.5f, 0f), new Vector2(0f, 70f), new Vector2(340f, 54f), MenuUI.BlueDark, CoopSession.Leave, 22f);
+        }
+        StartCoroutine(ArmButtons(group, first));
+        StartCoroutine(PopIn(card));
+    }
+
     // Siguiente nivel: si tiene cómic de antes y no se ha visto, primero el cómic
     // (así se ven las presentaciones de los jefes sin pasar por el mapa)
     void PlayNext()
@@ -348,10 +421,18 @@ public class PauseMenu : MonoBehaviour
 
     // ======================= PAUSA =======================
 
+    // Cooperativo: el aviso de la muerte se cierra y se sigue mirando a los compañeros
+    void DismissDeath()
+    {
+        deathDismissed = true;
+        deathGroup.gameObject.SetActive(false);
+    }
+
     void Pause()
     {
         IsPaused = true;
-        Time.timeScale = 0f;
+        // En cooperativo el juego sigue (los demás no se pueden quedar congelados)
+        Time.timeScale = Coop ? 1f : 0f;
         pauseGroup.gameObject.SetActive(true);
         ShowCursor();
         pauseGroup.GetComponentInChildren<Button>().Select();

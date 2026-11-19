@@ -13,6 +13,15 @@ public class AmmoPickup : MonoBehaviour
     public GameObject collectPrefab;
 
     public System.Action<AmmoPickup> Collected;
+    // Cooperativo: número de la cápsula (lo da el anfitrión)
+    [System.NonSerialized] public int NetId = -1;
+
+    // Cooperativo: la recogió otro jugador
+    public void NetRemove(bool effect)
+    {
+        if (effect) FXFactory.SpawnOneShot(collectPrefab, transform.position, Quaternion.identity, 0.5f, 3f);
+        Destroy(gameObject);
+    }
 
     // Mejora "Imán de cápsulas": desde pickupRadius × MagnetMultiplier la cápsula vuela hacia el jugador
     public static float MagnetMultiplier = 1f;

@@ -53,6 +53,13 @@ public class DefenderFish : MonoBehaviour
     // Aviso al GameDirector (para el mensaje en pantalla)
     public event System.Action<DefenderFish> SuitBroken;
 
+    // Cooperativo: número de defensor, cuántos hay y si es una marioneta (no dispara; lo maneja el anfitrión)
+    public int SectorIndex { get { return sector; } }
+    public int SectorCount { get { return sectorCount; } }
+    public bool IsNetPuppet { get; private set; }
+    public void MakePuppet() { IsNetPuppet = true; }
+    public void PuppetBreakSuit() { if (SuitIntact) BreakSuit(); }
+
     FishAI fish;
     LakeVolume lake;
     GameObject projectilePrefab, impactPrefab;
@@ -158,7 +165,8 @@ public class DefenderFish : MonoBehaviour
 
     void Update()
     {
-        if (!SuitIntact || fish == null || fish.State != FishAI.FishState.Swimming || lake == null || PauseMenu.IsPaused) return;
+        if (IsNetPuppet) return;
+        if (!SuitIntact || fish == null || fish.State != FishAI.FishState.Swimming || lake == null || (PauseMenu.IsPaused && !CoopSession.InGame)) return;
         float dt = Time.deltaTime;
 
         retargetTimer -= dt;

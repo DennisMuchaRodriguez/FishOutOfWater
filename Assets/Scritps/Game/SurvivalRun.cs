@@ -32,8 +32,15 @@ public static class SurvivalRun
 
     static readonly Dictionary<UpgradeId, int> upgrades = new Dictionary<UpgradeId, int>();
 
-    // ¿Se está jugando Supervivencia? (partida en curso y ese modo elegido)
-    public static bool InSurvival { get { return Active && GameSession.CurrentMode == GameSession.Mode.Supervivencia; } }
+    // ¿Se está jugando Supervivencia? (partida en curso y ese modo elegido). El cooperativo juega las mismas oleadas
+    public static bool InSurvival
+    {
+        get
+        {
+            return Active && (GameSession.CurrentMode == GameSession.Mode.Supervivencia ||
+                              GameSession.CurrentMode == GameSession.Mode.Cooperativo);
+        }
+    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
@@ -45,10 +52,24 @@ public static class SurvivalRun
     // Partida nueva: todo de cero
     public static void Begin()
     {
+        Begin(Random.Range(1, 1000000));
+    }
+
+    // Cooperativo: todos con la semilla del anfitrión
+    public static void Begin(int seed)
+    {
         Clear();
         Active = true;
-        Seed = Random.Range(1, 1000000);
+        Seed = seed;
         Upgrades.NotifyChanged();
+    }
+
+    // Cooperativo: lo que sabe el anfitrión al ir al Taller (para el subtítulo y lo que dice el mecánico)
+    public static void SyncFromHost(int wavesCleared, bool lastWasBoss, float timeOfDay)
+    {
+        WavesCleared = Mathf.Max(WavesCleared, wavesCleared);
+        LastWasBoss = lastWasBoss;
+        TimeOfDay = timeOfDay;
     }
 
     // Fin de la partida (al volver al menú)
@@ -110,7 +131,8 @@ public static class SurvivalRun
         WavesCleared = Mathf.Max(WavesCleared, wave);
         LastWasBoss = boss;
         SaveTotals(fishLost, birdsKilled, fishRescued);
-        bool record = SaveSystem.RecordSurvival(WavesCleared);
+        // El récord es de Supervivencia (las partidas cooperativas no lo cambian)
+        bool record = GameSession.CurrentMode == GameSession.Mode.Supervivencia && SaveSystem.RecordSurvival(WavesCleared);
         if (record) NewRecord = true;
         return record;
     }

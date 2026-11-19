@@ -29,7 +29,7 @@ public class GameAudio : MonoBehaviour
 
     static void Install()
     {
-        PlayerController_Base p = FindFirstObjectByType<PlayerController_Base>();
+        PlayerController_Base p = PlayerController_Base.FindLocal();
         if (p != null && p.GetComponent<GameAudio>() == null) p.gameObject.AddComponent<GameAudio>();
     }
 

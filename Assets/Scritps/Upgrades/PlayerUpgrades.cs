@@ -42,7 +42,7 @@ public class PlayerUpgrades : MonoBehaviour
 
     static void Install()
     {
-        PlayerController_Base p = FindFirstObjectByType<PlayerController_Base>();
+        PlayerController_Base p = PlayerController_Base.FindLocal();
         if (p != null && p.GetComponent<PlayerUpgrades>() == null) p.gameObject.AddComponent<PlayerUpgrades>();
     }
 

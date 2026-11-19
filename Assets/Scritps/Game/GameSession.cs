@@ -49,6 +49,12 @@ public static class GameSession
 
     public static void ReplayLevel()
     {
+        // Cooperativo: solo el anfitrión empieza otra partida (para todos)
+        if (CoopSession.Active)
+        {
+            if (CoopSession.IsHost) CoopSession.HostRestart();
+            return;
+        }
         Time.timeScale = 1f;
         if (CurrentMode == Mode.Supervivencia) SurvivalRun.Begin();
         LoadingScreen.Load(SceneManager.GetActiveScene().name);
@@ -92,6 +98,7 @@ public static class GameSession
 
     public static void GoToLevelMap()
     {
+        if (CoopSession.Active) { CoopSession.Leave(); return; }
         LeaveSurvival();
         OpenLevelMap = true;
         Time.timeScale = 1f;
@@ -100,6 +107,8 @@ public static class GameSession
 
     public static void GoToMainMenu()
     {
+        // Cooperativo: salir de la sala (el anfitrión la cierra para todos) y volver al menú
+        if (CoopSession.Active) { CoopSession.Leave(); return; }
         LeaveSurvival();
         OpenLevelMap = false;
         Time.timeScale = 1f;

@@ -18,7 +18,7 @@ using FishGame.AI;
 //  6. Nada de lo anterior          -> nadar en cardumen por el lago
 // Los jefes además pueden lanzarlos fuera del agua (Launch) y arrastrarlos con corrientes (Push).
 [RequireComponent(typeof(Rigidbody))]
-public class FishAI : MonoBehaviour
+public partial class FishAI : MonoBehaviour
 {
     public static readonly List<FishAI> All = new List<FishAI>();
     public static Vector3[] SchoolAnchors;
@@ -134,9 +134,13 @@ public class FishAI : MonoBehaviour
     }
 
     // Ajustes del tipo de pez (lo llama el GameDirector al crearlo)
+    // El tipo de pez (lo usa el cooperativo para crear el mismo pez en los demás jugadores)
+    public FishType Type { get; private set; }
+
     public void ApplyType(FishType type)
     {
         if (type == null) return;
+        Type = type;
         wanderSpeed *= Mathf.Max(0.1f, type.speedMultiplier);
         fleeSpeed *= Mathf.Max(0.1f, type.speedMultiplier);
         panicStamina *= Mathf.Max(0.1f, type.staminaMultiplier);
@@ -188,6 +192,11 @@ public class FishAI : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (IsNetPuppet)
+        {
+            PuppetStep(Time.fixedDeltaTime);
+            return;
+        }
         if (lake == null) { lake = LakeVolume.Instance; if (lake == null) return; }
         float dt = Time.fixedDeltaTime;
 
@@ -623,9 +632,13 @@ public class FishAI : MonoBehaviour
     }
 
     // El pájaro se lo comió (o se asfixió en tierra)
+    // Cómo murió el último (el cooperativo lo avisa a los demás)
+    public bool LastKillEaten { get; private set; }
+
     public void Kill(bool eaten)
     {
         if (State == FishState.Dead) return;
+        LastKillEaten = eaten;
         State = FishState.Dead;
         Hunter = null;
         Died?.Invoke(this);
@@ -640,6 +653,68 @@ public class FishAI : MonoBehaviour
             rb.useGravity = true;
             Destroy(gameObject, 4f);
         }
+    }
+
+    // ======================= COOPERATIVO =======================
+    // En los demás jugadores el pez es una marioneta: mismo modelo, sigue lo que manda el anfitrión
+
+    public bool IsNetPuppet { get; private set; }
+    [System.NonSerialized] public int NetId = -1;
+    Vector3 netPos, netVel;
+    Quaternion netRot = Quaternion.identity;
+    float netTime = -1f;
+
+    // Banderas para la red: 1 atrapado, 2 aturdido, 4 cayendo
+    public byte NetFlags
+    {
+        get
+        {
+            byte f = 0;
+            if (State == FishState.Grabbed) f |= 1;
+            if (IsStunned) f |= 2;
+            if (State == FishState.Falling) f |= 4;
+            return f;
+        }
+    }
+
+    public void MakePuppet()
+    {
+        IsNetPuppet = true;
+        netPos = transform.position;
+        netRot = transform.rotation;
+        netTime = Time.time;
+    }
+
+    public void PuppetState(Vector3 position, Quaternion rotation, byte flags)
+    {
+        if (!IsNetPuppet || State == FishState.Dead) return;
+        if (netTime > 0f)
+        {
+            float dt = Time.time - netTime;
+            if (dt > 0.02f) netVel = Vector3.Lerp(netVel, (position - netPos) / dt, 0.6f);
+        }
+        netPos = position;
+        netRot = rotation;
+        netTime = Time.time;
+        State = (flags & 1) != 0 ? FishState.Grabbed : ((flags & 4) != 0 ? FishState.Falling : FishState.Swimming);
+        stunTimer = (flags & 2) != 0 ? 0.3f : 0f;
+    }
+
+    void PuppetStep(float dt)
+    {
+        if (State == FishState.Dead || rb == null) return;
+        if (stunTimer > 0f) stunTimer -= dt;
+        Vector3 target = netPos + netVel * Mathf.Clamp(Time.time - netTime, 0f, 0.3f);
+        float k = 1f - Mathf.Exp(-12f * dt);
+        Vector3 p = (target - rb.position).sqrMagnitude > 400f ? target : Vector3.Lerp(rb.position, target, k);
+        rb.MovePosition(p);
+        rb.MoveRotation(Quaternion.Slerp(rb.rotation, netRot, k));
+        velocity = netVel;
+    }
+
+    public void PuppetKill(bool eaten)
+    {
+        Kill(eaten);
     }
 
     void OnDrawGizmosSelected()

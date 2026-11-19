@@ -15,6 +15,8 @@ using System.Collections.Generic;
 //  - Mesa de chatarra con herramientas, el traje en un soporte que gira, el mecánico (bagre con gafas) y alevines.
 //  - Los 3 planos son hologramas: clic = elegir, INSTALAR (o clic otra vez) = instalar.
 //  - Esc o VOLVER AL MAPA sin elegir: la visita queda pendiente (botón IR AL TALLER en el mapa).
+//  - COOPERATIVO: el Taller también es la SALA DE ESPERA (CoopLobby: los 4 peces delante y el código de la sala) y
+//    cada 5 oleadas cada jugador elige aquí su mejora; al terminar espera a sus compañeros y vuelven todos juntos.
 //  - SUPERVIVENCIA (cada 5 oleadas, después de cada jefe): igual que en la historia (las primeras visitas ofrecen los
 //    mismos planos que las visitas de la historia; después, planos al azar), pero las mejoras son solo de esa partida.
 //    Aquí se repara el traje (vuelve al lago con la armadura llena). Al instalar, SIGUIENTE OLEADA vuelve al lago;
@@ -73,6 +75,8 @@ public class WorkshopScene : MonoBehaviour
     bool testVisit;
     bool alreadyUsed;
     bool survivalVisit;
+    bool lobbyMode;
+    bool coopVisit;
     List<WorkshopOffer> offers = new List<WorkshopOffer>();
     int selected = -1;
     bool installing, installed, leaving;
@@ -115,7 +119,19 @@ public class WorkshopScene : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
+        // Cooperativo: el Taller hace de sala de espera
+        if (WorkshopFlow.IsCoopLobby && CoopSession.Active)
+        {
+            lobbyMode = true;
+            BuildEnvironment();
+            if (suitRoot != null) suitRoot.gameObject.SetActive(false);
+            gameObject.AddComponent<CoopLobby>().Build(this);
+            return;
+        }
+
         survivalVisit = WorkshopFlow.IsSurvivalVisit && SurvivalRun.InSurvival;
+        coopVisit = survivalVisit && CoopSession.InGame;
+        if (coopVisit) CoopSession.RosterChanged += RefreshCoopWaiting;
         testVisit = !WorkshopFlow.HasVisit;
         levelIndex = testVisit ? testLevelIndex : WorkshopFlow.VisitLevelIndex;
         visitNumber = survivalVisit ? SurvivalRun.WorkshopVisits + 1 : WorkshopFlow.VisitNumber(levelIndex);
@@ -889,6 +905,24 @@ public class WorkshopScene : MonoBehaviour
         }
     }
 
+    // Cooperativo: lo usa la sala de espera para los trajes de los 4 jugadores
+    public void ApplyVisorGlassTo(GameObject suit) { ApplyVisorGlass(suit); }
+
+    // Cooperativo: mientras los demás eligen
+    void RefreshCoopWaiting()
+    {
+        if (!coopVisit || !leaving || statusText == null) return;
+        int done = CoopSession.WorkshopDoneCount;
+        int total = Mathf.Max(1, CoopSession.PlayerCount);
+        statusText.text = "LISTO  ·  ESPERANDO A TUS COMPAÑEROS (" + done + " / " + total + ")";
+        mechanicText.text = "Tus compañeros siguen eligiendo. En cuanto terminen, vuelven todos juntos al lago.";
+    }
+
+    void OnDestroy()
+    {
+        CoopSession.RosterChanged -= RefreshCoopWaiting;
+    }
+
     // La escafandra del traje es de vidrio: a la pieza "Vidrio" le pone el material transparente (Eskafandra)
     void ApplyVisorGlass(GameObject suit)
     {
@@ -1026,7 +1060,7 @@ public class WorkshopScene : MonoBehaviour
         Vector2 top = new Vector2(0.5f, 1f);
         MenuUI.Title("Titulo", ui, "EL TALLER", 64f, top, new Vector2(0f, -48f), new Vector2(600f, 80f), MenuUI.Orange);
         string sub = survivalVisit
-            ? "SUPERVIVENCIA  ·  OLEADA " + SurvivalRun.WavesCleared + " SUPERADA  ·  MEJORA " + visitNumber
+            ? (coopVisit ? "COOPERATIVO" : "SUPERVIVENCIA") + "  ·  OLEADA " + SurvivalRun.WavesCleared + " SUPERADA  ·  MEJORA " + visitNumber
             : "VISITA " + visitNumber + " DE " + WorkshopFlow.VisitCount + "  ·  DESPUÉS DEL NIVEL " + (levelIndex + 1);
         if (testVisit) sub += "  ·  PRUEBA";
         MenuUI.Text("Sub", ui, sub, 18f, top, new Vector2(0f, -94f), new Vector2(800f, 28f), MenuUI.Accent).characterSpacing = 4f;
@@ -1309,6 +1343,15 @@ public class WorkshopScene : MonoBehaviour
     IEnumerator LeaveRoutine(bool playNext)
     {
         leaving = true;
+        if (coopVisit)
+        {
+            // Cooperativo: espera a que todos elijan; el anfitrión manda a todos de vuelta al lago
+            installButton.gameObject.SetActive(false);
+            backButton.gameObject.SetActive(false);
+            CoopSession.LocalWorkshopDone();
+            RefreshCoopWaiting();
+            yield break;
+        }
         yield return FadeTo(1f, 0.5f);
         if (survivalVisit)
         {
@@ -1346,6 +1389,7 @@ public class WorkshopScene : MonoBehaviour
             algaeLights[i].intensity = 1.2f + Mathf.Sin(time * 1.3f + i * 1.7f) * 0.35f;
         AnimateLair(time, Time.deltaTime);
 
+        if (lobbyMode) return;
         if (ComicViewer.IsShowing || Time.frameCount == ComicViewer.ClosedFrame || leaving) return;
         if (Input.GetKeyDown(KeyCode.Escape))
         {

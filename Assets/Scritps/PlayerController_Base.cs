@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 // Ver también PlayerController_Base.Survival.cs: choques, asfixia fuera del agua, arrastrarse y límite de la zona
+// y PlayerController_Base.Network.cs: el pez local y los representantes de los compañeros en el modo cooperativo
 public partial class PlayerController_Base : MonoBehaviour
 {
     [Header("Movimiento")]
@@ -175,7 +176,7 @@ public partial class PlayerController_Base : MonoBehaviour
     public float WaterSurfaceY { get; private set; }
     public float TurnInput { get; private set; }
     public Camera PlayerCamera { get; private set; }
-    public Vector3 Velocity { get { return rb != null ? rb.linearVelocity : Vector3.zero; } }
+    public Vector3 Velocity { get { return IsNetworkProxy ? ProxyVelocity : (rb != null ? rb.linearVelocity : Vector3.zero); } }
     public bool IsKnockedBack { get { return Time.time < knockbackEndTime; } }
     public int DashChargesLeft { get { return dashChargesLeft; } }
 
@@ -208,7 +209,7 @@ public partial class PlayerController_Base : MonoBehaviour
 
     void Start()
     {
-        if (isDead) return;
+        if (isDead || IsNetworkProxy) return;
         rb = GetComponent<Rigidbody>();
         rb.useGravity = true;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
@@ -271,7 +272,7 @@ public partial class PlayerController_Base : MonoBehaviour
 
     void Update()
     {
-        if (isDead) return;
+        if (isDead || IsNetworkProxy) return;
         if (PauseMenu.IsPaused) return;
 
         if (InputLocked)
@@ -313,7 +314,7 @@ public partial class PlayerController_Base : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (isDead || rb == null || rb.isKinematic) return;
+        if (isDead || IsNetworkProxy || rb == null || rb.isKinematic) return;
         PreventTunneling();
         UpdateWaterContact();
         // Límite de la zona: durante el giro en U el traje se maneja solo
@@ -809,7 +810,7 @@ public partial class PlayerController_Base : MonoBehaviour
 
     void LateUpdate()
     {
-        if (cameraHolder == null) return;
+        if (IsNetworkProxy || cameraHolder == null) return;
 
         // Seguro: fuera de una cinemática la cámara del jugador siempre está encendida
         if (!WaveCinematic.IsPlaying)
@@ -973,6 +974,7 @@ public partial class PlayerController_Base : MonoBehaviour
     // Empujón fuerte (por ejemplo cuando un pájaro te embiste)
     public void ApplyKnockback(Vector3 velocityChange, float controlLossTime = 0.45f)
     {
+        if (ForwardKnockback(velocityChange, controlLossTime)) return;
         if (rb == null || rb.isKinematic) return;
         Vector3 v = rb.linearVelocity;
         if (v.y < 0f) v.y = 0f;
@@ -984,6 +986,7 @@ public partial class PlayerController_Base : MonoBehaviour
     // Corrientes (el remolino de un jefe): suma velocidad sin quitarle el control al jugador
     public void AddCurrent(Vector3 velocityChange)
     {
+        if (ForwardCurrent(velocityChange)) return;
         if (rb == null || rb.isKinematic || isDead) return;
         rb.linearVelocity += velocityChange;
     }
@@ -997,6 +1000,7 @@ public partial class PlayerController_Base : MonoBehaviour
 
     public void TakeHit(float damage, Vector3 knockbackVelocity)
     {
+        if (ForwardHit(damage, knockbackVelocity)) return;
         if (isDead) return;
         // En plena vuelta de esquive las aves se le pasan de largo
         if (IsDodgeInvulnerable) return;
@@ -1025,6 +1029,7 @@ public partial class PlayerController_Base : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
+        if (IsNetworkProxy) return;
         // Choque fuerte contra el suelo, un árbol o una roca: quita armadura (PlayerController_Base.Survival.cs)
         CheckCrash(collision);
         if (!collision.collider.CompareTag(enemyTag)) return;

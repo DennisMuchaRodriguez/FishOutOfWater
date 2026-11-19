@@ -163,7 +163,7 @@ public partial class GameDirector : MonoBehaviour
 
     void Start()
     {
-        if (player == null) player = FindFirstObjectByType<PlayerController_Base>();
+        if (player == null) player = PlayerController_Base.FindLocal();
 
         if (lake == null) lake = FindFirstObjectByType<LakeVolume>();
         if (lake == null) lake = gameObject.AddComponent<LakeVolume>();
@@ -183,6 +183,14 @@ public partial class GameDirector : MonoBehaviour
         }
 
         if (GetComponent<GameHUD>() == null) gameObject.AddComponent<GameHUD>();
+
+        // Cooperativo: el cliente no simula (arma lo que manda el anfitrión: CoopGame)
+        SetupCoop();
+        if (IsCoopClient)
+        {
+            StartCoopClient();
+            return;
+        }
 
         SpawnFish();
         if (IsSurvival) RestoreSurvivalTotals();
@@ -240,7 +248,7 @@ public partial class GameDirector : MonoBehaviour
             bool showCinematic = playArrivalCinematic && (!cinematicOnlyFirstWave || i == 0)
                                  && player != null && player.PlayerCamera != null && !player.isDead;
             Banner?.Invoke("OLEADA " + CurrentWave + " / " + TotalWaves, "¡DEPREDADORES EN CAMINO!", Danger);
-            Sfx.Play2D(Sonido.Oleada, 0.9f);
+            Play2DAll(Sonido.Oleada, 0.9f);
             if (showCinematic)
             {
                 cinematic = WaveCinematic.Play(player, spawned, lake, cinematicDuration, on => Letterbox?.Invoke(on), cinematicShots);
@@ -273,9 +281,18 @@ public partial class GameDirector : MonoBehaviour
 
     void Update()
     {
-        if (ended) return;
+        if (ended || IsCoopClient) return;
 
-        if (player != null && player.isDead)
+        // Cooperativo: se pierde cuando caen todos (el que cae mira a los demás hasta el Taller)
+        if (IsCoop)
+        {
+            if (coop != null && coop.AllPlayersDead)
+            {
+                EndGame(false);
+                return;
+            }
+        }
+        else if (player != null && player.isDead)
         {
             // La pantalla de muerte la muestra PauseMenu
             ended = true;
@@ -307,8 +324,16 @@ public partial class GameDirector : MonoBehaviour
         if (IsSurvival)
         {
             OnSurvivalOver();
-            Banner?.Invoke("¡CAZARON DEMASIADOS PECES!", "Llegaste a la oleada " + Mathf.Max(1, CurrentWave) +
-                           "  //  Récord: " + SaveSystem.BestSurvivalWave + " oleadas", Danger);
+            if (IsCoop)
+            {
+                bool allDown = coop != null && coop.AllPlayersDead;
+                Banner?.Invoke(allDown ? "CAYÓ TODO EL EQUIPO" : "¡CAZARON DEMASIADOS PECES!",
+                               "Llegaron a la oleada " + Mathf.Max(1, CurrentWave) + "  //  " + SurvivalRun.WavesCleared + " superadas", Danger);
+                if (coop != null) coop.HostGameOver();
+            }
+            else
+                Banner?.Invoke("¡CAZARON DEMASIADOS PECES!", "Llegaste a la oleada " + Mathf.Max(1, CurrentWave) +
+                               "  //  Récord: " + SaveSystem.BestSurvivalWave + " oleadas", Danger);
             Sfx.Play2D(Sonido.Derrota, 0.9f);
             PauseMenu over = FindFirstObjectByType<PauseMenu>();
             if (over != null) over.ShowEndScreen(false);
@@ -419,7 +444,7 @@ public partial class GameDirector : MonoBehaviour
         {
             for (int n = 0; n < entry.count; n++)
             {
-                SpawnOneFish(entry.type, index, n + 1, fishLayer);
+                SpawnOneFish(entry.type, index, n + 1, fishLayer, true);
                 index++;
                 TotalFish++;
             }
@@ -428,7 +453,7 @@ public partial class GameDirector : MonoBehaviour
     }
 
     // Un pez normal en su cardumen (index reparte entre los cardúmenes)
-    FishAI SpawnOneFish(FishType type, int index, int number, int fishLayer)
+    FishAI SpawnOneFish(FishType type, int index, int number, int fishLayer, bool hookEvents)
     {
         int school = index % FishAI.SchoolAnchors.Length;
         Vector3 pos;
@@ -449,8 +474,11 @@ public partial class GameDirector : MonoBehaviour
         WaterInteractor wi = go.AddComponent<WaterInteractor>();
         wi.size = 0.8f;
         wi.minSpeed = 1f;
-        fish.Died += OnFishDied;
-        fish.Rescued += OnFishRescued;
+        if (hookEvents)
+        {
+            fish.Died += OnFishDied;
+            fish.Rescued += OnFishRescued;
+        }
         return fish;
     }
 
@@ -466,10 +494,6 @@ public partial class GameDirector : MonoBehaviour
     {
         if (count <= DefendersSpawned || fishPlan.Count == 0) return;
         FishType type = fishPlan[0].type;
-        PlayerShooting shooting = player != null ? player.GetComponent<PlayerShooting>() : null;
-        GameObject projectile = shooting != null ? shooting.projectilePrefab : null;
-        GameObject impact = shooting != null ? shooting.impactEffectPrefab : null;
-        float scale = type.modelScale / 28f;
 
         for (int i = DefendersSpawned; i < count; i++)
         {
@@ -478,7 +502,20 @@ public partial class GameDirector : MonoBehaviour
             Vector3 pos;
             if (!lake.TryGetSwimPoint(guess, 12f, 0.35f, 0.7f, 0.6f, out pos))
                 lake.TryGetRandomSwimPoint(0.35f, 0.7f, 0.6f, out pos);
+            // La mitad con pistola (más daño, más lenta) y la otra mitad con la metralleta de burbujas
+            DefenderFish.Weapon gun = i % 2 == 0 ? DefenderFish.Weapon.Pistol : DefenderFish.Weapon.Bubbles;
+            SpawnDefender(type, i, count, pos, fishLayer, gun, true);
+        }
+    }
 
+    // Un pez defensor con su traje (hookEvents = false: marioneta del cooperativo, no cuenta aquí)
+    DefenderFish SpawnDefender(FishType type, int i, int count, Vector3 pos, int fishLayer, DefenderFish.Weapon gun, bool hookEvents)
+    {
+        PlayerShooting shooting = player != null ? player.GetComponent<PlayerShooting>() : null;
+        GameObject projectile = shooting != null ? shooting.projectilePrefab : null;
+        GameObject impact = shooting != null ? shooting.impactEffectPrefab : null;
+        float scale = type.modelScale / 28f;
+        {
             GameObject go = new GameObject("PezDefensor_" + (i + 1));
             go.tag = "Fish";
             if (fishLayer >= 0) go.layer = fishLayer;
@@ -497,17 +534,18 @@ public partial class GameDirector : MonoBehaviour
             wi.minSpeed = 1f;
 
             DefenderFish defender = go.AddComponent<DefenderFish>();
-            // La mitad con pistola (más daño, más lenta) y la otra mitad con la metralleta de burbujas
-            DefenderFish.Weapon gun = i % 2 == 0 ? DefenderFish.Weapon.Pistol : DefenderFish.Weapon.Bubbles;
             defender.Setup(defenderSuitModel, scale, projectile, impact, fxMaterialTemplate, i, count, gun, shooting);
-            defender.SuitBroken += OnDefenderSuitBroken;
             defenders.Add(defender);
-
-            fish.Died += OnFishDied;
-            fish.Rescued += OnFishRescued;
-            // En Supervivencia los defensores no cuentan entre los peces del lago (llegan y se van con las oleadas)
-            if (!IsSurvival) TotalFish++;
             DefendersSpawned++;
+            if (hookEvents)
+            {
+                defender.SuitBroken += OnDefenderSuitBroken;
+                fish.Died += OnFishDied;
+                fish.Rescued += OnFishRescued;
+                // En Supervivencia los defensores no cuentan entre los peces del lago (llegan y se van con las oleadas)
+                if (!IsSurvival) TotalFish++;
+            }
+            return defender;
         }
     }
 
@@ -517,8 +555,8 @@ public partial class GameDirector : MonoBehaviour
         int left = DefendersAlive;
         string rest = left > 0 ? "QUEDAN " + left : "NO QUEDAN DEFENSORES";
         Toast?.Invoke("¡UN DEFENSOR PERDIÓ SU TRAJE!  //  " + rest, Danger);
-        HelmetVisorHUD.ShowAlert("DEFENSOR DESTRUIDO  //  " + rest, 3.5f);
-        Sfx.Play2D(Sonido.Aviso, 0.6f, 0.9f);
+        AlertAll("DEFENSOR DESTRUIDO  //  " + rest, 3.5f);
+        Play2DAll(Sonido.Aviso, 0.6f, 0.9f);
     }
 
     void UpdateSchoolAnchors()
@@ -545,7 +583,7 @@ public partial class GameDirector : MonoBehaviour
         if (!ended)
         {
             Toast?.Invoke(left > 0 ? "UN PEZ FUE CAZADO  //  " + FishAlive + " a salvo" : "¡DEMASIADOS PECES PERDIDOS!", Danger);
-            Sfx.Play2D(Sonido.Aviso, 0.7f, 0.75f);
+            Play2DAll(Sonido.Aviso, 0.7f, 0.75f);
         }
     }
 
@@ -553,7 +591,7 @@ public partial class GameDirector : MonoBehaviour
     {
         FishRescued++;
         Toast?.Invoke("¡PEZ RESCATADO!", Cyan);
-        Sfx.Play2D(Sonido.PezRescatado, 0.8f);
+        Play2DAll(Sonido.PezRescatado, 0.8f);
     }
 
     // ======================= PÁJAROS =======================
@@ -588,7 +626,7 @@ public partial class GameDirector : MonoBehaviour
             float mult = type.boss != BossKind.None ? Mathf.Max(0.1f, bossHealthMultiplier) : Mathf.Max(0.1f, healthMultiplier);
             int health = Mathf.Max(1, Mathf.RoundToInt(type.health * mult));
             BirdAI bird = CreateBird("Ave_" + type.name + "_" + CurrentWave + tag + "_" + (i + 1), spawn, type, health);
-            bird.BeginArrival(arrive, lake, player);
+            bird.BeginArrival(arrive, lake, CoopTarget(i));
             list.Add(bird);
             birds.Add(bird);
         }
@@ -596,6 +634,24 @@ public partial class GameDirector : MonoBehaviour
     }
 
     BirdAI CreateBird(string name, Vector3 position, BirdType type, int healthValue)
+    {
+        BirdAI bird = BuildBirdBody(name, position, type, healthValue, false);
+        bird.Died += OnBirdDied;
+        bird.FishCaught += (b, f) =>
+        {
+            // Un bocado del pelícano atrapa varios: un solo aviso
+            if (b.CarriedCount <= 1)
+            {
+                Toast?.Invoke("¡UN PÁJARO ATRAPÓ UN PEZ!  Dispárale para que lo suelte", Danger);
+                Play2DAll(Sonido.PezAtrapado, 0.8f);
+            }
+            else if (b.CarriedCount == 2) Toast?.Invoke("¡ATRAPÓ VARIOS PECES DE UN BOCADO!", Danger);
+        };
+        return bird;
+    }
+
+    // El ave con su modelo, colisionador y vida (puppet = marioneta del cooperativo: no piensa)
+    BirdAI BuildBirdBody(string name, Vector3 position, BirdType type, int healthValue, bool puppet)
     {
         GameObject go = new GameObject(name);
         go.tag = "Enemy";
@@ -615,25 +671,15 @@ public partial class GameDirector : MonoBehaviour
         bird.visual = CreateVisual(type.model, go.transform, type.modelScale, type.modelRotation, type.modelOffset,
                                    type.animatorController, type.materialOverride, go.layer);
         bird.ApplyType(type);
-        // Archivo de aves: la primera vez que aparece una especie queda registrada
+        if (puppet) bird.MakePuppet();
+        // Archivo de aves: la primera vez que aparece una especie queda registrada (es de cada jugador)
         if (SaveSystem.MarkBirdSeen(type.name))
-            Toast?.Invoke("NUEVA AVE EN EL ARCHIVO:  " + type.name.ToUpperInvariant(), Cyan);
+            LocalToast("NUEVA AVE EN EL ARCHIVO:  " + type.name.ToUpperInvariant(), Cyan);
         WaterInteractor bw = go.AddComponent<WaterInteractor>();
         bw.size = 1.5f;
         bw.wakeMinSpeed = 4f;
         bird.hitPrefab = birdHitPrefab;
         bird.deathPrefab = birdDeathPrefab;
-        bird.Died += OnBirdDied;
-        bird.FishCaught += (b, f) =>
-        {
-            // Un bocado del pelícano atrapa varios: un solo aviso
-            if (b.CarriedCount <= 1)
-            {
-                Toast?.Invoke("¡UN PÁJARO ATRAPÓ UN PEZ!  Dispárale para que lo suelte", Danger);
-                Sfx.Play2D(Sonido.PezAtrapado, 0.8f);
-            }
-            else if (b.CarriedCount == 2) Toast?.Invoke("¡ATRAPÓ VARIOS PECES DE UN BOCADO!", Danger);
-        };
         return bird;
     }
 
@@ -655,7 +701,7 @@ public partial class GameDirector : MonoBehaviour
             Vector3 arrive = lake.Center + dir * lake.Radius * 0.4f + Vector3.up * Random.Range(12f, 18f);
             int health = Mathf.Max(1, Mathf.RoundToInt(type.health * Mathf.Max(0.1f, currentHealthMultiplier)));
             BirdAI bird = CreateBird("Refuerzo_" + type.name + "_" + (i + 1), spawn, type, health);
-            bird.BeginArrival(arrive, lake, player);
+            bird.BeginArrival(arrive, lake, CoopTarget(i));
             birds.Add(bird);
         }
         Toast?.Invoke("¡LLEGAN REFUERZOS!", Danger);
@@ -733,6 +779,13 @@ public partial class GameDirector : MonoBehaviour
         if (!lake.TryGetRandomSwimPoint(underwater ? 1.2f : 0.1f, underwater ? 3f : 0.1f, 0.8f, out pos)) return;
         if (!underwater) pos.y = lake.SurfaceY + 0.5f;
 
+        AmmoPickup pickup = BuildPickup(pos, underwater);
+        pickup.Collected += OnPickupCollected;
+        pickups.Add(pickup);
+    }
+
+    AmmoPickup BuildPickup(Vector3 pos, bool underwater)
+    {
         GameObject go = new GameObject("CapsulaMunicion");
         go.transform.position = pos;
         AmmoPickup pickup = go.AddComponent<AmmoPickup>();
@@ -740,14 +793,13 @@ public partial class GameDirector : MonoBehaviour
         pickup.collectPrefab = pickupCollectPrefab;
         pickup.IsUnderwater = underwater;
         pickup.Build(fxMaterialTemplate);
-        pickup.Collected += OnPickupCollected;
-        pickups.Add(pickup);
+        return pickup;
     }
 
     void OnPickupCollected(AmmoPickup pickup)
     {
         pickups.Remove(pickup);
-        Toast?.Invoke("+" + pickup.ammo + " MUNICIÓN", Cyan);
+        LocalToast("+" + pickup.ammo + " MUNICIÓN", Cyan);
         StartCoroutine(RespawnPickup());
     }
 

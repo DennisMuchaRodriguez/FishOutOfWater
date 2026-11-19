@@ -180,7 +180,7 @@ public class HelmetVisorHUD : MonoBehaviour
     void Start()
     {
         canvasRect = (RectTransform)transform;
-        if (player == null) player = FindFirstObjectByType<PlayerController_Base>();
+        if (player == null) player = PlayerController_Base.FindLocal();
         if (shooting == null && player != null) shooting = player.GetComponent<PlayerShooting>();
         BuildAll();
     }

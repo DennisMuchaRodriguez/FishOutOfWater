@@ -491,6 +491,34 @@ public class PlayerShooting : MonoBehaviour
         Debug.DrawRay(firePoint.position, direction * 60f, locked != null ? Color.yellow : Color.red, 1f);
     }
 
+    // Cooperativo: copia de un disparo de otro jugador (o de un defensor del anfitrión). Solo se ve: no hace daño
+    public Projectile SpawnReplica(Vector3 position, Vector3 velocity, bool charged, bool bubble, Color color, float scale)
+    {
+        if (projectilePrefab == null) return null;
+        Vector3 dir = velocity.sqrMagnitude > 0.01f ? velocity.normalized : Vector3.forward;
+        GameObject projectile = Instantiate(projectilePrefab, position, Quaternion.LookRotation(dir));
+        if (scale > 0.01f) projectile.transform.localScale = Vector3.one * scale;
+        Projectile proj = projectile.GetComponent<Projectile>();
+        if (proj != null)
+        {
+            proj.IsReplica = true;
+            proj.Setup(null, 0, charged ? chargedImpactPrefab : impactEffectPrefab, color, trailMaterial, charged);
+            if (bubble) proj.MakeBubble(bubbleMaterial, bubbleTrail, bubbleGlowMaterial);
+        }
+        Rigidbody body = projectile.GetComponent<Rigidbody>();
+        if (body != null)
+        {
+            body.useGravity = false;
+            body.linearVelocity = velocity;
+        }
+        // No choca con el pez de este jugador
+        Collider projectileCollider = projectile.GetComponent<Collider>();
+        if (projectileCollider != null)
+            foreach (Collider c in GetComponentsInChildren<Collider>()) Physics.IgnoreCollision(projectileCollider, c);
+        if (!bubble) Sfx.Play(Sonido.Disparo, position, charged ? 0.6f : 0.35f, charged ? 0.8f : 1.1f, 8f, 0.08f, 0.05f);
+        return proj;
+    }
+
     public void NotifyHit(bool killed)
     {
         OnTargetHit?.Invoke(killed);

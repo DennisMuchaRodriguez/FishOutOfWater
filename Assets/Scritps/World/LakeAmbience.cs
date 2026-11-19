@@ -468,11 +468,25 @@ public class LakeAmbience : MonoBehaviour
         return new Vector3(Mathf.Cos(e) * Mathf.Sin(a), Mathf.Sin(e), Mathf.Cos(e) * Mathf.Cos(a));
     }
 
+    // Cooperativo: los clientes siguen la hora del anfitrión (se corrige suave para que no salte)
+    static float syncedTime = -1f;
+
+    public static void SyncTime(float t)
+    {
+        syncedTime = Mathf.Repeat(t, 1f);
+    }
+
     void UpdateCycle(float dt)
     {
         if (!cycleOn || keys == null) return;
         if (previewTimeOfDay >= 0f) timeOfDay = previewTimeOfDay;
         else timeOfDay = Mathf.Repeat(timeOfDay + dt / (Mathf.Max(1f, dayLengthMinutes) * 60f), 1f);
+        if (syncedTime >= 0f && previewTimeOfDay < 0f)
+        {
+            float diff = Mathf.Repeat(syncedTime - timeOfDay + 0.5f, 1f) - 0.5f;
+            timeOfDay = Mathf.Abs(diff) > 0.05f ? syncedTime : Mathf.Repeat(timeOfDay + diff * Mathf.Clamp01(dt * 2f), 1f);
+            syncedTime = -1f;
+        }
         TimeOfDay = timeOfDay;
         if (SurvivalRun.InSurvival) SurvivalRun.TimeOfDay = timeOfDay;
         ApplyCycle(timeOfDay);

@@ -39,6 +39,8 @@ public class EnemyProjectile : MonoBehaviour
         go.transform.position = from;
         EnemyProjectile p = go.AddComponent<EnemyProjectile>();
         p.Setup(kind, velocity, damage, target);
+        // Cooperativo: los demás jugadores lo ven (en sus pantallas no hace daño: el golpe lo decide el anfitrión)
+        CoopGame.NotifyEnemyProjectile(kind, from, velocity);
         return p;
     }
 
@@ -168,7 +170,7 @@ public class EnemyProjectile : MonoBehaviour
         if (kind == Kind.Caca)
         {
             Sfx.Play(Sonido.Plaf, at, 1f, 1f, 4f);
-            if (!player.isThirdPerson) HelmetVisorHUD.SplatGlass();
+            if (!player.isThirdPerson && !player.IsNetworkProxy) HelmetVisorHUD.SplatGlass();
         }
         else
         {

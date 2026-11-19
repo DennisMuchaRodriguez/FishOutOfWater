@@ -10,6 +10,7 @@ Los valores "En escena" son los que tiene ahora `SampleScene` (los que no aparec
 4. [Flujo de la partida (oleadas, victoria y derrota)](#4-flujo-de-la-partida)
    - [Menú, mapa de niveles, cómics y progreso](#menú-mapa-de-niveles-cómics-y-progreso)
    - [Modo Supervivencia (oleadas sin fin)](#modo-supervivencia-oleadas-sin-fin)
+   - [Modo Cooperativo en línea (salas de 4 con código)](#modo-cooperativo-en-línea-salas-de-4-con-código)
 5. [Inspector: GameDirector y archivos de datos (Niveles, Aves, Peces, Cómics)](#5-inspector-gamedirector)
 6. [Inspector: agua (LakeVolume, LakeWater y material del agua)](#6-inspector-agua)
 7. [Inspector: PlayerController_Base (el pez protagonista)](#7-inspector-playercontroller_base)
@@ -187,7 +188,7 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 2. **Elige modo**:
    - **HISTORIA** (1 jugador): abre el mapa de niveles. La tarjeta muestra tus estrellas y cuántos niveles completaste.
    - **SUPERVIVENCIA**: oleadas sin fin en el mismo lago (ver [Modo Supervivencia](#modo-supervivencia-oleadas-sin-fin)). La tarjeta muestra tu récord de oleadas.
-   - **COOPERATIVO**: bloqueado, con la etiqueta "PRÓXIMAMENTE" (está en el GDD, todavía no existe).
+   - **COOPERATIVO**: hasta 4 jugadores en línea con código de sala (ver [Modo Cooperativo](#modo-cooperativo-en-línea-salas-de-4-con-código)).
 3. **Mapa de niveles**: 20 nenúfares en zigzag, agrupados en los 4 bloques del GDD.
    - Solo puedes jugar los niveles **desbloqueados**: al principio solo el 1, y cada victoria desbloquea el siguiente (de uno en uno).
    - Cada nivel muestra su número, sus estrellas, un candado si está bloqueado y las etiquetas **JEFE** y **TALLER**.
@@ -320,6 +321,74 @@ Taller después de cada oleada.
 | Survival Loss Fraction | 0.75 | Pierdes si cazan este porcentaje |
 | Survival Fish Per Boss | 3 | Peces nuevos al vencer una oleada con jefe |
 | Survival Calm | 10 s | Calma antes de cada oleada (+3 s en la primera) |
+
+### Modo Cooperativo en línea (salas de 4 con código)
+Hasta **4 peces** juegan juntos Supervivencia (las mismas oleadas sin fin, jefes y grupos por distintos lados) en el
+mismo lago. Código: carpeta `Assets/Scritps/Coop` (`CoopSession` la sala y la red, `CoopLobby` la sala de espera,
+`CoopGame` la partida, `CoopRemotePlayer` el pez de cada compañero) y las partes `*.Network.cs` / `*.Coop.cs`.
+Usa **Netcode for GameObjects 2.14** y **Multiplayer Services 2.5** (Lobby + Relay) de Unity, ya agregados en
+`Packages/manifest.json` (Unity los descarga solo al abrir el proyecto).
+
+**Cómo se juega**
+1. Menú → ELIGE TU MODO → **COOPERATIVO**. Escribe **TU NOMBRE**.
+2. **CREAR SALA**:
+   - **EN LÍNEA**: por internet. Te da un **código de 6 letras** para pasarles a tus amigos.
+   - **RED LOCAL**: misma Wi-Fi, sin servicios de Unity. El código empieza con L (lleva la IP del anfitrión).
+3. **UNIRSE**: escribe el código que te pasaron y pulsa UNIRSE (sirve para los dos tipos de sala).
+4. **La sala de espera es el Taller**: los 4 peces aparecen **en fila delante de la cámara**, cada uno en su pedestal
+   con su color (naranja, verde, violeta, turquesa), su nombre y si está **LISTO**. Las casillas vacías muestran
+   "ESPERANDO JUGADOR". Arriba está el **CÓDIGO DE SALA** con el botón **COPIAR**.
+   - Los demás pulsan **¡LISTO!**; el anfitrión pulsa **EMPEZAR** cuando todos están listos (también puede empezar solo).
+   - **SALIR** (o Esc) vuelve al menú. Si sale el anfitrión, la sala se cierra para todos.
+5. **En el lago**: cada uno maneja su pez. Ves a tus compañeros con su color y su nombre encima, y sus disparos.
+   - Arriba a la derecha, la lista del equipo: nombre y armadura de cada compañero (o CAÍDO).
+   - Las aves persiguen a **cualquiera** de los jugadores: se reparten, cambian al más cercano y a veces van por el
+     que les disparó.
+   - No hay cinemáticas de llegada (nadie se queda quieto mientras los demás juegan) y la **pausa no detiene el
+     juego**: solo tus controles (dice "El juego sigue mientras estás en pausa").
+   - **Si tu traje se destruye**, sigues **mirando a tus compañeros** (clic o Espacio para cambiar de compañero) y
+     **vuelves reparado en el próximo Taller**. Se pierde si **caen todos** o si cazan demasiados peces.
+6. **Cada 5 oleadas, todos al Taller**: **cada uno elige su propia mejora** (las mejoras son de cada jugador y solo
+   para esa partida) y espera a los demás ("ESPERANDO A TUS COMPAÑEROS 2/4"); cuando todos terminan, vuelven
+   juntos al lago con el traje reparado y un pez defensor más.
+7. **Fin de la partida**: oleadas superadas, aves derribadas y peces. El anfitrión elige **NUEVA PARTIDA** o
+   **VOLVER A LA SALA**; cualquiera puede **SALIR DE LA SALA**. Las partidas cooperativas no cambian el récord de
+   Supervivencia (el Archivo de aves sí cuenta las aves que derribó cada uno).
+
+**Cómo funciona por dentro**
+- **El anfitrión simula todo** (oleadas, aves, peces, defensores, cápsulas) igual que en Supervivencia y manda:
+  cuando algo aparece o muere (mensajes seguros); dónde están las aves (10 veces por segundo) y los peces (7 por
+  segundo) en mensajes rápidos; el estado del juego (oleada, cuenta atrás, peces, hora del día); los carteles,
+  avisos y sonidos; y a cada jugador, los golpes, empujones y corrientes que recibe.
+- **En los demás jugadores** las aves, los peces, los defensores y las cápsulas son "marionetas": el mismo modelo,
+  colisionador y vida (así la mira, los misiles y los disparos funcionan igual), pero no piensan: siguen lo que
+  manda el anfitrión, suavizado.
+- **Cada jugador maneja su pez** y manda cómo está 20 veces por segundo. Sus disparos se ven en las otras pantallas
+  (copias que no hacen daño). Si le da a un ave, se ve el golpe al instante y el anfitrión le quita la vida de verdad.
+- Los golpes de las aves a un compañero se calculan en el anfitrión y le llegan al dueño, que los recibe en su pez
+  de verdad (con su esquive, su escudo y su armadura).
+- Todo viaja en un solo mensaje con nombre de Netcode ("FOW") con un byte que dice qué es (`CoopProtocol.cs`). No hay
+  prefabs de red: la red (NetworkManager) se crea sola por código.
+
+**Configuración (una sola vez, para EN LÍNEA)**
+- El proyecto ya está vinculado a Unity Cloud (Edit > Project Settings > Services muestra el proyecto "Fish Out of
+  Water"). Si no lo está, vincúlalo ahí con tu cuenta de Unity.
+- En el panel de Unity Cloud (cloud.unity.com) del proyecto, activa **Lobby** y **Relay** (son gratis hasta un
+  límite amplio). Sin eso, CREAR SALA EN LÍNEA da un mensaje que dice qué falta; **RED LOCAL funciona igual**.
+- Las computadoras que juegan necesitan internet; no hace falta abrir puertos (Relay hace de puente).
+
+**Cómo probarlo con 4 jugadores en una sola computadora**
+- **Multiplayer Play Mode** (ya agregado): Window > Multiplayer > Multiplayer Play Mode, activa los Player 2, 3 y 4
+  y dale Play. Se abren hasta 4 ventanas del juego: en una crea la sala y copia el código; en las otras, únete.
+- O haz una build (File > Build Profiles) y ábrela varias veces junto con el editor. Con RED LOCAL en la misma
+  computadora el código lleva tu IP local y funciona igual.
+
+**Lo que todavía no se ve en las pantallas de los compañeros** (en el anfitrión sí)
+- Los efectos especiales de los jefes que no son disparos (las olas de la Garza, los remolinos, el saco del
+  Pelícano): el jefe se mueve, ataca y hace daño igual, pero esos efectos solo los ve el anfitrión.
+- Los misiles de los compañeros (sí hacen daño; solo no se ve la estela del misil ajeno).
+- Las marcas del sonar sobre las aves que cazan (en el anfitrión sí).
+- No hay chat de voz.
 
 ---
 

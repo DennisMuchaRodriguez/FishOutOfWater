@@ -269,7 +269,7 @@ public class LakeDecorator : MonoBehaviour
     {
         pos = Vector3.zero;
         if (playerStart != null) { pos = playerStart.position; return true; }
-        PlayerController_Base p = FindFirstObjectByType<PlayerController_Base>();
+        PlayerController_Base p = PlayerController_Base.FindLocal();
         if (p != null) { pos = p.transform.position; return true; }
         GameObject tagged = GameObject.FindWithTag("Player");
         if (tagged != null) { pos = tagged.transform.position; return true; }
