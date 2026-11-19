@@ -13,7 +13,8 @@ using UnityEngine.Serialization;
 // TODO el contenido del nivel (peces, aves, oleadas, % de pérdida, cómics) sale del
 // archivo de datos del Nivel (LevelDefinition). Desde el menú se juega el nivel elegido
 // en el mapa; si das Play directo en esta escena se usa "Test Level".
-public class GameDirector : MonoBehaviour
+// El modo SUPERVIVENCIA (oleadas sin fin) está en GameDirector.Survival.cs.
+public partial class GameDirector : MonoBehaviour
 {
     public static GameDirector Instance { get; private set; }
     public static bool InCinematic { get { return WaveCinematic.IsPlaying; } }
@@ -75,7 +76,8 @@ public class GameDirector : MonoBehaviour
     // ---- Estado ----
     public GameState State { get; private set; }
     public int CurrentWave { get; private set; }
-    public int TotalWaves { get { return plan != null ? plan.Count : 0; } }
+    // En Supervivencia no hay total (0 = sin fin)
+    public int TotalWaves { get { return IsSurvival ? 0 : (plan != null ? plan.Count : 0); } }
     public int TotalFish { get; private set; }
     public int FishLost { get; private set; }
     public int FishAlive { get { return TotalFish - FishLost; } }
@@ -86,7 +88,7 @@ public class GameDirector : MonoBehaviour
     // Estrellas al ganar (1–3)
     public int Stars { get; private set; }
     // Porcentaje de peces cazados con el que se pierde
-    public float FishLossFraction { get { return Level != null ? Level.maxFishLossFraction : 0.7f; } }
+    public float FishLossFraction { get { return IsSurvival ? survivalLossFraction : (Level != null ? Level.maxFishLossFraction : 0.7f); } }
     public int FishRescued { get; private set; }
     public int BirdsKilled { get; private set; }
     public float Countdown { get; private set; }
@@ -98,6 +100,7 @@ public class GameDirector : MonoBehaviour
         get
         {
             if (testDefenders > 0) return testDefenders;
+            if (IsSurvival) return SurvivalWaves.DefendersFor(Mathf.Max(1, CurrentWave > 0 ? CurrentWave : SurvivalRun.NextWave));
             if (LevelNumber < defenderStartLevel) return 0;
             return defendersPerStep * (1 + (LevelNumber - defenderStartLevel) / Mathf.Max(1, defenderLevelStep));
         }
@@ -154,6 +157,8 @@ public class GameDirector : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        // Antes que cualquier Start (el ambiente y la pausa ya tienen que saber que es Supervivencia)
+        PrepareTestSurvival();
     }
 
     void Start()
@@ -171,7 +176,7 @@ public class GameDirector : MonoBehaviour
             return;
         }
 
-        if (!ResolveLevel() || !BuildPlan())
+        if (!ResolveLevel() || !(IsSurvival ? BuildSurvivalPlan() : BuildPlan()))
         {
             enabled = false;
             return;
@@ -180,9 +185,10 @@ public class GameDirector : MonoBehaviour
         if (GetComponent<GameHUD>() == null) gameObject.AddComponent<GameHUD>();
 
         SpawnFish();
+        if (IsSurvival) RestoreSurvivalTotals();
         for (int i = 0; i < ammoPickups; i++) SpawnPickup();
 
-        StartCoroutine(GameFlow());
+        StartCoroutine(IsSurvival ? SurvivalFlow() : GameFlow());
     }
 
     void OnDisable()
@@ -275,6 +281,7 @@ public class GameDirector : MonoBehaviour
             ended = true;
             State = GameState.Defeat;
             StopCinematic();
+            if (IsSurvival) OnSurvivalOver();
             return;
         }
 
@@ -295,7 +302,18 @@ public class GameDirector : MonoBehaviour
         State = victory ? GameState.Victory : GameState.Defeat;
 
         float saved = TotalFish > 0 ? (float)FishAlive / TotalFish : 0f;
-        Stars = victory ? Level.StarsFor(saved) : 0;
+        Stars = victory && !IsSurvival ? Level.StarsFor(saved) : 0;
+
+        if (IsSurvival)
+        {
+            OnSurvivalOver();
+            Banner?.Invoke("¡CAZARON DEMASIADOS PECES!", "Llegaste a la oleada " + Mathf.Max(1, CurrentWave) +
+                           "  //  Récord: " + SaveSystem.BestSurvivalWave + " oleadas", Danger);
+            Sfx.Play2D(Sonido.Derrota, 0.9f);
+            PauseMenu over = FindFirstObjectByType<PauseMenu>();
+            if (over != null) over.ShowEndScreen(false);
+            return;
+        }
 
         // Progreso del modo Historia: guarda estrellas y desbloquea el siguiente nivel
         if (victory && GameSession.CurrentMode == GameSession.Mode.Historia && GameSession.LevelIndex >= 0)
@@ -332,6 +350,7 @@ public class GameDirector : MonoBehaviour
     bool ResolveLevel()
     {
         LevelCatalog catalog = GameSession.Catalog;
+        if (ResolveSurvival(catalog)) return Level != null;
         Level = GameSession.CurrentLevel;
         if (Level == null)
         {
@@ -398,50 +417,61 @@ public class GameDirector : MonoBehaviour
         int index = 0;
         foreach (FishPlan entry in fishPlan)
         {
-            FishType type = entry.type;
             for (int n = 0; n < entry.count; n++)
             {
-                int school = index % FishAI.SchoolAnchors.Length;
+                SpawnOneFish(entry.type, index, n + 1, fishLayer);
                 index++;
-                Vector3 pos;
-                if (!lake.TryGetSwimPoint(FishAI.SchoolAnchors[school], 10f, 0.5f, 1.6f, 0.6f, out pos))
-                    lake.TryGetRandomSwimPoint(0.5f, 1.6f, 0.6f, out pos);
-
-                GameObject go = new GameObject("Pez_" + type.name + "_" + (n + 1));
-                go.tag = "Fish";
-                if (fishLayer >= 0) go.layer = fishLayer;
-                go.transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
-
-                FishAI fish = go.AddComponent<FishAI>();
-                go.GetComponent<SphereCollider>().radius = type.colliderRadius;
-                fish.schoolId = school;
-                fish.visual = CreateVisual(type.model, go.transform, type.modelScale, type.modelRotation, type.modelOffset,
-                                           type.animatorController, type.materialOverride, fishLayer);
-                fish.ApplyType(type);
-                WaterInteractor wi = go.AddComponent<WaterInteractor>();
-                wi.size = 0.8f;
-                wi.minSpeed = 1f;
-                fish.Died += OnFishDied;
-                fish.Rescued += OnFishRescued;
                 TotalFish++;
             }
         }
         SpawnDefenders(fishLayer);
     }
 
+    // Un pez normal en su cardumen (index reparte entre los cardúmenes)
+    FishAI SpawnOneFish(FishType type, int index, int number, int fishLayer)
+    {
+        int school = index % FishAI.SchoolAnchors.Length;
+        Vector3 pos;
+        if (!lake.TryGetSwimPoint(FishAI.SchoolAnchors[school], 10f, 0.5f, 1.6f, 0.6f, out pos))
+            lake.TryGetRandomSwimPoint(0.5f, 1.6f, 0.6f, out pos);
+
+        GameObject go = new GameObject("Pez_" + type.name + "_" + number);
+        go.tag = "Fish";
+        if (fishLayer >= 0) go.layer = fishLayer;
+        go.transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, Random.Range(0f, 360f), 0f));
+
+        FishAI fish = go.AddComponent<FishAI>();
+        go.GetComponent<SphereCollider>().radius = type.colliderRadius;
+        fish.schoolId = school;
+        fish.visual = CreateVisual(type.model, go.transform, type.modelScale, type.modelRotation, type.modelOffset,
+                                   type.animatorController, type.materialOverride, fishLayer);
+        fish.ApplyType(type);
+        WaterInteractor wi = go.AddComponent<WaterInteractor>();
+        wi.size = 0.8f;
+        wi.minSpeed = 1f;
+        fish.Died += OnFishDied;
+        fish.Rescued += OnFishRescued;
+        return fish;
+    }
+
     // Peces defensores: de otro color, con traje gris y blanco; cada uno patrulla un sector del lago
     void SpawnDefenders(int fishLayer)
     {
         DefendersSpawned = 0;
-        int count = DefenderCount;
-        if (count <= 0 || fishPlan.Count == 0) return;
+        AddDefenders(fishLayer, DefenderCount);
+    }
+
+    // Agrega defensores hasta tener 'count' (en Supervivencia llegan más con las oleadas)
+    void AddDefenders(int fishLayer, int count)
+    {
+        if (count <= DefendersSpawned || fishPlan.Count == 0) return;
         FishType type = fishPlan[0].type;
         PlayerShooting shooting = player != null ? player.GetComponent<PlayerShooting>() : null;
         GameObject projectile = shooting != null ? shooting.projectilePrefab : null;
         GameObject impact = shooting != null ? shooting.impactEffectPrefab : null;
         float scale = type.modelScale / 28f;
 
-        for (int i = 0; i < count; i++)
+        for (int i = DefendersSpawned; i < count; i++)
         {
             float a = (i + 0.5f) / count * Mathf.PI * 2f;
             Vector3 guess = lake.Center + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * lake.Radius * 0.5f;
@@ -475,7 +505,8 @@ public class GameDirector : MonoBehaviour
 
             fish.Died += OnFishDied;
             fish.Rescued += OnFishRescued;
-            TotalFish++;
+            // En Supervivencia los defensores no cuentan entre los peces del lago (llegan y se van con las oleadas)
+            if (!IsSurvival) TotalFish++;
             DefendersSpawned++;
         }
     }
@@ -504,6 +535,11 @@ public class GameDirector : MonoBehaviour
 
     void OnFishDied(FishAI fish)
     {
+        if (IsSurvival && fish != null && fish.Defender != null)
+        {
+            if (!ended) Toast?.Invoke("¡CAZARON A UN PEZ DEFENSOR!", Danger);
+            return;
+        }
         FishLost++;
         int left = MaxFishLoss - FishLost;
         if (!ended)
@@ -524,14 +560,21 @@ public class GameDirector : MonoBehaviour
 
     List<BirdAI> SpawnWave(RuntimeWave wave)
     {
-        List<BirdAI> list = new List<BirdAI>();
         currentHealthMultiplier = wave.healthMultiplier;
         float yaw = arrivalYaw >= 0f ? arrivalYaw : Random.Range(0f, 360f);
+        return SpawnGroup(wave.birds, yaw, wave.healthMultiplier, 1f, "");
+    }
+
+    // Una bandada en V que llega desde 'yaw' (grados). Los jefes usan su vida tal cual (ya está pensada para la
+    // pelea) por bossHealthMultiplier (en Supervivencia sube en cada vuelta)
+    List<BirdAI> SpawnGroup(List<BirdType> flock, float yaw, float healthMultiplier, float bossHealthMultiplier, string tag)
+    {
+        List<BirdAI> list = new List<BirdAI>();
         Vector3 fromDir = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
         Vector3 right = Vector3.Cross(Vector3.up, fromDir);
         Vector3 center = lake.Center;
 
-        for (int i = 0; i < wave.birds.Count; i++)
+        for (int i = 0; i < flock.Count; i++)
         {
             // Formación en V
             int row = (i + 1) / 2;
@@ -540,11 +583,11 @@ public class GameDirector : MonoBehaviour
             Vector3 spawn = center + fromDir * arrivalDistance + Vector3.up * arrivalHeight + offset;
             Vector3 arrive = center + Vector3.up * Random.Range(14f, 20f) + right * side * row * 6f;
 
-            BirdType type = wave.birds[i];
-            // Los jefes usan su vida tal cual (ya está pensada para la pelea)
-            float mult = type.boss != BossKind.None ? 1f : Mathf.Max(0.1f, wave.healthMultiplier);
+            BirdType type = flock[i];
+            if (type == null) continue;
+            float mult = type.boss != BossKind.None ? Mathf.Max(0.1f, bossHealthMultiplier) : Mathf.Max(0.1f, healthMultiplier);
             int health = Mathf.Max(1, Mathf.RoundToInt(type.health * mult));
-            BirdAI bird = CreateBird("Ave_" + type.name + "_" + CurrentWave + "_" + (i + 1), spawn, type, health);
+            BirdAI bird = CreateBird("Ave_" + type.name + "_" + CurrentWave + tag + "_" + (i + 1), spawn, type, health);
             bird.BeginArrival(arrive, lake, player);
             list.Add(bird);
             birds.Add(bird);

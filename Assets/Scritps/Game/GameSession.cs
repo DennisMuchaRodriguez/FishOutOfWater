@@ -2,7 +2,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 // Lo que se eligió en el menú (modo y nivel) y los saltos entre escenas.
-// El menú llama a PlayLevel; el juego lee CurrentLevel; los botones de fin de nivel usan el resto.
+// El menú llama a PlayLevel (Historia) o PlaySurvival; el juego lee CurrentLevel; los botones de fin de nivel usan el
+// resto. En Supervivencia, REPETIR / REINTENTAR empiezan una partida nueva y volver al menú la termina.
 public static class GameSession
 {
     public enum Mode { Historia, Supervivencia, Cooperativo }
@@ -39,6 +40,7 @@ public static class GameSession
 
     public static void PlayLevel(int index)
     {
+        SurvivalRun.End();
         CurrentMode = Mode.Historia;
         LevelIndex = index;
         Time.timeScale = 1f;
@@ -48,7 +50,38 @@ public static class GameSession
     public static void ReplayLevel()
     {
         Time.timeScale = 1f;
+        if (CurrentMode == Mode.Supervivencia) SurvivalRun.Begin();
         LoadingScreen.Load(SceneManager.GetActiveScene().name);
+    }
+
+    // ---- Supervivencia ----
+
+    public static bool IsSurvival { get { return SurvivalRun.InSurvival; } }
+
+    // Partida nueva de Supervivencia (oleadas sin fin en el lago)
+    public static void PlaySurvival()
+    {
+        CurrentMode = Mode.Supervivencia;
+        LevelIndex = -1;
+        SurvivalRun.Begin();
+        Time.timeScale = 1f;
+        LoadingScreen.Load(LakeScene);
+    }
+
+    // Vuelta del Taller: la siguiente oleada de la partida
+    public static void ContinueSurvival()
+    {
+        CurrentMode = Mode.Supervivencia;
+        Time.timeScale = 1f;
+        LoadingScreen.Load(LakeScene);
+    }
+
+    // Sale de Supervivencia (al volver al menú o al mapa)
+    static void LeaveSurvival()
+    {
+        if (CurrentMode != Mode.Supervivencia && !SurvivalRun.Active) return;
+        SurvivalRun.End();
+        CurrentMode = Mode.Historia;
     }
 
     public static void PlayNextLevel()
@@ -59,6 +92,7 @@ public static class GameSession
 
     public static void GoToLevelMap()
     {
+        LeaveSurvival();
         OpenLevelMap = true;
         Time.timeScale = 1f;
         LoadingScreen.Load(MenuScene);
@@ -66,6 +100,7 @@ public static class GameSession
 
     public static void GoToMainMenu()
     {
+        LeaveSurvival();
         OpenLevelMap = false;
         Time.timeScale = 1f;
         LoadingScreen.Load(MenuScene);

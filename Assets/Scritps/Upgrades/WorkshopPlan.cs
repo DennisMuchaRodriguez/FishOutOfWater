@@ -37,7 +37,8 @@ public class WorkshopPlan : ScriptableObject
 
     // Los planos que se muestran de verdad, según lo que el jugador ya tiene instalado.
     // level de cada resultado = el nivel que se instalaría (1 o 2).
-    public static List<WorkshopOffer> ResolveOffers(WorkshopVisit visit, int visitNumber)
+    // rng (Supervivencia): si la visita no tiene plan, los planos salen al azar entre lo que todavía se puede mejorar.
+    public static List<WorkshopOffer> ResolveOffers(WorkshopVisit visit, int visitNumber, System.Random rng = null)
     {
         List<UpgradeId> order = UpgradeCatalog.OrderedIds();
         List<WorkshopOffer> result = new List<WorkshopOffer>();
@@ -45,6 +46,20 @@ public class WorkshopPlan : ScriptableObject
         if (visit != null && visit.offers != null)
             foreach (WorkshopOffer o in visit.offers)
                 if (o != null) wanted.Add(o);
+
+        if (wanted.Count == 0 && rng != null)
+        {
+            List<UpgradeId> open = new List<UpgradeId>();
+            foreach (UpgradeId id in order)
+                if (Upgrades.Level(id) < UpgradeCatalog.MaxLevelOf(id)) open.Add(id);
+            while (open.Count > 0 && result.Count < OffersPerVisit)
+            {
+                int i = rng.Next(open.Count);
+                result.Add(Next(open[i]));
+                open.RemoveAt(i);
+            }
+            return result;
+        }
 
         // Sin plan para esta visita: opciones repartidas por el catálogo (siempre las mismas para esa visita)
         if (wanted.Count == 0)

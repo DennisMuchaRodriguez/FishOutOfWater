@@ -3,6 +3,8 @@
 //  - Sol con disco suave y halo (sigue a la luz direccional principal de la escena).
 //  - Nubes procedurales que se mueven con el viento: bordes suaves pero definidos (como pintadas),
 //    lado iluminado claro, sombra azulada y "borde de plata" cuando pasan cerca del sol.
+//  - Ciclo de día y noche (LakeAmbience): el sol (o la luna) puede ponerse detrás del horizonte y de noche
+//    salen estrellas que titilan. Sin ciclo, todo queda como antes.
 // Lo aplica LakeAmbience (Resources/Ambiente/Cielo_Lago). Para volver al cielo anterior, desmarca
 // "Use Stylized Sky" en LakeAmbience.
 Shader "FishOutOfWater/Cielo Estilizado"
@@ -89,6 +91,10 @@ Shader "FishOutOfWater/Cielo Estilizado"
 
             // Viento global (lo actualiza LakeAmbience): desplazamiento extra de las nubes con las ráfagas
             float2 _FOW_WindOffset;
+            // Ciclo de día y noche (LakeAmbience): xyz = hacia dónde está el sol o la luna; w = 1 si el ciclo lo maneja
+            float4 _FOW_SkySunDir;
+            // Estrellas: 0 = de día, 1 = noche estrellada
+            float _FOW_Stars;
 
             struct Attributes
             {
@@ -162,6 +168,8 @@ Shader "FishOutOfWater/Cielo Estilizado"
                 // Sin luz principal (vista previa del material): un sol de media mañana
                 float3 ld = mainLight.direction;
                 float3 sunDir = dot(ld, ld) > 1e-4 ? normalize(ld) : normalize(float3(0.35, 0.55, 0.6));
+                // Con el ciclo de día y noche, el disco va donde está de verdad (puede estar bajo el horizonte)
+                if (_FOW_SkySunDir.w > 0.5) sunDir = normalize(_FOW_SkySunDir.xyz);
                 float sd = dot(d, sunDir);
                 float sunEdge = 1.0 - _SunSize * _SunSize;
                 float disk = smoothstep(sunEdge - _SunSoftness * _SunSoftness * 4.0, sunEdge, sd);
@@ -170,6 +178,21 @@ Shader "FishOutOfWater/Cielo Estilizado"
                 float horizonBand = exp(-abs(y) * _HorizonSharpness * 0.8);
                 float sunSide = pow(saturate(sd * 0.5 + 0.5), 3.0);
                 sky += _GlowColor.rgb * (glow + horizonBand * sunSide * _HorizonGlow);
+
+                // ---- Estrellas (de noche; las tapan las nubes) ----
+                if (_FOW_Stars > 0.001 && y > 0.0)
+                {
+                    float3 sp = d * 170.0;
+                    float3 cell = floor(sp);
+                    float3 cf = frac(sp) - 0.5;
+                    float h = frac(sin(dot(cell, float3(12.9898, 78.233, 37.719))) * 43758.5453);
+                    float isStar = step(0.986, h);
+                    float shine = saturate((h - 0.986) / 0.014);
+                    float dotShape = smoothstep(0.34, 0.0, length(cf));
+                    float twinkle = 0.65 + 0.35 * sin(_Time.y * (1.3 + shine * 3.5) + h * 61.0);
+                    float starA = isStar * dotShape * twinkle * (0.45 + shine) * _FOW_Stars * smoothstep(0.02, 0.22, y);
+                    sky += float3(0.9, 0.95, 1.0) * starA * 1.6;
+                }
 
                 // ---- Nubes ----
                 float cloudMask = 0.0;
@@ -210,7 +233,8 @@ Shader "FishOutOfWater/Cielo Estilizado"
                     sky = lerp(sky, cloudCol, cloudMask);
                 }
 
-                // Disco del sol (tapado por las nubes)
+                // Disco del sol (tapado por las nubes y, al ponerse, por el horizonte)
+                disk *= smoothstep(-0.015, 0.012, y);
                 sky += _SunColor.rgb * disk * _SunIntensity * (1.0 - cloudMask * 0.85);
 
                 return half4(sky, 1.0);

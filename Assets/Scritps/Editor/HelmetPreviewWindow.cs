@@ -130,8 +130,9 @@ public class HelmetPreviewWindow : EditorWindow
         s.fishAlive = EditorGUILayout.IntSlider("Peces a salvo", s.fishAlive, 0, s.totalFish);
         s.lossFraction = EditorGUILayout.Slider(new GUIContent("Se pierde al perder", "Fracción de peces cazados con la que se pierde"),
                                                 s.lossFraction, 0.1f, 1f);
-        s.totalWaves = EditorGUILayout.IntSlider("Oleadas", s.totalWaves, 1, 10);
-        s.wave = EditorGUILayout.IntSlider("Oleada actual", s.wave, 0, s.totalWaves);
+        s.endless = EditorGUILayout.Toggle(new GUIContent("Supervivencia", "Oleadas sin fin: 'OLEADA n' y el tramo hasta el próximo jefe"), s.endless);
+        if (!s.endless) s.totalWaves = EditorGUILayout.IntSlider("Oleadas", s.totalWaves, 1, 10);
+        s.wave = EditorGUILayout.IntSlider("Oleada actual", s.wave, 0, s.endless ? 50 : s.totalWaves);
         s.birds = EditorGUILayout.IntSlider("Depredadores", s.birds, 0, 20);
         s.defendersTotal = EditorGUILayout.IntSlider("Defensores (total)", s.defendersTotal, 0, 8);
         s.defenders = EditorGUILayout.IntSlider("Defensores con traje", s.defenders, 0, s.defendersTotal);
@@ -315,8 +316,9 @@ public class HelmetPreviewWindow : EditorWindow
                 totalFish = total,
                 fishAlive = Mathf.Clamp(s.fishAlive, 0, total),
                 maxFishLoss = Mathf.Clamp(Mathf.CeilToInt(total * s.lossFraction), 1, total),
-                wave = Mathf.Clamp(s.wave, 0, waves),
-                totalWaves = waves,
+                wave = s.endless ? Mathf.Max(0, s.wave) : Mathf.Clamp(s.wave, 0, waves),
+                totalWaves = s.endless ? 0 : waves,
+                endless = s.endless,
                 birds = Mathf.Max(0, s.birds),
                 defenders = Mathf.Clamp(s.defenders, 0, Mathf.Max(0, s.defendersTotal)),
                 defendersTotal = Mathf.Max(0, s.defendersTotal),

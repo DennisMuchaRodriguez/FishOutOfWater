@@ -9,6 +9,7 @@ using System.Collections;
 //  - Victoria: estrellas, resumen, cómic de después del nivel (la primera vez) y
 //    SIGUIENTE NIVEL / REPETIR / MAPA DE NIVELES. Si el nivel da visita al Taller: IR AL TALLER.
 //  - Derrota o muerte: REINTENTAR / MAPA DE NIVELES.
+//  - Supervivencia: fin de la partida con las oleadas superadas y el récord; NUEVA PARTIDA / MENÚ PRINCIPAL.
 public class PauseMenu : MonoBehaviour
 {
     public static bool IsPaused { get; private set; }
@@ -24,6 +25,7 @@ public class PauseMenu : MonoBehaviour
     RectTransform root;
     RectTransform pauseGroup;
     RectTransform deathGroup;
+    TextMeshProUGUI deathSub;
     float deathTimer;
 
     void Awake()
@@ -48,9 +50,12 @@ public class PauseMenu : MonoBehaviour
         MenuUI.Title("Titulo", card, "PAUSA", 70f, new Vector2(0.5f, 1f), new Vector2(0f, -60f), new Vector2(420f, 90f), MenuUI.Accent);
         MenuUI.Rule(card, new Vector2(0.5f, 1f), new Vector2(0f, -108f), 300f, MenuUI.Accent);
         MenuUI.ComicButton("CONTINUAR", card, new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), new Vector2(340f, 62f), MenuUI.Orange, Resume, 28f);
-        MenuUI.ComicButton("REINICIAR NIVEL", card, new Vector2(0.5f, 0.5f), new Vector2(0f, -18f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.ReplayLevel, 24f);
-        MenuUI.ComicButton("MAPA DE NIVELES", card, new Vector2(0.5f, 0.5f), new Vector2(0f, -90f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToLevelMap, 24f);
-        MenuUI.ComicButton("MENÚ PRINCIPAL", card, new Vector2(0.5f, 0.5f), new Vector2(0f, -162f), new Vector2(340f, 56f), MenuUI.BlueDark, GameSession.GoToMainMenu, 24f);
+        // En Supervivencia no hay mapa: NUEVA PARTIDA y MENÚ PRINCIPAL (que termina la partida)
+        bool survival = GameSession.IsSurvival;
+        MenuUI.ComicButton(survival ? "NUEVA PARTIDA" : "REINICIAR NIVEL", card, new Vector2(0.5f, 0.5f), new Vector2(0f, -18f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.ReplayLevel, 24f);
+        if (!survival)
+            MenuUI.ComicButton("MAPA DE NIVELES", card, new Vector2(0.5f, 0.5f), new Vector2(0f, -90f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToLevelMap, 24f);
+        MenuUI.ComicButton("MENÚ PRINCIPAL", card, new Vector2(0.5f, 0.5f), new Vector2(0f, survival ? -90f : -162f), new Vector2(340f, 56f), MenuUI.BlueDark, GameSession.GoToMainMenu, 24f);
         pauseGroup.gameObject.SetActive(false);
 
         // ---- Muerte ----
@@ -59,10 +64,13 @@ public class PauseMenu : MonoBehaviour
         RectTransform dcard = Card("Ficha", deathGroup, new Vector2(0f, -10f), new Vector2(560f, 380f), MenuUI.Red,
                                    MenuUI.WithAlpha(Color.Lerp(MenuUI.Ink, MenuUI.Red, 0.08f), 0.9f));
         MenuUI.Title("Titulo", dcard, "TRAJE DESTRUIDO", 64f, new Vector2(0.5f, 1f), new Vector2(0f, -62f), new Vector2(520f, 90f), MenuUI.Red);
-        MenuUI.Text("Sub", dcard, "La armadura llegó a cero", 24f, new Vector2(0.5f, 1f), new Vector2(0f, -122f), new Vector2(500f, 40f), MenuUI.TextDim)
-            .characterSpacing = 2f;
-        MenuUI.ComicButton("REINTENTAR", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(340f, 62f), MenuUI.Orange, GameSession.ReplayLevel, 28f);
-        MenuUI.ComicButton("MAPA DE NIVELES", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 74f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToLevelMap, 24f);
+        deathSub = MenuUI.Text("Sub", dcard, "La armadura llegó a cero", 24f, new Vector2(0.5f, 1f), new Vector2(0f, -122f), new Vector2(500f, 40f), MenuUI.TextDim);
+        deathSub.characterSpacing = 2f;
+        MenuUI.ComicButton(survival ? "NUEVA PARTIDA" : "REINTENTAR", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(340f, 62f), MenuUI.Orange, GameSession.ReplayLevel, 28f);
+        if (survival)
+            MenuUI.ComicButton("MENÚ PRINCIPAL", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 74f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToMainMenu, 24f);
+        else
+            MenuUI.ComicButton("MAPA DE NIVELES", dcard, new Vector2(0.5f, 0f), new Vector2(0f, 74f), new Vector2(340f, 56f), MenuUI.Blue, GameSession.GoToLevelMap, 24f);
         deathGroup.gameObject.SetActive(false);
     }
 
@@ -76,6 +84,14 @@ public class PauseMenu : MonoBehaviour
             deathTimer += Time.unscaledDeltaTime;
             if (deathTimer >= deathScreenDelay && !deathGroup.gameObject.activeSelf)
             {
+                // Supervivencia: hasta qué oleada se llegó y el récord
+                if (GameSession.IsSurvival && deathSub != null)
+                {
+                    GameDirector d = GameDirector.Instance;
+                    int wave = d != null ? Mathf.Max(1, d.CurrentWave) : SurvivalRun.NextWave;
+                    deathSub.text = "Llegaste a la oleada " + wave + "  ·  " +
+                                    (SurvivalRun.NewRecord ? "¡NUEVO RÉCORD!" : "Récord: " + SaveSystem.BestSurvivalWave + " oleadas");
+                }
                 deathGroup.gameObject.SetActive(true);
                 ShowCursor();
                 StartCoroutine(ArmButtons(deathGroup, deathGroup.GetComponentInChildren<Button>()));
@@ -127,6 +143,11 @@ public class PauseMenu : MonoBehaviour
 
     void BuildResults(bool victory, GameDirector director, LevelDefinition level)
     {
+        if (director != null && director.IsSurvival)
+        {
+            BuildSurvivalResults(director);
+            return;
+        }
         RectTransform group = MenuUI.Stretch("Resultado", root);
         Backdrop(group, victory ? MenuUI.WithAlpha(MenuUI.Ink, 0.8f) : new Color(0.16f, 0f, 0f, 0.68f));
         RectTransform card = Card("Ficha", group, new Vector2(0f, -6f), new Vector2(640f, 600f), victory ? MenuUI.Accent : MenuUI.Red, MenuUI.Glass);
@@ -207,6 +228,42 @@ public class PauseMenu : MonoBehaviour
             first = MenuUI.ComicButton("REINTENTAR", card, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(380f, 64f), MenuUI.Orange, GameSession.ReplayLevel, 30f);
             MenuUI.ComicButton("MAPA DE NIVELES", card, new Vector2(0.5f, 0f), new Vector2(0f, 66f), new Vector2(300f, 54f), MenuUI.Blue, GameSession.GoToLevelMap, 22f);
         }
+        StartCoroutine(ArmButtons(group, first));
+        StartCoroutine(PopIn(card));
+    }
+
+    // Fin de una partida de Supervivencia: hasta qué oleada se llegó, el récord y NUEVA PARTIDA / MENÚ PRINCIPAL
+    void BuildSurvivalResults(GameDirector director)
+    {
+        RectTransform group = MenuUI.Stretch("Resultado", root);
+        Backdrop(group, new Color(0.16f, 0f, 0f, 0.68f));
+        RectTransform card = Card("Ficha", group, new Vector2(0f, -6f), new Vector2(640f, 560f), MenuUI.Red, MenuUI.Glass);
+
+        MenuUI.Text("Modo", card, "SUPERVIVENCIA", 22f, new Vector2(0.5f, 1f), new Vector2(0f, -36f), new Vector2(600f, 34f), MenuUI.TextDim)
+            .characterSpacing = 3f;
+        MenuUI.Title("Titulo", card, "FIN DE LA PARTIDA", 56f, new Vector2(0.5f, 1f), new Vector2(0f, -92f), new Vector2(600f, 80f), MenuUI.Red);
+
+        int cleared = SurvivalRun.WavesCleared;
+        int best = SaveSystem.BestSurvivalWave;
+        string o = "<color=" + MenuUI.HexOrange + ">";
+        MenuUI.Title("Oleadas", card, cleared + (cleared == 1 ? " OLEADA SUPERADA" : " OLEADAS SUPERADAS"), 40f,
+                     new Vector2(0.5f, 1f), new Vector2(0f, -170f), new Vector2(600f, 60f), MenuUI.Orange);
+        string stats = "Llegaste a la oleada " + o + Mathf.Max(1, director.CurrentWave) + "</color>      Récord: " + o + best + "</color>\n" +
+                       "Aves derribadas: " + o + director.BirdsKilled + "</color>      " +
+                       "Peces rescatados: " + o + director.FishRescued + "</color>\n" +
+                       "Peces que quedaban: " + o + director.FishAlive + " de " + director.TotalFish + "</color>";
+        MenuUI.Text("Resumen", card, stats, 22f, new Vector2(0.5f, 1f), new Vector2(0f, -258f), new Vector2(600f, 100f), MenuUI.Cream).lineSpacing = 8f;
+
+        bool record = SurvivalRun.NewRecord;
+        Color newsColor = record ? MenuUI.Yellow : MenuUI.Red;
+        string news = record ? "¡NUEVO RÉCORD!" : "Mejora el traje entre oleadas y cuida a los peces";
+        RectTransform tag = MenuUI.HoloPanel("Novedad", card, new Vector2(0.5f, 1f), new Vector2(0f, -344f), new Vector2(560f, 44f),
+                                             MenuUI.WithAlpha(Color.Lerp(MenuUI.Ink, newsColor, 0.16f), 0.92f), MenuUI.WithAlpha(newsColor, 0.92f),
+                                             MenuUI.WithAlpha(newsColor, 0.28f), MenuUI.WithAlpha(newsColor, 0.38f), 0f, false, false);
+        MenuUI.Text("Texto", tag, news, 19f, new Vector2(0.5f, 0.5f), new Vector2(0f, 1f), new Vector2(520f, 40f), Color.Lerp(newsColor, Color.white, 0.55f));
+
+        Button first = MenuUI.ComicButton("NUEVA PARTIDA", card, new Vector2(0.5f, 0f), new Vector2(0f, 140f), new Vector2(380f, 64f), MenuUI.Orange, GameSession.ReplayLevel, 30f);
+        MenuUI.ComicButton("MENÚ PRINCIPAL", card, new Vector2(0.5f, 0f), new Vector2(0f, 58f), new Vector2(300f, 54f), MenuUI.Blue, GameSession.GoToMainMenu, 22f);
         StartCoroutine(ArmButtons(group, first));
         StartCoroutine(PopIn(card));
     }

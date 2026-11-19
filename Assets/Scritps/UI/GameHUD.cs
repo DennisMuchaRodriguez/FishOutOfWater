@@ -336,9 +336,12 @@ public class GameHUD : MonoBehaviour
         if (objectives.gameObject.activeSelf != show) objectives.gameObject.SetActive(show);
         if (!show) return;
 
-        waveText.text = director.CurrentWave > 0
-            ? "OLEADA " + director.CurrentWave + " / " + director.TotalWaves
-            : "OLEADA - / " + director.TotalWaves;
+        if (director.IsSurvival)
+            waveText.text = "OLEADA " + Mathf.Max(1, director.CurrentWave) + "  ·  SUPERVIVENCIA";
+        else
+            waveText.text = director.CurrentWave > 0
+                ? "OLEADA " + director.CurrentWave + " / " + director.TotalWaves
+                : "OLEADA - / " + director.TotalWaves;
         int alive = director.AliveBirds();
         birdsText.text = "DEPREDADORES  " + alive;
         birdsText.color = alive > 0 ? GameDirector.Danger : GameDirector.Cyan;

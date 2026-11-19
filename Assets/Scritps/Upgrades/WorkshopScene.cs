@@ -15,6 +15,9 @@ using System.Collections.Generic;
 //  - Mesa de chatarra con herramientas, el traje en un soporte que gira, el mecánico (bagre con gafas) y alevines.
 //  - Los 3 planos son hologramas: clic = elegir, INSTALAR (o clic otra vez) = instalar.
 //  - Esc o VOLVER AL MAPA sin elegir: la visita queda pendiente (botón IR AL TALLER en el mapa).
+//  - SUPERVIVENCIA (después de cada oleada): igual que en la historia (las primeras visitas ofrecen los mismos planos
+//    que las visitas de la historia; después, planos al azar), pero las mejoras son solo de esa partida. Al instalar,
+//    SIGUIENTE OLEADA vuelve al lago; SEGUIR SIN MEJORA (o Esc) vuelve sin instalar nada.
 // Abrir la escena directo en el Editor muestra una visita de prueba (testLevelIndex).
 public class WorkshopScene : MonoBehaviour
 {
@@ -68,6 +71,7 @@ public class WorkshopScene : MonoBehaviour
     int visitNumber;
     bool testVisit;
     bool alreadyUsed;
+    bool survivalVisit;
     List<WorkshopOffer> offers = new List<WorkshopOffer>();
     int selected = -1;
     bool installing, installed, leaving;
@@ -110,16 +114,18 @@ public class WorkshopScene : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
 
+        survivalVisit = WorkshopFlow.IsSurvivalVisit && SurvivalRun.InSurvival;
         testVisit = !WorkshopFlow.HasVisit;
         levelIndex = testVisit ? testLevelIndex : WorkshopFlow.VisitLevelIndex;
-        visitNumber = WorkshopFlow.VisitNumber(levelIndex);
-        alreadyUsed = !testVisit && SaveSystem.IsWorkshopUsed(levelIndex);
+        visitNumber = survivalVisit ? SurvivalRun.WorkshopVisits + 1 : WorkshopFlow.VisitNumber(levelIndex);
+        alreadyUsed = !testVisit && !survivalVisit && SaveSystem.IsWorkshopUsed(levelIndex);
 
         BuildEnvironment();
         BuildUI();
 
         WorkshopPlan plan = WorkshopPlan.Load();
-        WorkshopVisit visit = plan != null ? plan.FindVisit(levelIndex, visitNumber) : null;
+        // Supervivencia: la visita número N de la historia (mismos planos); el índice -1 no es de ningún nivel
+        WorkshopVisit visit = plan != null ? plan.FindVisit(survivalVisit ? -1 : levelIndex, visitNumber) : null;
         mechanicText.text = MechanicLine(visit);
 
         StartCoroutine(FadeTo(0f, 0.8f));
@@ -133,8 +139,23 @@ public class WorkshopScene : MonoBehaviour
         else ShowOffers(visit);
     }
 
+    static readonly string[] SurvivalLines =
+    {
+        "¡Rápido, que vienen más! Elige un plano y te lo instalo antes de que vuelvan.",
+        "Cada oleada llegan más. Con esta chatarra te armo una pieza: elige bien.",
+        "Escuché el graznido desde aquí abajo. ¿Qué le ponemos al traje para la próxima?",
+        "Ese traje aguanta, pero puede aguantar más. Uno de estos tres, nada más.",
+        "Los peces cuentan contigo. Elige, instalo y vuelves arriba."
+    };
+
     string MechanicLine(WorkshopVisit visit)
     {
+        if (survivalVisit)
+        {
+            if (SurvivalRun.LastWasBoss) return "¡Tumbaste a un jefe! Eso merece mi mejor chatarra. Elige un plano.";
+            if (visitNumber <= 1) return "¡Así que tú eres el pez del traje! Aquí abajo armo mejoras entre oleada y oleada. Elige una.";
+            return SurvivalLines[(visitNumber + SurvivalRun.Seed) % SurvivalLines.Length];
+        }
         if (alreadyUsed) return "¡Ese traje ya tiene su pieza nueva! Vuelve después del próximo nivel con más chatarra.";
         if (visit != null && !string.IsNullOrEmpty(visit.mechanicLine)) return visit.mechanicLine;
         if (visitNumber <= 1) return "¡Así que tú eres el pez del traje! Elige un plano: lo armo con lo que encontré en el fondo del lago.";
@@ -993,7 +1014,9 @@ public class WorkshopScene : MonoBehaviour
 
         Vector2 top = new Vector2(0.5f, 1f);
         MenuUI.Title("Titulo", ui, "EL TALLER", 64f, top, new Vector2(0f, -48f), new Vector2(600f, 80f), MenuUI.Orange);
-        string sub = "VISITA " + visitNumber + " DE " + WorkshopFlow.VisitCount + "  ·  DESPUÉS DEL NIVEL " + (levelIndex + 1);
+        string sub = survivalVisit
+            ? "SUPERVIVENCIA  ·  OLEADA " + SurvivalRun.WavesCleared + " SUPERADA  ·  MEJORA " + visitNumber
+            : "VISITA " + visitNumber + " DE " + WorkshopFlow.VisitCount + "  ·  DESPUÉS DEL NIVEL " + (levelIndex + 1);
         if (testVisit) sub += "  ·  PRUEBA";
         MenuUI.Text("Sub", ui, sub, 18f, top, new Vector2(0f, -94f), new Vector2(800f, 28f), MenuUI.Accent).characterSpacing = 4f;
 
@@ -1022,7 +1045,7 @@ public class WorkshopScene : MonoBehaviour
         installLabel = installButton.GetComponentInChildren<TextMeshProUGUI>();
         installButton.gameObject.SetActive(false);
 
-        backButton = MenuUI.ComicButton("VOLVER AL MAPA", ui, new Vector2(0f, 0f), new Vector2(150f, ButtonsY), new Vector2(240f, 46f), MenuUI.BlueDark, Leave, 20f);
+        backButton = MenuUI.ComicButton(survivalVisit ? "SEGUIR SIN MEJORA" : "VOLVER AL MAPA", ui, new Vector2(0f, 0f), new Vector2(150f, ButtonsY), new Vector2(240f, 46f), MenuUI.BlueDark, Leave, 20f);
 
         fade = MenuUI.Panel("Fundido", ui, MenuUI.Ink);
         fade.raycastTarget = false;
@@ -1064,7 +1087,9 @@ public class WorkshopScene : MonoBehaviour
             SetContinue();
             return;
         }
-        offers = WorkshopPlan.ResolveOffers(visit, visitNumber);
+        // En Supervivencia, sin plan para esta visita: planos al azar (siempre los mismos para esa visita de la partida)
+        System.Random rng = survivalVisit ? new System.Random(SurvivalRun.Seed * 17 + visitNumber * 101) : null;
+        offers = WorkshopPlan.ResolveOffers(visit, visitNumber, rng);
         if (offers.Count == 0)
         {
             statusText.text = "¡EL TRAJE YA TIENE TODAS LAS MEJORAS!";
@@ -1208,8 +1233,9 @@ public class WorkshopScene : MonoBehaviour
         sparks.Emit(60);
 
         // Guarda la mejora y gasta la visita
-        SaveSystem.SetUpgradeLevel(offer.upgrade, offer.level);
-        if (!testVisit) SaveSystem.MarkWorkshopUsed(levelIndex);
+        // Historia: al progreso guardado; Supervivencia: solo a esta partida
+        Upgrades.Install(offer.upgrade, offer.level);
+        if (!testVisit && !survivalVisit) SaveSystem.MarkWorkshopUsed(levelIndex);
         RefreshInstalled();
 
         mechanic.excitement = 0.3f;
@@ -1232,7 +1258,7 @@ public class WorkshopScene : MonoBehaviour
     void SetContinue()
     {
         bool next = !testVisit && WorkshopFlow.ContinueToNextLevel && GameSession.HasNextLevel;
-        installLabel.text = next ? "SIGUIENTE NIVEL" : "VOLVER AL MAPA";
+        installLabel.text = survivalVisit ? "SIGUIENTE OLEADA" : (next ? "SIGUIENTE NIVEL" : "VOLVER AL MAPA");
         installButton.gameObject.SetActive(true);
         installButton.Select();
         backButton.gameObject.SetActive(false);
@@ -1242,6 +1268,11 @@ public class WorkshopScene : MonoBehaviour
     void Continue()
     {
         if (leaving) return;
+        if (survivalVisit)
+        {
+            StartCoroutine(LeaveRoutine(true));
+            return;
+        }
         bool next = !testVisit && WorkshopFlow.ContinueToNextLevel && GameSession.HasNextLevel;
         LevelCatalog catalog = GameSession.Catalog;
         LevelDefinition nextLevel = next && catalog != null ? catalog.Get(GameSession.LevelIndex + 1) : null;
@@ -1266,7 +1297,14 @@ public class WorkshopScene : MonoBehaviour
     {
         leaving = true;
         yield return FadeTo(1f, 0.5f);
-        if (testVisit)
+        if (survivalVisit)
+        {
+            // Supervivencia: siempre vuelve al lago con la oleada siguiente (haya instalado o no)
+            WorkshopFlow.ClearVisit();
+            SurvivalRun.MarkWorkshopVisit();
+            GameSession.ContinueSurvival();
+        }
+        else if (testVisit)
         {
             WorkshopFlow.ClearVisit();
             GameSession.GoToLevelMap();

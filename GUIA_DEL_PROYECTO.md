@@ -9,6 +9,7 @@ Los valores "En escena" son los que tiene ahora `SampleScene` (los que no aparec
 3. [Cómo se genera todo al darle Play](#3-cómo-se-genera-todo-al-darle-play)
 4. [Flujo de la partida (oleadas, victoria y derrota)](#4-flujo-de-la-partida)
    - [Menú, mapa de niveles, cómics y progreso](#menú-mapa-de-niveles-cómics-y-progreso)
+   - [Modo Supervivencia (oleadas sin fin)](#modo-supervivencia-oleadas-sin-fin)
 5. [Inspector: GameDirector y archivos de datos (Niveles, Aves, Peces, Cómics)](#5-inspector-gamedirector)
 6. [Inspector: agua (LakeVolume, LakeWater y material del agua)](#6-inspector-agua)
 7. [Inspector: PlayerController_Base (el pez protagonista)](#7-inspector-playercontroller_base)
@@ -185,7 +186,8 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 1. **Menú principal** (escena MainMenu): JUGAR, CONTROLES y SALIR. El pez flota junto al título.
 2. **Elige modo**:
    - **HISTORIA** (1 jugador): abre el mapa de niveles. La tarjeta muestra tus estrellas y cuántos niveles completaste.
-   - **SUPERVIVENCIA** y **COOPERATIVO**: bloqueados, con la etiqueta "PRÓXIMAMENTE" (están en el GDD, todavía no existen).
+   - **SUPERVIVENCIA**: oleadas sin fin en el mismo lago (ver [Modo Supervivencia](#modo-supervivencia-oleadas-sin-fin)). La tarjeta muestra tu récord de oleadas.
+   - **COOPERATIVO**: bloqueado, con la etiqueta "PRÓXIMAMENTE" (está en el GDD, todavía no existe).
 3. **Mapa de niveles**: 20 nenúfares en zigzag, agrupados en los 4 bloques del GDD.
    - Solo puedes jugar los niveles **desbloqueados**: al principio solo el 1, y cada victoria desbloquea el siguiente (de uno en uno).
    - Cada nivel muestra su número, sus estrellas, un candado si está bloqueado y las etiquetas **JEFE** y **TALLER**.
@@ -230,6 +232,82 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 - **F9** en el Archivo de aves: registra todas las especies (para ver todas las fichas).
 - **BORRAR PROGRESO** (abajo a la izquierda del mapa): pulsa dos veces para confirmar. Deja todo como nuevo.
 - Para probar un nivel sin pasar por el menú: ponlo en **Test Level** del GameDirector y dale Play en SampleScene (no guarda progreso si no está en el catálogo).
+
+### Modo Supervivencia (oleadas sin fin)
+El mismo lago, los mismos peces, aves y jefes de la historia, pero las oleadas no se acaban: cada una trae más aves y más
+fuertes, y después de cada oleada vas al **Taller** a elegir una mejora, estilo roguelike. Código: `SurvivalRun` (la
+partida, que sigue viva entre el lago y el Taller), `SurvivalWaves` (arma cada oleada) y `GameDirector.Survival.cs` (el
+flujo en el lago).
+
+**Cómo es una partida**
+1. Menú → ELIGE TU MODO → **SUPERVIVENCIA**. Empiezas con el traje **sin mejoras** (las de la historia no cuentan y las
+   de la partida no pasan a la historia) y con **28 peces** en el lago.
+2. Cuenta atrás de calma (13 s la primera vez, 10 s después) y llega la oleada. Cinemática de llegada en la oleada 1 y
+   en las de jefe.
+3. **Oleada superada** → el cartel avisa ("El mecánico te espera en el Taller") y a los 3,5 s vas al Taller:
+   - Es **el mismo Taller de la historia**: las primeras 6 visitas ofrecen los mismos 3 planos que las 6 visitas de la
+     historia (`TallerPlan`); desde la 7.ª, 3 planos al azar entre lo que todavía se puede mejorar. Las reglas son las de
+     siempre: el nivel II solo si ya tienes el I y nunca algo que ya está al máximo.
+   - El mecánico tiene frases propias de Supervivencia (y una especial después de un jefe).
+   - **INSTALAR** y después **SIGUIENTE OLEADA** vuelve al lago. **SEGUIR SIN MEJORA** (o Esc) vuelve sin instalar nada.
+   - Al volver, el traje está reparado y recargado (armadura, combustible y munición llenos).
+   - Si el traje ya tiene **todas** las mejoras, ya no se va al Taller: la oleada siguiente llega en el mismo lago.
+4. **Los peces cazados no vuelven** entre oleadas. Al vencer una oleada **con jefe** llegan **3 peces nuevos** (sin pasar
+   de los 28 del principio).
+5. **Pierdes** si el traje se destruye o si cazan el **75 %** de los peces (21 de 28). Pantalla final: oleadas
+   superadas, hasta qué oleada llegaste, récord, aves derribadas y peces rescatados; **NUEVA PARTIDA** o **MENÚ PRINCIPAL**.
+6. El **récord** (más oleadas superadas) se guarda en `progreso.json` (`bestSurvivalWave`) y sale en la tarjeta del menú.
+   En la pausa: CONTINUAR, NUEVA PARTIDA y MENÚ PRINCIPAL (volver al menú termina la partida).
+
+**Cómo suben las oleadas** (constantes al principio de `SurvivalWaves.cs`)
+
+| Oleada | Aves | Vida | Qué llega |
+|---|---|---|---|
+| 1 | 5–6 | ×1,10 | Gaviotas y martines pescadores (no empieza suave: como el final del nivel 3 de la historia) |
+| 2–4 | 6–8 | ×1,15–1,25 | + garzas (2), charranes (3), pelícanos (4) |
+| **5** | jefe + 4 | ×1,30 | **La Garza Gris Gigante** |
+| 6–9 | 9–13 | ×1,35–1,50 | + cormoranes (6), serretas (8) |
+| **10** | jefe + 7 | ×1,55 | **El Pelícano Saco Sin Fondo** |
+| 11–14 | 12–17 | ×1,60–1,75 | + águilas pescadoras (11): ya están todas las especies |
+| **15** | jefe + 9 | ×1,80 | **El Cormorán Rey** |
+| 16–19 | 17–21 | ×1,85–2,00 | más aves fuertes en la mezcla |
+| **20** | jefe + 11 | ×2,05 | **La Reina Águila Marina** |
+| 21+ | 22 (tope) | +8 % por oleada | ya no suben las aves: sube la vida y la mezcla se pone pesada |
+| **25, 30, 35, 40** | **2 jefes** + escolta | | dos jefes distintos al azar, cada uno por su lado; +15 % de vida por vuelta |
+| **45 en adelante** | **3 jefes** + escolta | | tres jefes distintos a la vez |
+
+- La cantidad: 4,6 + 0,9 por oleada (± 1), entre 5 y 22. La oleada que sigue a un jefe trae un 15 % menos (un respiro).
+- Cada especie tiene un **tope por oleada** (lo máximo que llega junto en la historia: 5 gaviotas, 3 charranes, 1
+  pelícano...) que sube cada 8 oleadas. Las recién llegadas salen más seguido; las gaviotas, cada vez menos; las pesadas
+  (garza, pelícano, cormorán, águila), un poco menos.
+- Las oleadas salen de la **semilla de la partida**: la misma partida siempre arma las mismas oleadas.
+
+**Grupos por distintos lados** (desde la oleada 2; cada vez más seguido, hasta 3 de cada 4 oleadas):
+- **Tenaza**: dos grupos a la vez por lados opuestos.
+- **Exploradores**: primero un par de aves livianas; a los 9–12 s un grupo por otro lado y a los 19–23 s otro grupo por
+  otro lado más.
+- **Escalonada**: tres grupos parecidos por tres lados (a los 0, 10–13 y 20–25 s).
+- **Jefes**: cada jefe al frente de su grupo; si hay dos o tres, los otros llegan más tarde por otros lados.
+- Cada grupo nuevo avisa en el casco **por qué lado llega respecto a donde miras** (DE FRENTE, POR LA IZQUIERDA, POR LA
+  DERECHA, POR DETRÁS). Si derribas a todas antes de tiempo, el grupo siguiente llega a los 3 s (no hay que esperar).
+- La oleada no termina hasta que llegaron y cayeron todos los grupos.
+
+**Peces defensores**: 2 desde la oleada 3 y 2 más cada 4 oleadas (4 en la 7, 6 en la 11, 8 desde la 15). Al volver del
+Taller llegan con el traje reparado. No cuentan entre los 28 peces del lago (si cazan a uno no suma a la derrota).
+
+**El casco**: en Supervivencia el panel de misión dice "OLEADA n" y las 5 pastillas son el tramo hasta el próximo jefe
+(la última, roja, es la del jefe).
+
+**Para probarlo sin pasar por el menú**: en el `GameDirector` marca **Test Survival** y dale Play en la escena del lago.
+
+| Campo del GameDirector (Supervivencia) | Defecto | Qué hace |
+|---|---|---|
+| Test Survival | ✘ | Play directo en la escena = partida de Supervivencia |
+| Survival Fish | 28 | Peces del lago al empezar (tipos y cardúmenes del último nivel de la historia) |
+| Survival Loss Fraction | 0.75 | Pierdes si cazan este porcentaje |
+| Survival Fish Per Boss | 3 | Peces nuevos al vencer una oleada con jefe |
+| Survival Workshop Every | 1 | Ir al Taller cada cuántas oleadas superadas |
+| Survival Calm | 10 s | Calma antes de cada oleada (+3 s en la primera) |
 
 ---
 
@@ -467,16 +545,16 @@ En **PlayerBase**.
 - **Q**: esquive a la izquierda. **E**: esquive a la derecha.
 
 **Esquive** (`PlayerController_Base.Dodge.cs`): un **impulso brusco de lado** (sin tener que girar) mientras el pez da
-una **vuelta completa de 360°**. Sale de golpe a toda velocidad y frena enseguida: recorre 12 m en 0,45 s. Funciona
+una **vuelta completa de 360°**. Sale de golpe a toda velocidad y frena enseguida: recorre 20 m en 0,5 s. Funciona
 igual si vuela hacia adelante o hacia atrás, si sube, si cae o si nada: solo cambia el movimiento de lado (lo demás se
-conserva). Durante 0,35 s las aves no lo pueden golpear. En el aire gasta 4 de combustible si tiene (sin combustible
+conserva). Durante 0,4 s las aves no lo pueden golpear. En el aire gasta 4 de combustible si tiene (sin combustible
 igual esquiva); en el agua no gasta.
 - **Tercera persona**: solo gira el modelo del pez; la cámara no gira (lo sigue de lado).
 - **Primera persona**: toda la pantalla da la vuelta completa.
 - El **fuego del propulsor no gira** con el pez: sigue saliendo hacia donde salía.
 Campos: `Dodge Left Key` Q, `Dodge Right Key` E, `Dodge On Double Tap` ✘ (si lo activas, también con doble toque de
-A / D), `Double Tap Time` 0,28, `Dodge Distance` 12, `Dodge Duration` 0,45, `Dodge Cooldown` 0,6,
-`Dodge Invulnerable` 0,35, `Dodge Energy Cost` 4.
+A / D), `Double Tap Time` 0,28, `Dodge Distance` 20, `Dodge Duration` 0,5, `Dodge Cooldown` 0,6,
+`Dodge Invulnerable` 0,4, `Dodge Energy Cost` 4.
 
 ### Movimiento
 | Campo | Defecto | En escena | Qué hace |
@@ -1101,6 +1179,20 @@ Flores, Juncos, Totora, Nenufar y Pasto_Acuatico (más los del fondo). Cada uno 
 - **Luz ambiente** en degradado (cielo / horizonte / suelo) y un tono cálido de media mañana en el sol (no cambia su intensidad ni dirección).
 - **Viento con ráfagas**: cambia la fuerza del vaivén de las plantas, la velocidad de las nubes y la cantidad de hojas que caen. Su dirección gira un poco con el tiempo.
 - **Bajo el agua**: con la cámara bajo la superficie la niebla cambia al instante por una densa del color del agua (más oscura en lo hondo): de cerca se ve bien, a 10 m un 30 % borroso, a 20 m un 76 % y a 30 m casi nada. Al salir vuelve la niebla de aire en un instante. Se suma al filtro azul del `Underwater Volume`.
+- **Ciclo de día, tarde y noche** (en Supervivencia; en la historia solo si marcas `Day Cycle In Story`): un día completo
+  dura `Day Length Minutes` (10 min de juego) y en Supervivencia sigue donde quedó al volver del Taller (cada partida
+  empieza de mañana).
+  - **Día** (lo de siempre) → **tarde** dorada → **atardecer** naranja y rosa (el sol se pone detrás del horizonte) →
+    **anochecer** azul → **noche** con luna y estrellas que titilan → **amanecer**.
+  - El sol cruza el cielo de verdad (la luz direccional gira y sus sombras también); de noche la luz es la de la luna,
+    azulada. Cambian también la luz ambiente, la niebla, las nubes y el **tono del agua** (de noche se oscurece y se azula).
+  - **La noche no es oscura**: cielo azul marino, luna, nubes con borde claro y luz ambiente azul con la que se ve bien
+    el lago. Más clara o más oscura con `Night Brightness`.
+  - El casco avisa "ATARDECE SOBRE EL LAGO", "CAE LA NOCHE" y "AMANECE".
+  - Para mirar una hora en el editor: con Play, mueve `Preview Time Of Day` (0 amanecer, 0,25 mediodía, 0,47 tarde,
+    0,55 atardecer, 0,8 noche; -1 = avanza sola).
+  - El día sale del material `Cielo_Lago` y de los colores del Inspector; se usa una copia del material, así que el
+    archivo del proyecto no cambia.
 - **Para volver al cielo anterior**: agrega `LakeAmbience` a mano a la escena y desmarca `Use Stylized Sky` (lo mismo con la niebla, la luz o el sol).
 
 | Campo de LakeAmbience | Defecto | Qué hace |
@@ -1112,6 +1204,11 @@ Flores, Juncos, Totora, Nenufar y Pasto_Acuatico (más los del fondo). Cada uno 
 | Wind Direction / Wind Strength / Gust Strength / Gust Period / Cloud Drift | (0.94, 0, 0.34) / 1 / 0.6 / 9 s / 0.01 | Viento y ráfagas |
 | Underwater Fog / Water Fog Shallow, Deep / Water Dark Depth / Water Fog Density / Water Fog Fade Out | ✔ / verde azulado claro, oscuro / 8 m / 0.06 / 6 | Visibilidad bajo el agua |
 | Ambient Effects | ✔ | Hojas, polen, niebla baja y efectos bajo el agua (`AmbientParticles`) |
+| Day Cycle In Survival / Day Cycle In Story | ✔ / ✘ | Ciclo de día, tarde y noche en cada modo |
+| Day Length Minutes | 10 | Minutos de juego de un día completo |
+| Night Brightness | 0.55 | Qué tan clara es la noche (1 = casi como el día) |
+| Story Start Time | 0.2 | Hora con la que empieza un nivel de la historia (si tiene ciclo) |
+| Preview Time Of Day | -1 | Fija la hora para probar (-1 = avanza sola) |
 
 **Efectos ambientales** (`AmbientParticles`, siguen a la cámara y no se emiten bajo el agua):
 - **Hojas** que caen de los abedules, sauces y árboles de hoja cercanos (hasta 55 m). Giran en el aire, el viento las lleva y las que llegan al agua se quedan flotando hasta desvanecerse. Colores de verde a naranja; caen más con las ráfagas.
@@ -1139,6 +1236,9 @@ de Iron Man y cuevas submarinas estilizadas). Todo se arma por código al abrir 
 - **Los trajes de las vitrinas están vacíos**: sin el pez adentro (se ocultan la cabeza, los ojos, el cuerpo y las aletas)
   y con la escafandra **blanca**.
 - Al **instalar** una mejora, los planos se desvanecen (el elegido un poco después) para que se vea el taller de fondo.
+- **En Supervivencia** se viene después de cada oleada: el subtítulo dice "SUPERVIVENCIA · OLEADA n SUPERADA · MEJORA m",
+  las mejoras son solo de esa partida y los botones son SIGUIENTE OLEADA y SEGUIR SIN MEJORA (ver
+  [Modo Supervivencia](#modo-supervivencia-oleadas-sin-fin)).
 
 Modelos (en el componente WorkshopScene, todos hechos con `Herramientas/Modelado/entorno`): `Mechanic Model`
 (Mecanico_Bagre), `Bench Model` (Mesa_Chatarra), `Display Case Model` (Vitrina_Traje), `Holo Table Model` (Mesa_Holo),

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-// Visitas al Taller del modo Historia.
+// Visitas al Taller del modo Historia (y las de Supervivencia, entre oleada y oleada: OpenSurvival).
 // CONTRATO para el menú y la pantalla de resultado: WorkshopScene, IsPending y Open.
 // Una visita queda pendiente al ganar un nivel con "Workshop After" hasta que se instala una mejora;
 // si se sale del Taller sin elegir, sigue pendiente (botón IR AL TALLER en el mapa).
@@ -14,13 +14,16 @@ public static class WorkshopFlow
     public static int VisitLevelIndex { get; private set; } = -1;
     // Al terminar: true = jugar el siguiente nivel, false = volver al mapa
     public static bool ContinueToNextLevel { get; private set; }
-    public static bool HasVisit { get { return VisitLevelIndex >= 0; } }
+    // Visita de Supervivencia (después de superar una oleada; al terminar sigue la oleada siguiente)
+    public static bool IsSurvivalVisit { get; private set; }
+    public static bool HasVisit { get { return VisitLevelIndex >= 0 || IsSurvivalVisit; } }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
         VisitLevelIndex = -1;
         ContinueToNextLevel = false;
+        IsSurvivalVisit = false;
     }
 
     // ¿El nivel (índice del catálogo) da una visita al Taller que todavía no se usó?
@@ -33,6 +36,7 @@ public static class WorkshopFlow
     // Abre el Taller por la visita de ese nivel. Al terminar: siguiente nivel o mapa.
     public static void Open(int levelIndex, bool continueToNextLevel)
     {
+        IsSurvivalVisit = false;
         VisitLevelIndex = levelIndex;
         ContinueToNextLevel = continueToNextLevel;
         GameSession.CurrentMode = GameSession.Mode.Historia;
@@ -47,11 +51,29 @@ public static class WorkshopFlow
         LoadingScreen.Load(WorkshopScene);
     }
 
+    // Supervivencia: el Taller después de superar una oleada (elige una mejora y vuelve al lago con la siguiente)
+    public static void OpenSurvival()
+    {
+        VisitLevelIndex = -1;
+        ContinueToNextLevel = true;
+        IsSurvivalVisit = true;
+        Time.timeScale = 1f;
+        if (!Application.CanStreamedLevelBeLoaded(WorkshopScene))
+        {
+            Debug.LogWarning("WorkshopFlow: la escena '" + WorkshopScene + "' no está en File > Build Profiles. Sigue la oleada siguiente.");
+            IsSurvivalVisit = false;
+            GameSession.ContinueSurvival();
+            return;
+        }
+        LoadingScreen.Load(WorkshopScene);
+    }
+
     // Se olvida la visita en curso (al salir del Taller)
     public static void ClearVisit()
     {
         VisitLevelIndex = -1;
         ContinueToNextLevel = false;
+        IsSurvivalVisit = false;
     }
 
     // ---- Niveles con Taller (salen de "Workshop After" de cada nivel) ----

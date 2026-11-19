@@ -72,6 +72,8 @@ Shader "FishOutOfWater/Agua Estilizada"
 
             // Anillos de impacto (los envía LakeWater.cs): xy = posición XZ, z = tiempo de inicio, w = fuerza
             float4 _WaterRipples[MAX_RIPPLES];
+            // Ciclo de día y noche (LakeAmbience): rgb = tono del agua a esta hora; a = cuánto se aplica (0 = nada)
+            float4 _FOW_SkyTint;
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _ShallowColor;
@@ -213,6 +215,7 @@ Shader "FishOutOfWater/Agua Estilizada"
                 if (!front)
                 {
                     half3 under = _UnderColor.rgb * (0.75 + 0.5 * fres) + _RippleColor.rgb * rippleGlow * 0.6;
+                    under *= lerp(half3(1, 1, 1), (half3)_FOW_SkyTint.rgb, (half)saturate(_FOW_SkyTint.a));
                     under = MixFog(under, i.fogFactor);
                     return half4(under, saturate(_UnderColor.a + rippleGlow * 0.3));
                 }
@@ -263,6 +266,8 @@ Shader "FishOutOfWater/Agua Estilizada"
                 float alpha = lerp(_ShallowColor.a, _DeepColor.a, dShade);
                 alpha = saturate(alpha + fres * 0.25 + foam + rippleGlow * 0.5 + spec * 0.5 + edge);
 
+                // Hora del día: de noche el agua se oscurece y se azula, al atardecer toma el tono del cielo
+                col *= lerp(half3(1, 1, 1), (half3)_FOW_SkyTint.rgb, (half)saturate(_FOW_SkyTint.a));
                 col = MixFog(col, i.fogFactor);
                 return half4(col, alpha);
             }

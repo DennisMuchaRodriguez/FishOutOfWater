@@ -34,7 +34,10 @@ public class LoadingScreen : MonoBehaviour
         "La R cambia de cámara: primera persona, tercera y mirando hacia atrás (para dispararle a quien te persigue).",
         "Con la F lanzas los misiles teledirigidos.",
         "Las cápsulas de munición flotan en el lago (y algunas están bajo el agua).",
-        "Cuidado con los choques a toda velocidad: el traje pierde armadura."
+        "Cuidado con los choques a toda velocidad: el traje pierde armadura.",
+        "Supervivencia: después de cada oleada el mecánico te instala una mejora (solo para esa partida).",
+        "Supervivencia: cada 5 oleadas llega un jefe, y más adelante llegan dos o tres a la vez.",
+        "Supervivencia: a veces las aves llegan en grupos por distintos lados. Escucha el aviso del casco."
     };
 
     bool busy;

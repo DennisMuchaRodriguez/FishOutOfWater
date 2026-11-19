@@ -43,6 +43,7 @@ public class VisorMissionHUD : MonoBehaviour
     {
         public int totalFish, fishAlive, maxFishLoss, wave, totalWaves, birds;
         public int defenders, defendersTotal;   // peces defensores con traje / los que hubo en el nivel (0 = no hay)
+        public bool endless;      // Supervivencia: oleadas sin fin (las pastillas son el tramo hasta el próximo jefe)
         public float countdown;
         public bool waveActive;   // oleada en curso (las pastillas laten)
         public bool waiting;      // calma o descanso entre oleadas (se ve la cuenta atrás)
@@ -68,6 +69,7 @@ public class VisorMissionHUD : MonoBehaviour
                 birds = d.AliveBirds(),
                 defenders = d.DefendersAlive,
                 defendersTotal = d.DefendersSpawned,
+                endless = d.IsSurvival,
                 countdown = d.Countdown,
                 waveActive = d.State == GameDirector.GameState.WaveActive || d.State == GameDirector.GameState.WaveIncoming,
                 waiting = d.State == GameDirector.GameState.Calm || d.State == GameDirector.GameState.Intermission
@@ -275,13 +277,18 @@ public class VisorMissionHUD : MonoBehaviour
 
     void RefreshWaves(Sample d)
     {
-        int waves = Mathf.Max(0, d.totalWaves);
+        // Supervivencia: "OLEADA n" y 5 pastillas = el tramo hasta el próximo jefe (la última, roja, es la del jefe)
+        int block = SurvivalWaves.BossEvery;
+        int waves = d.endless ? block : Mathf.Max(0, d.totalWaves);
         if (waves != builtWaves) BuildPips(waves);
-        int wave = Mathf.Clamp(d.wave, 0, waves);
-        if (wave != shownWave)
+        int wave = d.endless ? (d.wave <= 0 ? 0 : (d.wave - 1) % block + 1) : Mathf.Clamp(d.wave, 0, waves);
+        int key = d.endless ? 10000 + d.wave : wave;
+        if (key != shownWave)
         {
-            waveText.text = "OLEADA  " + (wave > 0 ? wave.ToString() : "-") + " / " + waves;
-            shownWave = wave;
+            waveText.text = d.endless
+                ? "OLEADA  " + (d.wave > 0 ? d.wave.ToString() : "-")
+                : "OLEADA  " + (wave > 0 ? wave.ToString() : "-") + " / " + waves;
+            shownWave = key;
         }
         waveText.color = new Color(accent.r, accent.g, accent.b, 0.95f);
 
@@ -294,6 +301,9 @@ public class VisorMissionHUD : MonoBehaviour
             if (w < wave || (w == wave && !active)) c = accent;                                // ya superada
             else if (w == wave) c = Color.Lerp(accent, Shine, pulse * 0.8f);                    // en curso
             else c = new Color(accent.r, accent.g, accent.b, 0.18f);                            // por venir
+            // Supervivencia: la pastilla del jefe en rojo mientras no se supere
+            if (d.endless && w == block && !(w < wave || (w == wave && !active)))
+                c = w == wave ? Color.Lerp(danger, Shine, pulse * 0.5f) : new Color(danger.r, danger.g, danger.b, 0.55f);
             pips[i].color = c;
             pips[i].rectTransform.localScale = Vector3.one * (w == wave && active ? 1f + 0.25f * pulse : 1f);
         }

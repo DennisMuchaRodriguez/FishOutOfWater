@@ -20,12 +20,12 @@ public partial class PlayerController_Base
     [Tooltip("Segundos máximos entre los dos toques")]
     public float doubleTapTime = 0.28f;
     [Tooltip("Metros que se desplaza hacia el lado")]
-    public float dodgeDistance = 12f;
+    public float dodgeDistance = 20f;
     [Tooltip("Duración del impulso y de la vuelta")]
-    public float dodgeDuration = 0.45f;
+    public float dodgeDuration = 0.5f;
     public float dodgeCooldown = 0.6f;
     [Tooltip("Segundos en los que las aves no lo pueden golpear")]
-    public float dodgeInvulnerable = 0.35f;
+    public float dodgeInvulnerable = 0.4f;
     [Tooltip("Combustible que gasta en el aire si tiene (en el agua no gasta). Sin combustible igual esquiva")]
     public float dodgeEnergyCost = 4f;
 
@@ -83,7 +83,7 @@ public partial class PlayerController_Base
         dodgeEndTime = Time.time + dodgeDuration;
         dodgeInvulnerableUntil = Time.time + dodgeInvulnerable;
         nextDodgeTime = Time.time + dodgeCooldown;
-        fovKick = Mathf.Max(fovKick, 8f);
+        fovKick = Mathf.Max(fovKick, 11f);
         Sfx.Play2D(Sonido.Dash, 0.7f, air ? 1.25f : 1.05f, 0.05f, 0.1f);
         ApplyDodgeMotion();
         OnDodge?.Invoke(dir);

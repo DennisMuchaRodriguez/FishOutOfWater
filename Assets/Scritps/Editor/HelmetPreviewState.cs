@@ -23,6 +23,7 @@ public class HelmetPreviewState : ScriptableSingleton<HelmetPreviewState>
     public float lossFraction = 0.7f;
     public int totalWaves = 4;
     public int wave = 2;
+    public bool endless;
     public int birds = 5;
     public bool waiting;
     public float countdown = 8f;

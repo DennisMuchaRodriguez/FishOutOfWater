@@ -294,8 +294,11 @@ public partial class MainMenu : MonoBehaviour
         ModeCard(s, new Vector2(-380f, -30f), "HISTORIA", MenuUI.Orange,
                  levels + " niveles  ·  3 oleadas cada uno\nDefiende el lago y mejora tu traje",
                  "NIVEL " + Mathf.Max(1, unlocked) + " DE " + levels, true, () => Go(mapScreen), true);
+        int best = SaveSystem.BestSurvivalWave;
         ModeCard(s, new Vector2(0f, -30f), "SUPERVIVENCIA", MenuUI.Blue,
-                 "Oleadas sin fin\nLos peces no vuelven", "", false, null, false);
+                 "Oleadas sin fin con jefes\nUna mejora del traje tras cada oleada",
+                 best > 0 ? "RÉCORD: " + best + (best == 1 ? " OLEADA" : " OLEADAS") : "SIN RÉCORD TODAVÍA", true,
+                 GameSession.PlaySurvival, false);
         ModeCard(s, new Vector2(380f, -30f), "COOPERATIVO", MenuUI.Purple,
                  "Hasta 4 jugadores online\nChat de voz tipo radio", "", false, null, false);
 

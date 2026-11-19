@@ -1,7 +1,8 @@
 using UnityEngine;
 
 // Consulta de las mejoras instaladas: 0 = no la tienes, 1 = nivel I, 2 = nivel II.
-// En Historia salen del progreso guardado (SaveSystem).
+// En Historia salen del progreso guardado (SaveSystem); en Supervivencia, de la partida en curso (SurvivalRun:
+// empiezan de cero en cada partida y no tocan las de la historia).
 // CONTRATO: otros scripts (HUD, menú) solo usan Level, Has y Changed.
 public static class Upgrades
 {
@@ -12,7 +13,15 @@ public static class Upgrades
 #if UNITY_EDITOR
         if (debugLevel >= 0) return debugLevel;
 #endif
+        if (SurvivalRun.InSurvival) return SurvivalRun.UpgradeLevel(id);
         return SaveSystem.GetUpgradeLevel(id);
+    }
+
+    // Instala una mejora donde corresponde (la partida de Supervivencia o el progreso de la historia)
+    public static void Install(UpgradeId id, int level)
+    {
+        if (SurvivalRun.InSurvival) SurvivalRun.SetUpgrade(id, level);
+        else SaveSystem.SetUpgradeLevel(id, level);
     }
 
     public static bool Has(UpgradeId id)

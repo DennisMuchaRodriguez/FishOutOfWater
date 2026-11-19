@@ -23,6 +23,8 @@ public class SaveData
     public List<string> birdsViewed = new List<string>();
     [Tooltip("Aves derribadas por especie, como \"Nombre:cantidad\"")]
     public List<string> birdKills = new List<string>();
+    [Tooltip("Supervivencia: la mayor cantidad de oleadas superadas en una partida")]
+    public int bestSurvivalWave;
 }
 
 public static class SaveSystem
@@ -141,6 +143,19 @@ public static class SaveSystem
         if (level > 0) Data.upgrades.Add(prefix + Mathf.Clamp(level, 1, 2));
         Save();
         Upgrades.NotifyChanged();
+    }
+
+    // ---- Supervivencia ----
+
+    public static int BestSurvivalWave { get { return Data.bestSurvivalWave; } }
+
+    // Guarda el récord de oleadas superadas. Devuelve true si es un récord nuevo
+    public static bool RecordSurvival(int wavesCleared)
+    {
+        if (wavesCleared <= Data.bestSurvivalWave) return false;
+        Data.bestSurvivalWave = wavesCleared;
+        Save();
+        return true;
     }
 
     // ---- Taller ----
