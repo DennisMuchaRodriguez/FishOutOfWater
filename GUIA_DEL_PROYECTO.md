@@ -235,48 +235,55 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 
 ### Modo Supervivencia (oleadas sin fin)
 El mismo lago, los mismos peces, aves y jefes de la historia, pero las oleadas no se acaban: cada una trae más aves y más
-fuertes, y después de cada oleada vas al **Taller** a elegir una mejora, estilo roguelike. Código: `SurvivalRun` (la
-partida, que sigue viva entre el lago y el Taller), `SurvivalWaves` (arma cada oleada) y `GameDirector.Survival.cs` (el
-flujo en el lago).
+fuertes. Se juega en **tramos de 5 oleadas**: al final de cada tramo hay un jefe y después bajas al **Taller** a elegir
+una mejora (estilo roguelike) y a reparar el traje. Código: `SurvivalRun` (la partida, que sigue viva entre el lago y el
+Taller), `SurvivalWaves` (arma cada oleada) y `GameDirector.Survival.cs` (el flujo en el lago).
 
 **Cómo es una partida**
 1. Menú → ELIGE TU MODO → **SUPERVIVENCIA**. Empiezas con el traje **sin mejoras** (las de la historia no cuentan y las
    de la partida no pasan a la historia) y con **28 peces** en el lago.
 2. Cuenta atrás de calma (13 s la primera vez, 10 s después) y llega la oleada. Cinemática de llegada en la oleada 1 y
    en las de jefe.
-3. **Oleada superada** → el cartel avisa ("El mecánico te espera en el Taller") y a los 3,5 s vas al Taller:
+3. **Oleada superada** → la siguiente llega en el mismo lago, **sin reparar el traje**: la armadura que perdiste no
+   vuelve hasta el Taller (la única excepción es la mejora Reparación acuática, que repara nadando). El cartel dice
+   después de qué oleada toca el Taller. La munición sí se recarga con las cápsulas y el combustible en el agua.
+4. **Cada 5 oleadas** (después de vencer al jefe: oleadas 5, 10, 15...) el cartel avisa ("Baja al Taller") y a los
+   3,5 s vas al Taller:
    - Es **el mismo Taller de la historia**: las primeras 6 visitas ofrecen los mismos 3 planos que las 6 visitas de la
      historia (`TallerPlan`); desde la 7.ª, 3 planos al azar entre lo que todavía se puede mejorar. Las reglas son las de
      siempre: el nivel II solo si ya tienes el I y nunca algo que ya está al máximo.
-   - El mecánico tiene frases propias de Supervivencia (y una especial después de un jefe).
+   - El mecánico tiene frases propias de Supervivencia (y otras después de un jefe).
    - **INSTALAR** y después **SIGUIENTE OLEADA** vuelve al lago. **SEGUIR SIN MEJORA** (o Esc) vuelve sin instalar nada.
-   - Al volver, el traje está reparado y recargado (armadura, combustible y munición llenos).
-   - Si el traje ya tiene **todas** las mejoras, ya no se va al Taller: la oleada siguiente llega en el mismo lago.
-4. **Los peces cazados no vuelven** entre oleadas. Al vencer una oleada **con jefe** llegan **3 peces nuevos** (sin pasar
+   - Al volver, **el traje está reparado y recargado** (armadura, combustible y munición llenos). Es el único momento
+     en que se repara.
+   - Con el traje ya al máximo igual se baja al Taller cada 5 oleadas, solo para repararlo.
+5. **Los peces cazados no vuelven** entre oleadas. Al vencer una oleada **con jefe** llegan **3 peces nuevos** (sin pasar
    de los 28 del principio).
-5. **Pierdes** si el traje se destruye o si cazan el **75 %** de los peces (21 de 28). Pantalla final: oleadas
+6. **Pierdes** si el traje se destruye o si cazan el **75 %** de los peces (21 de 28). Pantalla final: oleadas
    superadas, hasta qué oleada llegaste, récord, aves derribadas y peces rescatados; **NUEVA PARTIDA** o **MENÚ PRINCIPAL**.
-6. El **récord** (más oleadas superadas) se guarda en `progreso.json` (`bestSurvivalWave`) y sale en la tarjeta del menú.
+7. El **récord** (más oleadas superadas) se guarda en `progreso.json` (`bestSurvivalWave`) y sale en la tarjeta del menú.
    En la pausa: CONTINUAR, NUEVA PARTIDA y MENÚ PRINCIPAL (volver al menú termina la partida).
 
-**Cómo suben las oleadas** (constantes al principio de `SurvivalWaves.cs`)
+**Cómo suben las oleadas** (constantes al principio de `SurvivalWaves.cs`; como el traje no se repara dentro de un tramo,
+la cantidad sube más despacio y la oleada 4 de cada tramo es la más dura antes del jefe)
 
 | Oleada | Aves | Vida | Qué llega |
 |---|---|---|---|
-| 1 | 5–6 | ×1,10 | Gaviotas y martines pescadores (no empieza suave: como el final del nivel 3 de la historia) |
-| 2–4 | 6–8 | ×1,15–1,25 | + garzas (2), charranes (3), pelícanos (4) |
-| **5** | jefe + 4 | ×1,30 | **La Garza Gris Gigante** |
-| 6–9 | 9–13 | ×1,35–1,50 | + cormoranes (6), serretas (8) |
-| **10** | jefe + 7 | ×1,55 | **El Pelícano Saco Sin Fondo** |
-| 11–14 | 12–17 | ×1,60–1,75 | + águilas pescadoras (11): ya están todas las especies |
-| **15** | jefe + 9 | ×1,80 | **El Cormorán Rey** |
-| 16–19 | 17–21 | ×1,85–2,00 | más aves fuertes en la mezcla |
-| **20** | jefe + 11 | ×2,05 | **La Reina Águila Marina** |
-| 21+ | 22 (tope) | +8 % por oleada | ya no suben las aves: sube la vida y la mezcla se pone pesada |
+| 1 | 4–5 | ×1,05 | Gaviotas y martines pescadores (no empieza suave: como el final del nivel 2 de la historia) |
+| 2–4 | 5–6 | ×1,09–1,17 | + garzas (2), charranes (3), pelícanos (4) |
+| **5** | jefe + 3–4 | ×1,21 | **La Garza Gris Gigante** → Taller (1.ª mejora) |
+| 6–9 | 6–9 | ×1,25–1,37 | + cormoranes (6), serretas (8) |
+| **10** | jefe + 5 | ×1,41 | **El Pelícano Saco Sin Fondo** → Taller |
+| 11–14 | 8–12 | ×1,45–1,57 | + águilas pescadoras (11): ya están todas las especies |
+| **15** | jefe + 6 | ×1,61 | **El Cormorán Rey** → Taller |
+| 16–19 | 11–15 | ×1,65–1,77 | más aves fuertes en la mezcla |
+| **20** | jefe + 8 | ×1,81 | **La Reina Águila Marina** → Taller |
+| 21–24 | 14–18 | +7 % por oleada | 18 aves a la vez es el tope (desde la 24) |
 | **25, 30, 35, 40** | **2 jefes** + escolta | | dos jefes distintos al azar, cada uno por su lado; +15 % de vida por vuelta |
 | **45 en adelante** | **3 jefes** + escolta | | tres jefes distintos a la vez |
 
-- La cantidad: 4,6 + 0,9 por oleada (± 1), entre 5 y 22. La oleada que sigue a un jefe trae un 15 % menos (un respiro).
+- La cantidad: 3,8 + 0,6 por oleada (± 1), entre 4 y 18. La oleada que sigue a un jefe (la primera después del Taller)
+  trae un 15 % menos.
 - Cada especie tiene un **tope por oleada** (lo máximo que llega junto en la historia: 5 gaviotas, 3 charranes, 1
   pelícano...) que sube cada 8 oleadas. Las recién llegadas salen más seguido; las gaviotas, cada vez menos; las pesadas
   (garza, pelícano, cormorán, águila), un poco menos.
@@ -292,11 +299,11 @@ flujo en el lago).
   DERECHA, POR DETRÁS). Si derribas a todas antes de tiempo, el grupo siguiente llega a los 3 s (no hay que esperar).
 - La oleada no termina hasta que llegaron y cayeron todos los grupos.
 
-**Peces defensores**: 2 desde la oleada 3 y 2 más cada 4 oleadas (4 en la 7, 6 en la 11, 8 desde la 15). Al volver del
-Taller llegan con el traje reparado. No cuentan entre los 28 peces del lago (si cazan a uno no suma a la derrota).
+**Peces defensores**: 2 desde la oleada 3 y 2 más cada 4 oleadas (4 en la 7, 6 en la 11, 8 desde la 15); los nuevos
+llegan entre oleadas. Al volver del Taller todos tienen el traje reparado. No cuentan entre los 28 peces del lago (si cazan a uno no suma a la derrota).
 
 **El casco**: en Supervivencia el panel de misión dice "OLEADA n" y las 5 pastillas son el tramo hasta el próximo jefe
-(la última, roja, es la del jefe).
+y el Taller (la última, roja, es la del jefe).
 
 **Para probarlo sin pasar por el menú**: en el `GameDirector` marca **Test Survival** y dale Play en la escena del lago.
 
@@ -306,7 +313,7 @@ Taller llegan con el traje reparado. No cuentan entre los 28 peces del lago (si 
 | Survival Fish | 28 | Peces del lago al empezar (tipos y cardúmenes del último nivel de la historia) |
 | Survival Loss Fraction | 0.75 | Pierdes si cazan este porcentaje |
 | Survival Fish Per Boss | 3 | Peces nuevos al vencer una oleada con jefe |
-| Survival Workshop Every | 1 | Ir al Taller cada cuántas oleadas superadas |
+| Survival Workshop Every | 5 | Ir al Taller (mejora y reparación) cada cuántas oleadas superadas |
 | Survival Calm | 10 s | Calma antes de cada oleada (+3 s en la primera) |
 
 ---
@@ -1236,7 +1243,7 @@ de Iron Man y cuevas submarinas estilizadas). Todo se arma por código al abrir 
 - **Los trajes de las vitrinas están vacíos**: sin el pez adentro (se ocultan la cabeza, los ojos, el cuerpo y las aletas)
   y con la escafandra **blanca**.
 - Al **instalar** una mejora, los planos se desvanecen (el elegido un poco después) para que se vea el taller de fondo.
-- **En Supervivencia** se viene después de cada oleada: el subtítulo dice "SUPERVIVENCIA · OLEADA n SUPERADA · MEJORA m",
+- **En Supervivencia** se viene cada 5 oleadas (después de cada jefe) y aquí se repara el traje: el subtítulo dice "SUPERVIVENCIA · OLEADA n SUPERADA · MEJORA m",
   las mejoras son solo de esa partida y los botones son SIGUIENTE OLEADA y SEGUIR SIN MEJORA (ver
   [Modo Supervivencia](#modo-supervivencia-oleadas-sin-fin)).
 

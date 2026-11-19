@@ -8,9 +8,10 @@ using UnityEngine;
 //     hora del día donde quedó.
 //  2. Cuenta atrás y llega la oleada: a veces toda junta, a veces por grupos que llegan por distintos lados (avisa
 //     por dónde viene cada grupo). Cinemática en la primera oleada y en las de jefe.
-//  3. Oleada superada: se guarda el récord y se va al Taller a elegir una mejora (estilo roguelike: solo para esta
-//     partida). Si al traje ya no le queda nada por mejorar, la siguiente oleada llega aquí mismo.
-//     Al vencer a un jefe llegan unos peces nuevos al lago.
+//  3. Oleada superada: se guarda el récord y la siguiente llega aquí mismo, SIN reparar el traje (la armadura que
+//     perdiste no vuelve). Cada 5 oleadas (después de cada jefe) se va al Taller: se elige una mejora (estilo
+//     roguelike: solo para esta partida) y el traje vuelve reparado y recargado. Con el traje ya al máximo igual se
+//     baja al Taller a repararlo. Al vencer a un jefe llegan unos peces nuevos al lago.
 //  4. Se pierde si el traje se destruye o si cazan demasiados peces (el 75 % de los del lago).
 // Para probar sin pasar por el menú: marca "Test Survival" y dale Play en la escena del lago.
 public partial class GameDirector
@@ -24,8 +25,8 @@ public partial class GameDirector
     [Range(0.3f, 1f)] public float survivalLossFraction = 0.75f;
     [Tooltip("Peces nuevos que llegan al lago al vencer una oleada con jefe (sin pasar de los del principio)")]
     [Min(0)] public int survivalFishPerBoss = 3;
-    [Tooltip("Ir al Taller cada cuántas oleadas superadas (1 = después de cada una)")]
-    [Min(1)] public int survivalWorkshopEvery = 1;
+    [Tooltip("Ir al Taller cada cuántas oleadas superadas (5 = después de cada jefe). Solo ahí se repara el traje")]
+    [Min(1)] public int survivalWorkshopEvery = 5;
     [Tooltip("Segundos de calma antes de cada oleada")]
     public float survivalCalm = 10f;
 
@@ -119,9 +120,10 @@ public partial class GameDirector
         int n = SurvivalRun.NextWave;
         int fishLayer = LayerMask.NameToLayer("Fish");
         if (n == 1)
-            Banner?.Invoke("SUPERVIVENCIA", "Oleadas sin fin  //  Después de cada una, una mejora en el Taller", Cyan);
+            Banner?.Invoke("SUPERVIVENCIA", "Oleadas sin fin  //  Taller cada " + Mathf.Max(1, survivalWorkshopEvery) +
+                           " oleadas: una mejora y el traje reparado", Cyan);
         else
-            Banner?.Invoke("SE ACERCA LA OLEADA " + n, "Traje listo  //  Quedan " + FishAlive + " peces en el lago", Cyan);
+            Banner?.Invoke("SE ACERCA LA OLEADA " + n, "Traje reparado  //  Quedan " + FishAlive + " peces en el lago", Cyan);
         if (DefendersSpawned > 0)
             Toast?.Invoke(DefendersSpawned + " PECES DEFENSORES PATRULLAN EL LAGO", Cyan);
 
@@ -210,13 +212,16 @@ public partial class GameDirector
             string news = record ? "¡NUEVO RÉCORD!  //  " : "";
             n++;
 
-            bool workshop = (n - 1) % Mathf.Max(1, survivalWorkshopEvery) == 0 && SurvivalRun.HasUpgradesLeft()
-                            && Application.CanStreamedLevelBeLoaded(WorkshopFlow.WorkshopScene);
+            // Cada 'survivalWorkshopEvery' oleadas: al Taller (mejora y traje reparado). Con todo mejorado igual se baja
+            // a repararlo
+            int every = Mathf.Max(1, survivalWorkshopEvery);
+            int cleared = n - 1;
+            bool workshop = cleared % every == 0 && Application.CanStreamedLevelBeLoaded(WorkshopFlow.WorkshopScene);
             if (workshop)
             {
                 State = GameState.Intermission;
                 Countdown = 0f;
-                Banner?.Invoke("OLEADA " + (n - 1) + " SUPERADA", news + "El mecánico te espera en el Taller", Cyan);
+                Banner?.Invoke("OLEADA " + cleared + " SUPERADA", news + "Baja al Taller: mejora y traje reparado", Cyan);
                 Sfx.Play2D(Sonido.PezRescatado, 0.8f, 0.85f);
                 float wait = 3.5f;
                 while (wait > 0f)
@@ -233,8 +238,14 @@ public partial class GameDirector
                 yield break;
             }
 
-            // Sin Taller (traje al máximo): la siguiente llega aquí mismo, con los defensores que toquen
-            Banner?.Invoke("OLEADA " + (n - 1) + " SUPERADA", news + "Recarga munición: la siguiente viene más fuerte", Cyan);
+            // Sin Taller: la siguiente llega aquí mismo (el traje NO se repara), con los defensores que toquen
+            int workshopAfter = cleared + (every - cleared % every);
+            string next = workshopAfter == n
+                ? "Después de la próxima: el Taller"
+                : "Taller después de la oleada " + workshopAfter;
+            bool hurt = player != null && player.currentArmor < player.maxArmor - 0.5f;
+            Banner?.Invoke("OLEADA " + cleared + " SUPERADA",
+                           news + next + (hurt ? "  //  El traje no se repara hasta entonces" : "  //  Recarga munición"), Cyan);
             Sfx.Play2D(Sonido.PezRescatado, 0.8f, 0.85f);
             int before = DefendersSpawned;
             AddDefenders(fishLayer, SurvivalWaves.DefendersFor(n));

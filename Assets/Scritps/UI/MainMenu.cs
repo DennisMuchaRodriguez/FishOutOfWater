@@ -296,7 +296,7 @@ public partial class MainMenu : MonoBehaviour
                  "NIVEL " + Mathf.Max(1, unlocked) + " DE " + levels, true, () => Go(mapScreen), true);
         int best = SaveSystem.BestSurvivalWave;
         ModeCard(s, new Vector2(0f, -30f), "SUPERVIVENCIA", MenuUI.Blue,
-                 "Oleadas sin fin con jefes\nUna mejora del traje tras cada oleada",
+                 "Oleadas sin fin con jefes\nTaller cada 5 oleadas: mejora y reparación",
                  best > 0 ? "RÉCORD: " + best + (best == 1 ? " OLEADA" : " OLEADAS") : "SIN RÉCORD TODAVÍA", true,
                  GameSession.PlaySurvival, false);
         ModeCard(s, new Vector2(380f, -30f), "COOPERATIVO", MenuUI.Purple,

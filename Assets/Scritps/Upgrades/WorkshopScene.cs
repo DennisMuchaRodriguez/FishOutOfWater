@@ -15,9 +15,10 @@ using System.Collections.Generic;
 //  - Mesa de chatarra con herramientas, el traje en un soporte que gira, el mecánico (bagre con gafas) y alevines.
 //  - Los 3 planos son hologramas: clic = elegir, INSTALAR (o clic otra vez) = instalar.
 //  - Esc o VOLVER AL MAPA sin elegir: la visita queda pendiente (botón IR AL TALLER en el mapa).
-//  - SUPERVIVENCIA (después de cada oleada): igual que en la historia (las primeras visitas ofrecen los mismos planos
-//    que las visitas de la historia; después, planos al azar), pero las mejoras son solo de esa partida. Al instalar,
-//    SIGUIENTE OLEADA vuelve al lago; SEGUIR SIN MEJORA (o Esc) vuelve sin instalar nada.
+//  - SUPERVIVENCIA (cada 5 oleadas, después de cada jefe): igual que en la historia (las primeras visitas ofrecen los
+//    mismos planos que las visitas de la historia; después, planos al azar), pero las mejoras son solo de esa partida.
+//    Aquí se repara el traje (vuelve al lago con la armadura llena). Al instalar, SIGUIENTE OLEADA vuelve al lago;
+//    SEGUIR SIN MEJORA (o Esc) vuelve sin instalar nada (igual reparado).
 // Abrir la escena directo en el Editor muestra una visita de prueba (testLevelIndex).
 public class WorkshopScene : MonoBehaviour
 {
@@ -141,20 +142,30 @@ public class WorkshopScene : MonoBehaviour
 
     static readonly string[] SurvivalLines =
     {
-        "¡Rápido, que vienen más! Elige un plano y te lo instalo antes de que vuelvan.",
-        "Cada oleada llegan más. Con esta chatarra te armo una pieza: elige bien.",
+        "¡Rápido, que vienen más! Te reparo el traje mientras eliges un plano.",
+        "Cada vez llegan más. Con esta chatarra te armo una pieza: elige bien.",
         "Escuché el graznido desde aquí abajo. ¿Qué le ponemos al traje para la próxima?",
-        "Ese traje aguanta, pero puede aguantar más. Uno de estos tres, nada más.",
-        "Los peces cuentan contigo. Elige, instalo y vuelves arriba."
+        "Ese traje llegó abollado, pero sale como nuevo. Y con una pieza más: uno de estos tres.",
+        "Los peces cuentan contigo. Elige, reparo, instalo y vuelves arriba."
+    };
+
+    static readonly string[] SurvivalBossLines =
+    {
+        "¡Tumbaste a un jefe! Eso merece mi mejor chatarra. Elige un plano.",
+        "Otro jefe menos. Te dejo el traje como nuevo; tú elige la pieza.",
+        "Escuché caer a ese jefe desde aquí abajo. ¿Qué le ponemos ahora?"
     };
 
     string MechanicLine(WorkshopVisit visit)
     {
         if (survivalVisit)
         {
-            if (SurvivalRun.LastWasBoss) return "¡Tumbaste a un jefe! Eso merece mi mejor chatarra. Elige un plano.";
-            if (visitNumber <= 1) return "¡Así que tú eres el pez del traje! Aquí abajo armo mejoras entre oleada y oleada. Elige una.";
-            return SurvivalLines[(visitNumber + SurvivalRun.Seed) % SurvivalLines.Length];
+            if (!SurvivalRun.HasUpgradesLeft())
+                return "Ya no me queda nada que ponerle a ese traje. Te lo dejo como nuevo y vuelves arriba.";
+            if (visitNumber <= 1)
+                return "¡Así que tú eres el pez del traje! Cada vez que despejes cinco oleadas, bajas: te reparo el traje y te armo una mejora. Elige una.";
+            int pick = visitNumber + SurvivalRun.Seed;
+            return SurvivalRun.LastWasBoss ? SurvivalBossLines[pick % SurvivalBossLines.Length] : SurvivalLines[pick % SurvivalLines.Length];
         }
         if (alreadyUsed) return "¡Ese traje ya tiene su pieza nueva! Vuelve después del próximo nivel con más chatarra.";
         if (visit != null && !string.IsNullOrEmpty(visit.mechanicLine)) return visit.mechanicLine;
@@ -1092,7 +1103,7 @@ public class WorkshopScene : MonoBehaviour
         offers = WorkshopPlan.ResolveOffers(visit, visitNumber, rng);
         if (offers.Count == 0)
         {
-            statusText.text = "¡EL TRAJE YA TIENE TODAS LAS MEJORAS!";
+            statusText.text = survivalVisit ? "¡EL TRAJE YA TIENE TODAS LAS MEJORAS!  ·  TRAJE REPARADO" : "¡EL TRAJE YA TIENE TODAS LAS MEJORAS!";
             SetContinue();
             return;
         }
@@ -1241,7 +1252,9 @@ public class WorkshopScene : MonoBehaviour
         mechanic.excitement = 0.3f;
         foreach (WorkshopCritter f in fry) f.excitement = 0.4f;
         statusText.text = "¡LISTO! " + name.ToUpper() + " " + UpgradeDefinition.Roman(offer.level) + " INSTALADO EN EL TRAJE";
-        mechanicText.text = "¡Quedó de lujo! Pruébalo en el lago... y cuida a los peces.";
+        mechanicText.text = survivalVisit
+            ? "¡Quedó de lujo! Y el traje va reparado y recargado. Vuelve arriba, que ya vienen."
+            : "¡Quedó de lujo! Pruébalo en el lago... y cuida a los peces.";
         installing = false;
         installed = true;
         SetContinue();

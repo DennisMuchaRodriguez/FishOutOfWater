@@ -4,9 +4,11 @@ using UnityEngine;
 // Generador de las oleadas del modo SUPERVIVENCIA (sin fin). Usa las mismas aves y jefes del modo Historia (las saca
 // del LevelCatalog): cada especie llega en el mismo orden que en la historia, pero mucho antes.
 // Reglas (los números están en las constantes de abajo, para ajustarlos fácil):
-//  - Cantidad: 5 o 6 aves en la oleada 1 (no empieza suave), unas 0,9 más por oleada, hasta 22 a la vez (oleada 20).
+//  - Pensado en tramos de 5 oleadas: el traje solo se repara (y se mejora) en el Taller, que llega después de cada
+//    jefe; dentro de un tramo la armadura que pierdes no vuelve.
+//  - Cantidad: 4 o 5 aves en la oleada 1 (no empieza suave), unas 0,6 más por oleada, hasta 18 a la vez (oleada 24).
 //    Desde ahí sigue subiendo la vida y cada vez hay más aves fuertes en la mezcla.
-//  - Vida: x1,1 en la oleada 1 y +5 % por oleada (+8 % por oleada desde la 21).
+//  - Vida: x1,05 en la oleada 1 y +4 % por oleada (+7 % por oleada desde la 21).
 //  - Especies: oleada 1 gaviotas y martines pescadores; 2 garzas; 3 charranes; 4 pelícanos; 6 cormoranes;
 //    8 serretas; 11 águilas pescadoras. Una especie recién llegada sale más seguido; las gaviotas, cada vez menos;
 //    las pesadas (garza, pelícano, cormorán, águila) un poco menos. Cada especie tiene un tope por oleada (lo que
@@ -51,12 +53,12 @@ public static class SurvivalWaves
 
     // ---- Ajustes ----
     public const int BossEvery = 5;
-    const float BaseBirds = 4.6f;          // aves = BaseBirds + BirdsPerWave · oleada (± 1)
-    const float BirdsPerWave = 0.9f;
-    const int MinBirds = 5;
-    const int MaxBirds = 22;               // tope de aves a la vez (por rendimiento y para que se pueda jugar)
-    const float BaseHealth = 1.1f;         // vida de la oleada 1
-    const float HealthPerWave = 0.05f;
+    const float BaseBirds = 3.8f;          // aves = BaseBirds + BirdsPerWave · oleada (± 1)
+    const float BirdsPerWave = 0.6f;
+    const int MinBirds = 4;
+    const int MaxBirds = 18;               // tope de aves a la vez (por rendimiento y para que se pueda jugar)
+    const float BaseHealth = 1.05f;        // vida de la oleada 1
+    const float HealthPerWave = 0.04f;
     const int LateWave = 20;               // desde aquí la vida sube más rápido (ya no suben las aves)
     const float LateHealthPerWave = 0.03f;
     const float UnlockScale = 0.85f;       // oleada en la que llega una especie = (nivel de la historia - 4) · esto

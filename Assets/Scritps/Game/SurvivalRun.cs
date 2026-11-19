@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Partida del modo SUPERVIVENCIA (oleadas sin fin). Vive entre escenas: después de cada oleada se va al Taller y al
-// volver el lago se carga de nuevo, así que lo que dura toda la partida se guarda aquí:
+// Partida del modo SUPERVIVENCIA (oleadas sin fin). Vive entre escenas: cada 5 oleadas se va al Taller (mejora y traje
+// reparado) y al volver el lago se carga de nuevo, así que lo que dura toda la partida se guarda aquí:
 //  - La última oleada superada, los peces cazados (no vuelven, salvo los que llegan al vencer a un jefe), las aves
 //    derribadas y los peces rescatados.
 //  - Las mejoras de la partida: empiezan de cero (estilo roguelike) y NO tocan las del modo Historia.

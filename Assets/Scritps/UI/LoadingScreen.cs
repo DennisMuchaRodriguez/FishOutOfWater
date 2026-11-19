@@ -35,7 +35,7 @@ public class LoadingScreen : MonoBehaviour
         "Con la F lanzas los misiles teledirigidos.",
         "Las cápsulas de munición flotan en el lago (y algunas están bajo el agua).",
         "Cuidado con los choques a toda velocidad: el traje pierde armadura.",
-        "Supervivencia: después de cada oleada el mecánico te instala una mejora (solo para esa partida).",
+        "Supervivencia: el traje solo se repara en el Taller, cada 5 oleadas. Cuida la armadura hasta entonces.",
         "Supervivencia: cada 5 oleadas llega un jefe, y más adelante llegan dos o tres a la vez.",
         "Supervivencia: a veces las aves llegan en grupos por distintos lados. Escucha el aviso del casco."
     };
