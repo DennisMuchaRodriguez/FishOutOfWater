@@ -7,9 +7,12 @@ using System.Collections.Generic;
 
 // Menú principal. Se construye solo por código (basta con este componente en la escena MainMenu).
 // Se ve como el visor del casco: paneles holográficos, marco curvo, líneas de escaneo y miras.
+// FONDO: el Taller (se carga de fondo, MenuBackdrop). En el título, la cinemática del pez poniéndose el traje y
+// saliendo de la cueva hacia las aves; en las demás pantallas, la guarida tranquila con el traje en el soporte.
+// Si la escena del Taller no está en Build Profiles (o se apaga 'Workshop Backdrop'), queda el fondo simple.
 // Pantallas:
-//  1. Título:   JUGAR / CONTROLES / SALIR, con el protagonista flotando a la derecha.
-//  2. Modos:    HISTORIA (disponible), SUPERVIVENCIA y COOPERATIVO (próximamente).
+//  1. Título:   JUGAR / CONTROLES / SALIR.
+//  2. Modos:    HISTORIA, SUPERVIVENCIA y COOPERATIVO.
 //  3. Mapa:     los niveles del LevelCatalog, que se desbloquean de uno en uno.
 //               Clic en un nivel = ficha con estrellas, detalles, JUGAR, VER CÓMIC e IR AL TALLER.
 //               Calavera = nivel de jefe; llave inglesa = después se visita el Taller.
@@ -26,6 +29,12 @@ public partial class MainMenu : MonoBehaviour
     public RuntimeAnimatorController heroAnimator;
     [Tooltip("Alto del modelo en pantalla (metros, a 7 m de la cámara)")]
     public float heroHeight = 3.2f;
+
+    [Header("Fondo")]
+    [Tooltip("El Taller de fondo, con la cinemática del traje en el título. Apagado (o sin la escena Taller en Build Profiles): fondo simple")]
+    public bool workshopBackdrop = true;
+    bool backdropMode;
+    Camera menuCamera;
 
     [Header("Textos")]
     public string titleLine1 = "FISH OUT";
@@ -88,8 +97,13 @@ public partial class MainMenu : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
         catalog = LevelCatalog.Load();
 
-        BuildBackground();
-        SetupHero();
+        backdropMode = workshopBackdrop && Application.CanStreamedLevelBeLoaded(WorkshopFlow.WorkshopScene);
+        if (backdropMode) StartCoroutine(LoadBackdrop());
+        else
+        {
+            BuildBackground();
+            SetupHero();
+        }
 
         Canvas canvas = MenuUI.CreateCanvas("MainMenuCanvas", 0);
         root = (RectTransform)canvas.transform;
@@ -119,7 +133,69 @@ public partial class MainMenu : MonoBehaviour
             OnCoopStatus(coopMessage);
         }
         else ShowInstant(openMap ? mapScreen : titleScreen);
-        StartCoroutine(FadeTo(0f, 0.7f));
+        StartCoroutine(backdropMode ? FadeInWithBackdrop() : FadeTo(0f, 0.7f));
+    }
+
+    // ======================= FONDO: EL TALLER =======================
+
+    // Carga el Taller junto al menú. La cámara del menú deja de ser la principal (el Taller usa la suya) y se apaga
+    // cuando el fondo está listo. Si falla, vuelve el fondo simple
+    IEnumerator LoadBackdrop()
+    {
+        menuCamera = Camera.main;
+        if (menuCamera != null)
+        {
+            menuCamera.tag = "Untagged";
+            menuCamera.depth = -100f;
+            menuCamera.clearFlags = CameraClearFlags.SolidColor;
+            menuCamera.backgroundColor = MenuUI.Ink;
+            AudioListener listener = menuCamera.GetComponent<AudioListener>();
+            if (listener != null) listener.enabled = false;
+        }
+        WorkshopFlow.RequestMenuBackdrop();
+        AsyncOperation op = SceneManager.LoadSceneAsync(WorkshopFlow.WorkshopScene, LoadSceneMode.Additive);
+        if (op != null)
+        {
+            while (!op.isDone) yield return null;
+            float wait = 0f;
+            while (!MenuBackdrop.Ready && wait < 3f)
+            {
+                wait += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+        if (MenuBackdrop.Ready)
+        {
+            if (menuCamera != null) menuCamera.enabled = false;
+            yield break;
+        }
+
+        Debug.LogWarning("MainMenu: no se pudo armar el Taller de fondo; se usa el fondo simple.");
+        WorkshopFlow.ConsumeMenuBackdrop();
+        Scene workshopScene = SceneManager.GetSceneByName(WorkshopFlow.WorkshopScene);
+        if (workshopScene.isLoaded) SceneManager.UnloadSceneAsync(workshopScene);
+        if (menuCamera != null)
+        {
+            menuCamera.tag = "MainCamera";
+            menuCamera.enabled = true;
+            AudioListener listener = menuCamera.GetComponent<AudioListener>();
+            if (listener != null) listener.enabled = true;
+        }
+        backdropMode = false;
+        BuildBackground();
+        SetupHero();
+    }
+
+    // El menú aparece cuando el Taller ya está armado (sin ver la escena a medio cargar)
+    IEnumerator FadeInWithBackdrop()
+    {
+        float wait = 0f;
+        while (backdropMode && !MenuBackdrop.Ready && wait < 4f)
+        {
+            wait += Time.unscaledDeltaTime;
+            yield return null;
+        }
+        yield return FadeTo(0f, 0.9f);
     }
 
     // ======================= FONDO =======================
@@ -270,6 +346,16 @@ public partial class MainMenu : MonoBehaviour
         RectTransform s = MenuUI.Stretch("Titulo", root);
         CanvasGroup g = s.gameObject.AddComponent<CanvasGroup>();
 
+        if (backdropMode)
+        {
+            // Sombra a la izquierda: el título y los botones se leen sobre la cinemática
+            Image shade = MenuUI.Stretch("Sombra", s).gameObject.AddComponent<Image>();
+            shade.sprite = MenuUI.SideShade;
+            shade.color = MenuUI.WithAlpha(MenuUI.Ink, 0.85f);
+            shade.raycastTarget = false;
+            shade.rectTransform.anchorMax = new Vector2(0.68f, 1f);
+        }
+
         MenuUI.Title("Linea1", s, titleLine1, 118f, new Vector2(0.5f, 0.5f), new Vector2(-300f, 222f), new Vector2(700f, 130f), MenuUI.Orange);
         MenuUI.Title("Linea2", s, titleLine2, 118f, new Vector2(0.5f, 0.5f), new Vector2(-270f, 116f), new Vector2(700f, 130f), MenuUI.Blue);
 
@@ -282,8 +368,8 @@ public partial class MainMenu : MonoBehaviour
         MenuUI.ComicButton("SALIR", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, -244f), new Vector2(300f, 54f), MenuUI.BlueDark, Quit, 26f);
         play.Select();
 
-        TextMeshProUGUI ver = MenuUI.Text("Version", s, "PROTOTIPO  ·  MODO HISTORIA", 15f, new Vector2(1f, 0f), new Vector2(-170f, 24f),
-                                          new Vector2(320f, 30f), MenuUI.WithAlpha(MenuUI.Accent, 0.6f));
+        TextMeshProUGUI ver = MenuUI.Text("Version", s, "HISTORIA  ·  SUPERVIVENCIA  ·  COOPERATIVO", 14f, new Vector2(1f, 0f), new Vector2(-230f, 24f),
+                                          new Vector2(440f, 30f), MenuUI.WithAlpha(MenuUI.Accent, 0.6f));
         ver.characterSpacing = 4f;
         return g;
     }
@@ -354,11 +440,21 @@ public partial class MainMenu : MonoBehaviour
         {
             if (showStars)
             {
-                RectTransform starHolder = MenuUI.Rect("Estrella", card, bottom, new Vector2(-46f, 150f), new Vector2(46f, 46f));
-                MenuUI.StarIcon(starHolder, Vector2.zero, 46f, true);
+                // Estrella + "46 / 60" como un solo grupo centrado (la estrella nunca pisa el número)
                 int max = catalog != null ? catalog.Count * 3 : 0;
-                MenuUI.Text("Estrellas", card, SaveSystem.TotalStars + " / " + max, 30f, bottom, new Vector2(30f, 150f),
-                            new Vector2(160f, 46f), MenuUI.Cream, true).alignment = TextAlignmentOptions.MidlineLeft;
+                const float starSize = 38f, gap = 12f, rowY = 152f;
+                TextMeshProUGUI count = MenuUI.Text("Estrellas", card, SaveSystem.TotalStars + " / " + max, 30f, bottom,
+                                                    Vector2.zero, new Vector2(200f, 46f), MenuUI.Cream, true);
+                count.textWrappingMode = TextWrappingModes.NoWrap;
+                count.alignment = TextAlignmentOptions.MidlineLeft;
+                float textW = Mathf.Clamp(count.GetPreferredValues(count.text).x, 40f, 200f);
+                float left = -(starSize + gap + textW) * 0.5f;
+                count.rectTransform.pivot = new Vector2(0f, 0.5f);
+                count.rectTransform.sizeDelta = new Vector2(textW + 8f, 46f);
+                count.rectTransform.anchoredPosition = new Vector2(left + starSize + gap, rowY);
+                RectTransform starHolder = MenuUI.Rect("Estrella", card, bottom, new Vector2(left + starSize * 0.5f, rowY + 1f),
+                                                       new Vector2(starSize, starSize));
+                MenuUI.StarIcon(starHolder, Vector2.zero, starSize, true);
             }
             MenuUI.Text("Progreso", card, progress, 24f, bottom, new Vector2(0f, 96f), new Vector2(300f, 40f), MenuUI.Accent)
                 .characterSpacing = 3f;
@@ -706,36 +802,7 @@ public partial class MainMenu : MonoBehaviour
         mapMessageTimer = 2.5f;
     }
 
-    // ======================= PANTALLA: CONTROLES =======================
-
-    CanvasGroup BuildControlsScreen()
-    {
-        RectTransform s = MenuUI.Stretch("Controles", root);
-        CanvasGroup g = s.gameObject.AddComponent<CanvasGroup>();
-
-        MenuUI.Title("Encabezado", s, "CONTROLES", 72f, new Vector2(0.5f, 1f), new Vector2(0f, -76f), new Vector2(800f, 90f), MenuUI.Cream);
-        MenuUI.Rule(s, new Vector2(0.5f, 1f), new Vector2(0f, -128f), 460f, MenuUI.Accent);
-        RectTransform panel = MenuUI.ComicPanel("Lista", s, new Vector2(0.5f, 0.5f), new Vector2(0f, -20f), new Vector2(1000f, 470f), MenuUI.Glass);
-
-        string k = "<color=" + MenuUI.HexOrange + ">", e = "</color>";
-        string controls =
-            k + "W / S" + e + "  Avanzar / retroceder        " + k + "A / D" + e + "  Girar\n" +
-            k + "ESPACIO" + e + "  Propulsor (en el agua: subir y salir disparado)\n" +
-            k + "SHIFT" + e + "  Turbo (mantener) · impulso de nado (en el agua)\n" +
-            k + "CTRL" + e + "  Bucear más hondo\n" +
-            k + "CLIC IZQUIERDO" + e + "  Disparar (mantener = ráfaga)\n" +
-            k + "CLIC DERECHO" + e + "  Disparo cargado (soltar al llenarse)\n" +
-            k + "Q / E" + e + "  Esquive a la izquierda / a la derecha        " + k + "F" + e + "  Misiles\n" +
-            k + "1 / 2" + e + "  Cambiar arma        " + k + "R" + e + "  Cámara (1ª, 3ª, mirar atrás)        " + k + "ESC" + e + "  Pausa\n\n" +
-            "<color=" + MenuUI.HexAccent + ">OBJETIVO:</color> derriba a todas las aves antes de que cacen a demasiados peces.\n" +
-            "El agua recarga el propulsor. La munición está en cápsulas dentro del lago.\n" +
-            "Si un ave atrapa un pez, dispárale: lo soltará.";
-        TextMeshProUGUI t = MenuUI.Text("Texto", panel, controls, 21f, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(920f, 420f), MenuUI.Cream);
-        t.lineSpacing = 12f;
-
-        MenuUI.ComicButton("VOLVER", s, new Vector2(0.5f, 0f), new Vector2(0f, 52f), new Vector2(220f, 54f), MenuUI.BlueDark, () => Go(titleScreen), 24f);
-        return g;
-    }
+    // (Pantalla CONTROLES: MainMenu.Controls.cs)
 
     // ======================= NAVEGACIÓN =======================
 
@@ -803,6 +870,8 @@ public partial class MainMenu : MonoBehaviour
         g.interactable = true;
         g.blocksRaycasts = true;
         heroTarget = g == titleScreen ? 1f : 0f;
+        // Fondo del Taller: cinemática en el título, vista tranquila en lo demás
+        MenuBackdrop.SetCinematic(g == titleScreen);
         Button first = g.GetComponentInChildren<Button>();
         if (first != null && g != mapScreen && g != archiveScreen) first.Select();
     }
@@ -823,15 +892,18 @@ public partial class MainMenu : MonoBehaviour
         float time = Time.unscaledTime;
         UpdateCoopScreen();
 
-        // Burbujas, algas y rayos de luz
-        float top = bubbleLayer.rect.height + 40f;
-        foreach (Bubble b in bubbles)
+        // Burbujas, algas y rayos de luz (solo con el fondo simple)
+        if (bubbleLayer != null)
         {
-            Vector2 p = b.rt.anchoredPosition;
-            p.y += b.speed * dt;
-            p.x += Mathf.Sin(time * 1.5f + b.phase) * b.wobble * dt;
-            b.rt.anchoredPosition = p;
-            if (p.y > top) ResetBubble(b, false);
+            float top = bubbleLayer.rect.height + 40f;
+            foreach (Bubble b in bubbles)
+            {
+                Vector2 p = b.rt.anchoredPosition;
+                p.y += b.speed * dt;
+                p.x += Mathf.Sin(time * 1.5f + b.phase) * b.wobble * dt;
+                b.rt.anchoredPosition = p;
+                if (p.y > top) ResetBubble(b, false);
+            }
         }
         for (int i = 0; i < weeds.Count; i++)
             weeds[i].localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(time * 0.9f + i * 0.7f) * 7f);

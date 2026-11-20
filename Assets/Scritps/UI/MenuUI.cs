@@ -172,6 +172,33 @@ public static class MenuUI
     }
     public static Sprite Pixel { get { return Shape("UI_Pixel", () => MakeAlpha(4, "UI_Pixel", (x, y) => 1f)); } }
 
+    // Ratón (pantalla de controles): contorno con la división de los botones, y el relleno de cada botón por separado
+    // (se ponen encima del contorno con otro color para marcar cuál se usa)
+    public static Sprite MouseLine { get { return Shape("UI_MouseLine", () => MakeShape(128, "UI_MouseLine", MouseLineDistance)); } }
+    public static Sprite MouseLeft { get { return Shape("UI_MouseLeft", () => MakeShape(128, "UI_MouseLeft", (u, v) => MouseButtonDistance(u, v, -1f))); } }
+    public static Sprite MouseRight { get { return Shape("UI_MouseRight", () => MakeShape(128, "UI_MouseRight", (u, v) => MouseButtonDistance(u, v, 1f))); } }
+    // Flecha hacia arriba (encabezado MOVIMIENTO)
+    public static Sprite Chevron
+    {
+        get
+        {
+            return Shape("UI_Chevron", () => MakeShape(128, "UI_Chevron", (u, v) =>
+                0.065f - Mathf.Min(SegmentDistance(u, v, -0.3f, -0.14f, 0f, 0.16f), SegmentDistance(u, v, 0f, 0.16f, 0.3f, -0.14f))));
+        }
+    }
+    // Sombra lateral: opaca a la izquierda y transparente a la derecha (texto legible sobre la escena 3D del menú)
+    public static Sprite SideShade
+    {
+        get
+        {
+            return Shape("UI_SideShade", () => MakeAlpha(256, 4, "UI_SideShade", (x, y) =>
+            {
+                float t = Mathf.Clamp01((x + 128f) / 256f);
+                return Mathf.Pow(1f - t, 1.7f);
+            }, Vector4.zero));
+        }
+    }
+
     // Degradado vertical (abajo profundo, arriba turquesa) para fondos bajo el agua
     public static Sprite WaterGradient
     {
@@ -326,6 +353,28 @@ public static class MenuUI
         float h = Mathf.Clamp01((pax * bax + pay * bay) / (bax * bax + bay * bay));
         float dx = pax - bax * h, dy = pay - bay * h;
         return Mathf.Sqrt(dx * dx + dy * dy);
+    }
+
+    // Ratón: cuerpo redondeado (casi una cápsula), con la línea entre los botones y la que los separa del resto
+    static float MouseBodyDistance(float u, float v)
+    {
+        return BoxDistance(u, v, 0f, 0f, 0.25f, 0.42f, 0.23f);
+    }
+
+    static float MouseLineDistance(float u, float v)
+    {
+        float body = MouseBodyDistance(u, v);
+        float outline = 0.03f - Mathf.Abs(body + 0.03f);
+        float split = 0.016f - Mathf.Min(SegmentDistance(u, v, 0f, 0.07f, 0f, 0.44f), SegmentDistance(u, v, -0.27f, 0.07f, 0.27f, 0.07f));
+        return Mathf.Max(outline, Mathf.Min(split, body));
+    }
+
+    // side: -1 botón izquierdo, 1 botón derecho
+    static float MouseButtonDistance(float u, float v, float side)
+    {
+        float body = MouseBodyDistance(u, v) - 0.055f;
+        float half = side < 0f ? -0.035f - u : u - 0.035f;
+        return Mathf.Min(body, Mathf.Min(half, v - 0.105f));
     }
 
     // Calavera (niveles de jefe)

@@ -62,6 +62,8 @@ public partial class MainMenu
     void OnDestroy()
     {
         CoopSession.StatusChanged -= OnCoopStatus;
+        // Si el Taller de fondo no llegó a armarse, el aviso no queda pendiente para un Taller de verdad
+        WorkshopFlow.ConsumeMenuBackdrop();
     }
 
     // Campo de texto con el estilo del casco

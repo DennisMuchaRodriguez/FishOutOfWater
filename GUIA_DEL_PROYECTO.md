@@ -184,7 +184,7 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 ### Menú, mapa de niveles, cómics y progreso
 
 **Recorrido completo:**
-1. **Menú principal** (escena MainMenu): JUGAR, CONTROLES y SALIR. El pez flota junto al título.
+1. **Menú principal** (escena MainMenu): JUGAR, CONTROLES y SALIR. De fondo, el **Taller** con una cinemática que se repite (ver [Fondo del menú](#fondo-del-menú-el-taller-y-la-cinemática-del-traje)). **CONTROLES** es el manual del traje: tres paneles (MOVIMIENTO, COMBATE y CÁMARA, EN EL LAGO) con las teclas dibujadas como teclas y el ratón con el botón que se usa.
 2. **Elige modo**:
    - **HISTORIA** (1 jugador): abre el mapa de niveles. La tarjeta muestra tus estrellas y cuántos niveles completaste.
    - **SUPERVIVENCIA**: oleadas sin fin en el mismo lago (ver [Modo Supervivencia](#modo-supervivencia-oleadas-sin-fin)). La tarjeta muestra tu récord de oleadas.
@@ -1003,17 +1003,34 @@ Muestra los mensajes, la barra del jefe, las flechas a pájaros y cápsulas, y l
 | **Low Ammo For Arrow** | 8 | Con estas balas o menos, muestra la flecha a la cápsula más cercana |
 
 ### MainMenu (escena MainMenu)
-Construye todo por código: el fondo del lago (degradado, rayos de luz, algas, rocas y burbujas), el pez flotando y las pantallas Título, Modos, Mapa, Controles y Archivo de aves. Los niveles los lee de `Resources/LevelCatalog`; los bocetos del Archivo, de `Resources/Archivo`.
+Construye todo por código: las pantallas Título, Modos, Mapa, Controles (`MainMenu.Controls.cs`), Cooperativo y Archivo de aves, y el fondo. Los niveles los lee de `Resources/LevelCatalog`; los bocetos del Archivo, de `Resources/Archivo`.
 
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
-| **Hero Model** | — | PESCAO.fbx | Modelo que flota junto al título (vacío = sin modelo) |
-| **Hero Animator** | — | Fish.controller | Animación del modelo |
-| **Hero Height** | 3.2 | 3.2 | Tamaño del modelo en pantalla |
+| **Workshop Backdrop** | ✔ | ✔ | El Taller de fondo, con la cinemática del traje en el título. Apagado (o sin la escena `Taller` en Build Profiles): el fondo simple de antes |
+| **Hero Model** | — | PESCAO.fbx | Solo con el fondo simple: modelo que flota junto al título (vacío = sin modelo) |
+| **Hero Animator** | — | Fish.controller | Solo con el fondo simple: animación del modelo |
+| **Hero Height** | 3.2 | 3.2 | Solo con el fondo simple: tamaño del modelo en pantalla |
 | **Title Line 1** / **Title Line 2** | FISH OUT / OF WATER | igual | Las dos líneas del título |
 | **Subtitle** | UN PEZ. UN TRAJE. NADA DE AGUA. | igual | Texto bajo el título |
 
 Estilo: el mismo del visor del casco (holograma azul eléctrico con destellos casi blancos y detalles naranja). Fuentes **Oxanium** (títulos) y **Rajdhani** (textos), en `Resources/Fonts` (licencia OFL en `LICENCIAS.txt`). Todo eso está en `MenuUI`, que también usan la pausa, el resultado, el Taller y el visor de cómics.
+
+#### Fondo del menú: el Taller y la cinemática del traje
+`MainMenu` carga la escena **Taller** junto al menú (sin quitar el menú) y le avisa que es de fondo (`WorkshopFlow.RequestMenuBackdrop`). El Taller arma su cueva y su guarida como siempre, pero sin la interfaz ni la visita, y agrega **`MenuBackdrop`** (`Assets/Scritps/UI/MenuBackdrop.cs`), que hace todo lo demás. La cámara del menú se apaga y se usa la del Taller.
+
+- **Pantalla de título**: una cinemática de unos 37 segundos que se repite:
+  1. **La guarida**: la cámara baja entre los rayos de luz, con la sala de armaduras al fondo.
+  2. **El mecánico**: primer plano del bagre mientras el brazo robótico suelda en el soporte.
+  3. **Llega el pez**, sin traje, nadando hasta el soporte (la cámara lo sigue).
+  4. **El traje**: las piezas aparecen girando a su alrededor y se le encajan una a una, de los pies a la escafandra, con chispas, destello y golpe de metal; la cámara da la vuelta. Al final, un anillo de luz sube por el traje.
+  5. **El casco**: primer plano; un destello cruza el visor.
+  6. **Despegue**: se agacha, enciende el propulsor (llama y burbujas) y sale disparado hacia la superficie del lago, la luz del techo de la cueva.
+  7. **Afuera**: un destello, rompe el agua (salpicadura y ola) y vuela hacia la bandada de aves que da vueltas en el cielo. Las aves son las del juego (las que no son jefes, sacadas del catálogo de niveles).
+- **Las demás pantallas** (modos, mapa, controles, cooperativo, archivo): la guarida tranquila, con el pez ya con su traje en el soporte y la cámara moviéndose despacio; el fondo se oscurece un poco para que se lean los paneles.
+- En el título, una sombra a la izquierda deja leer el título y los botones; la cinemática encuadra lo importante a la derecha.
+- Las piezas del traje: todo lo que en el modelo del traje (`Suit Model` del Taller) no es el pez (cabeza, ojos, cuerpo y aletas). Para que vuelen, se copia cada pieza en la pose de ese momento; al terminar vuelven las de verdad (animadas). Si el modelo trae el traje en una sola malla, llega como una sola pieza.
+- Si la escena `Taller` no está en **File > Build Profiles**, o no se puede armar, el menú usa el fondo simple de antes (y la consola lo avisa).
 
 ### ComicViewer (se crea solo)
 No tiene campos: lo abren el mapa (cómic de antes) y el resultado (cómic de después). Los cómics se editan en `Data/Comics` (ver [Campos de un Cómic](#archivos-de-datos-niveles-aves-peces-y-cómics)).
@@ -1360,7 +1377,7 @@ desde el editor no aparece.
 
 1. **PlayerController_Base > Ground Layer**: en la escena está en "Water", pero ya no importa: al empezar, el código agrega solo la capa del terreno y avisa en la consola. Si quieres quitar el aviso, ponlo en **Default**.
 2. **"Main Camera " duplicada**: quedó desactivada. Bórrala. Solo debe haber una cámara activa (`PlayerCamera`) y un AudioListener.
-3. **Build Settings**: tienen que estar `MainMenu` (primera) y `SampleScene`. Si falta una, los botones JUGAR, MAPA o MENÚ PRINCIPAL no podrán cargarla.
+3. **Build Settings**: tienen que estar `MainMenu` (primera), `SampleScene` y `Taller`. Si falta una, los botones JUGAR, MAPA o MENÚ PRINCIPAL no podrán cargarla (sin `Taller` tampoco hay visitas al Taller, sala cooperativa ni fondo del menú).
 4. Se borraron los campos que ningún script usaba (inclinación vertical, física vieja del agua y salpicaduras del jugador, colores "normales" de la UI, salpicadura de pájaros y balas) y los scripts viejos `EnemyBird` y `EnemyCollision`. Si la consola avisa de un *missing script* en algún objeto o prefab, quítale ese componente vacío.
 5. `Assets/Niveles/Nivel_1` (tu archivo anterior) no se usa: los niveles del juego son los de `Assets/Data/Niveles`. Puedes borrarlo cuando quieras.
 6. Si al darle Play **no aparecen peces ni pájaros**, mira la consola. Lo más común es "GameDirector: no hay agua...": revisa que Lago_Agua esté dentro del hueco y pulsa *Reconstruir agua*.

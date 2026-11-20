@@ -20,6 +20,17 @@ public static class WorkshopFlow
     public static bool IsCoopLobby { get; private set; }
     public static bool HasVisit { get { return VisitLevelIndex >= 0 || IsSurvivalVisit || IsCoopLobby; } }
 
+    // Menú principal: el Taller se carga de fondo (MenuBackdrop: la cinemática del traje). El aviso lo lee una sola
+    // vez la escena del Taller que se carga para eso; un Taller abierto después (visita, sala) ya no lo ve
+    static bool menuBackdrop;
+    public static void RequestMenuBackdrop() { menuBackdrop = true; }
+    public static bool ConsumeMenuBackdrop()
+    {
+        bool b = menuBackdrop;
+        menuBackdrop = false;
+        return b;
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -27,6 +38,7 @@ public static class WorkshopFlow
         ContinueToNextLevel = false;
         IsSurvivalVisit = false;
         IsCoopLobby = false;
+        menuBackdrop = false;
     }
 
     // ¿El nivel (índice del catálogo) da una visita al Taller que todavía no se usó?

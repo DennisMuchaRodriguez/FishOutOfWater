@@ -76,6 +76,7 @@ public class WorkshopScene : MonoBehaviour
     bool alreadyUsed;
     bool survivalVisit;
     bool lobbyMode;
+    bool menuMode;
     bool coopVisit;
     List<WorkshopOffer> offers = new List<WorkshopOffer>();
     int selected = -1;
@@ -105,6 +106,19 @@ public class WorkshopScene : MonoBehaviour
     Image fade;
 
     static readonly Vector3 SuitPos = new Vector3(2.3f, 0f, 0.6f);
+    Light entranceLight;
+
+    // ---- Para el fondo del menú principal (MenuBackdrop) ----
+    // Pie del soporte del traje (el traje va 1,25 m más arriba, sobre la columna)
+    public static Vector3 StandPosition { get { return SuitPos; } }
+    // Centro del claro del techo: la superficie del lago vista desde abajo (la salida de la cueva)
+    public static Vector3 SkylightPosition { get { return new Vector3(0.6f, CeilingAt(0.6f, 4f) + 0.35f, 4f); } }
+    public static float CeilingHeight(float x, float z) { return CeilingAt(x, z); }
+    public WorkshopCritter MechanicCritter { get { return mechanic; } }
+    public List<WorkshopCritter> FryCritters { get { return fry; } }
+    public Light EntranceLight { get { return entranceLight; } }
+    // El brazo robótico suelda (chispas y destellos) y el holograma gira más rápido
+    public bool Welding { get { return installing; } set { if (menuMode) installing = value; } }
 
     // Franjas de la interfaz (unidades de 1280x720, desde abajo): así los planos nunca tapan los botones
     const float ButtonsY = 36f;       // centro de la fila de botones (VOLVER AL MAPA, INSTALAR)
@@ -118,6 +132,17 @@ public class WorkshopScene : MonoBehaviour
         Time.timeScale = 1f;
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+
+        // Menú principal: el Taller es el fondo (la cinemática del traje y la vista tranquila); sin interfaz ni visita
+        if (WorkshopFlow.ConsumeMenuBackdrop())
+        {
+            menuMode = true;
+            BuildEnvironment();
+            if (suitSpin != null) suitSpin.gameObject.SetActive(false);
+            if (installRing != null) installRing.gameObject.SetActive(false);
+            gameObject.AddComponent<MenuBackdrop>().Build(this);
+            return;
+        }
 
         // Cooperativo: el Taller hace de sala de espera
         if (WorkshopFlow.IsCoopLobby && CoopSession.Active)
@@ -216,6 +241,7 @@ public class WorkshopScene : MonoBehaviour
         sun.color = new Color(0.6f, 0.9f, 1f);
         sun.intensity = 0.75f;
         sun.transform.rotation = Quaternion.Euler(62f, -25f, 0f);
+        entranceLight = sun;
         Light key = new GameObject("LuzTraje").AddComponent<Light>();
         key.type = LightType.Point;
         key.color = new Color(1f, 0.85f, 0.65f);
@@ -1389,7 +1415,7 @@ public class WorkshopScene : MonoBehaviour
             algaeLights[i].intensity = 1.2f + Mathf.Sin(time * 1.3f + i * 1.7f) * 0.35f;
         AnimateLair(time, Time.deltaTime);
 
-        if (lobbyMode) return;
+        if (lobbyMode || menuMode) return;
         if (ComicViewer.IsShowing || Time.frameCount == ComicViewer.ClosedFrame || leaving) return;
         if (Input.GetKeyDown(KeyCode.Escape))
         {
