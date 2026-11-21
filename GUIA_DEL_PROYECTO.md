@@ -215,6 +215,8 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 
 **Pausa (Esc)**: CONTINUAR, REINICIAR NIVEL, MAPA DE NIVELES y MENÚ PRINCIPAL.
 
+**Ejes de movimiento solo de teclado**: en Project Settings > Input Manager, *Horizontal* y *Vertical* leen únicamente A/D, W/S y las flechas. Se quitaron las entradas de joystick que Unity trae por defecto: leían el eje de **cualquier** mando o aparato conectado (un mando con deriva, un volante, pedales, una palanca o un mando virtual como DS4Windows, vJoy o el de Steam), y en una PC con uno de esos el pez giraba solo a la izquierda sin parar y los menús se movían solos (un deslizador de volumen seleccionado bajaba solo). No las vuelvas a agregar.
+
 **Botones con teclado**: Enter o clic. **Espacio no pulsa botones** (se quitó del eje *Submit* en Project Settings > Input Manager, porque es el propulsor). Los botones del resultado y de "TRAJE DESTRUIDO" esperan medio segundo antes de responder, para no pulsarlos sin querer mientras juegas.
 
 **Visor de cómics** (`ComicViewer`): clic, Espacio, Enter o flecha derecha pasan a la siguiente viñeta; Esc o **SALTAR** lo cierran. Una viñeta sin dibujo sale en blanco con el texto "VIÑETA 2 DE 6" para saber dónde va cada dibujo.

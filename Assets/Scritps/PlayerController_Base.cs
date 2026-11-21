@@ -284,6 +284,9 @@ public partial class PlayerController_Base : MonoBehaviour
             return;
         }
 
+        // "Horizontal" y "Vertical" son SOLO de teclado (A/D, W/S y flechas: Project Settings > Input Manager). No les
+        // agregues las entradas de joystick que trae Unity: leen el eje de CUALQUIER mando o aparato conectado (un mando
+        // con deriva, un volante, pedales, un mando virtual...) y con el eje torcido en reposo el pez giraba solo sin parar
         float moveVertical = Input.GetAxis("Vertical");
         TurnInput = Input.GetAxis("Horizontal");
         moveInput = new Vector3(0, 0, moveVertical);
