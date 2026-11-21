@@ -294,11 +294,12 @@ public partial class GameDirector : MonoBehaviour
         }
         else if (player != null && player.isDead)
         {
-            // La pantalla de muerte la muestra PauseMenu
+            // La pantalla de muerte la muestra PauseMenu; suena el remate de la derrota
             ended = true;
             State = GameState.Defeat;
             StopCinematic();
             if (IsSurvival) OnSurvivalOver();
+            Music.PlayEnd(false);
             return;
         }
 
@@ -334,7 +335,7 @@ public partial class GameDirector : MonoBehaviour
             else
                 Banner?.Invoke("¡CAZARON DEMASIADOS PECES!", "Llegaste a la oleada " + Mathf.Max(1, CurrentWave) +
                                "  //  Récord: " + SaveSystem.BestSurvivalWave + " oleadas", Danger);
-            Sfx.Play2D(Sonido.Derrota, 0.9f);
+            Music.PlayEnd(false);
             PauseMenu over = FindFirstObjectByType<PauseMenu>();
             if (over != null) over.ShowEndScreen(false);
             return;
@@ -351,7 +352,7 @@ public partial class GameDirector : MonoBehaviour
             ? "Salvaste " + FishAlive + " de " + TotalFish + " peces  //  Depredadores abatidos: " + BirdsKilled
             : "Cazaron " + FishLost + " de " + TotalFish + " peces";
         Banner?.Invoke(title, sub, victory ? Cyan : Danger);
-        Sfx.Play2D(victory ? Sonido.Victoria : Sonido.Derrota, 0.9f);
+        Music.PlayEnd(victory);
 
         PauseMenu menu = FindFirstObjectByType<PauseMenu>();
         if (menu != null) menu.ShowEndScreen(victory);

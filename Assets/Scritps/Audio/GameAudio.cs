@@ -14,6 +14,7 @@ public class GameAudio : MonoBehaviour
     AudioSource jet, ambience, underwater;
     AudioLowPassFilter muffle;
     float alarmTimer;
+    float jetLevel;
     bool wasDead;
     float submerged01;
 
@@ -127,15 +128,16 @@ public class GameAudio : MonoBehaviour
             bool on = !paused && !player.isDead && (player.IsJetting || player.IsTurbo);
             float targetVol = on ? (player.IsTurbo ? 0.75f : 0.5f) : 0f;
             if (player.IsSputtering && on) targetVol *= 0.5f + 0.5f * Mathf.PerlinNoise(Time.time * 20f, 0f);
-            jet.volume = Mathf.MoveTowards(jet.volume, targetVol, dt * 4f);
+            jetLevel = Mathf.MoveTowards(jetLevel, targetVol, dt * 4f);
+            Sfx.SetLoopVolume(jet, jetLevel);   // respeta el volumen de efectos de los Ajustes
             jet.pitch = Mathf.MoveTowards(jet.pitch, player.IsTurbo ? 1.25f : (player.isInWater ? 0.8f : 1f), dt * 2f);
         }
 
         // Ambiente: fuera y dentro del agua
         bool under = player.isInWater && player.PlayerCamera != null && LakeWater.IsUnderwater(player.PlayerCamera.transform.position);
         submerged01 = Mathf.MoveTowards(submerged01, under ? 1f : 0f, dt * 4f);
-        if (ambience != null) ambience.volume = 0.35f * (1f - submerged01);
-        if (underwater != null) underwater.volume = 0.5f * submerged01;
+        Sfx.SetLoopVolume(ambience, 0.35f * (1f - submerged01));
+        Sfx.SetLoopVolume(underwater, 0.5f * submerged01);
         if (muffle != null) muffle.cutoffFrequency = Mathf.Lerp(22000f, 900f, submerged01);
 
         // "Clic" si intenta disparar sin munición

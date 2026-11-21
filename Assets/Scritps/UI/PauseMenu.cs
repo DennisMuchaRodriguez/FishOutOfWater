@@ -27,6 +27,7 @@ public class PauseMenu : MonoBehaviour
 
     RectTransform root;
     RectTransform pauseGroup;
+    AudioSettingsUI.Panel soundPanel;
     RectTransform deathGroup;
     TextMeshProUGUI deathSub;
     bool deathDismissed;
@@ -48,10 +49,18 @@ public class PauseMenu : MonoBehaviour
         canvas.transform.SetParent(transform, false);
         root = (RectTransform)canvas.transform;
 
-        // ---- Pausa ----
+        // ---- Pausa (a la izquierda) y SONIDO (a la derecha: volumen general, música y efectos) ----
         pauseGroup = MenuUI.Stretch("Pausa", root);
         Backdrop(pauseGroup, MenuUI.WithAlpha(MenuUI.Ink, 0.78f));
-        RectTransform card = Card("Ficha", pauseGroup, new Vector2(0f, -10f), new Vector2(460f, 470f), MenuUI.Accent, MenuUI.Glass);
+        RectTransform card = Card("Ficha", pauseGroup, new Vector2(-250f, -10f), new Vector2(460f, 470f), MenuUI.Accent, MenuUI.Glass);
+        RectTransform soundCard = Card("Sonido", pauseGroup, new Vector2(250f, -10f), new Vector2(460f, 360f), MenuUI.Accent, MenuUI.Glass);
+        MenuUI.Img("HaloIcono", soundCard, MenuUI.Glow, MenuUI.WithAlpha(MenuUI.Accent, 0.35f), new Vector2(0.5f, 1f), new Vector2(-160f, -42f), new Vector2(46f, 46f));
+        MenuUI.Img("Icono", soundCard, MenuUI.Speaker, MenuUI.Cream, new Vector2(0.5f, 1f), new Vector2(-160f, -42f), new Vector2(26f, 26f));
+        TextMeshProUGUI soundTitle = MenuUI.Text("Titulo", soundCard, "SONIDO", 28f, new Vector2(0.5f, 1f), new Vector2(-24f, -42f), new Vector2(220f, 34f), MenuUI.Cream, true);
+        soundTitle.alignment = TextAlignmentOptions.MidlineLeft;
+        soundTitle.characterSpacing = 3f;
+        MenuUI.Rule(soundCard, new Vector2(0.5f, 1f), new Vector2(0f, -74f), 360f, MenuUI.Accent);
+        soundPanel = AudioSettingsUI.Build(soundCard, new Vector2(0.5f, 0.5f), new Vector2(0f, -34f), 390f, 76f);
         MenuUI.Title("Titulo", card, "PAUSA", 70f, new Vector2(0.5f, 1f), new Vector2(0f, -60f), new Vector2(420f, 90f), MenuUI.Accent);
         MenuUI.Rule(card, new Vector2(0.5f, 1f), new Vector2(0f, -108f), 300f, MenuUI.Accent);
         MenuUI.ComicButton("CONTINUAR", card, new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), new Vector2(340f, 62f), MenuUI.Orange, Resume, 28f);
@@ -434,6 +443,7 @@ public class PauseMenu : MonoBehaviour
         // En cooperativo el juego sigue (los demás no se pueden quedar congelados)
         Time.timeScale = Coop ? 1f : 0f;
         pauseGroup.gameObject.SetActive(true);
+        if (soundPanel != null) soundPanel.Refresh();
         ShowCursor();
         pauseGroup.GetComponentInChildren<Button>().Select();
     }
@@ -444,6 +454,7 @@ public class PauseMenu : MonoBehaviour
         Time.timeScale = 1f;
         resumeFrame = Time.frameCount;
         pauseGroup.gameObject.SetActive(false);
+        PlayerPrefs.Save();   // los volúmenes que se tocaron en la pausa
     }
 
     static void ShowCursor()

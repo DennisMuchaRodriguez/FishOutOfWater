@@ -177,6 +177,9 @@ public static class MenuUI
     public static Sprite MouseLine { get { return Shape("UI_MouseLine", () => MakeShape(128, "UI_MouseLine", MouseLineDistance)); } }
     public static Sprite MouseLeft { get { return Shape("UI_MouseLeft", () => MakeShape(128, "UI_MouseLeft", (u, v) => MouseButtonDistance(u, v, -1f))); } }
     public static Sprite MouseRight { get { return Shape("UI_MouseRight", () => MakeShape(128, "UI_MouseRight", (u, v) => MouseButtonDistance(u, v, 1f))); } }
+    // Altavoz con ondas (volumen general) y nota musical (música): pantalla de ajustes
+    public static Sprite Speaker { get { return Shape("UI_Speaker", () => MakeShape(128, "UI_Speaker", SpeakerDistance)); } }
+    public static Sprite Note { get { return Shape("UI_Note", () => MakeShape(128, "UI_Note", NoteDistance)); } }
     // Flecha hacia arriba (encabezado MOVIMIENTO)
     public static Sprite Chevron
     {
@@ -353,6 +356,36 @@ public static class MenuUI
         float h = Mathf.Clamp01((pax * bax + pay * bay) / (bax * bax + bay * bay));
         float dx = pax - bax * h, dy = pay - bay * h;
         return Mathf.Sqrt(dx * dx + dy * dy);
+    }
+
+    // Altavoz: caja, cono y dos ondas
+    static float SpeakerDistance(float u, float v)
+    {
+        float box = BoxDistance(u, v, -0.22f, 0f, 0.07f, 0.1f, 0.02f);
+        float k = Mathf.Clamp01((u + 0.15f) / 0.2f);
+        float half = Mathf.Lerp(0.1f, 0.27f, k);
+        float cone = Mathf.Min(Mathf.Min(u + 0.15f, 0.05f - u), half - Mathf.Abs(v));
+        float d = Mathf.Max(box, cone);
+        float du = u - 0.04f;
+        float r = Mathf.Sqrt(du * du + v * v);
+        float ang = Mathf.Abs(Mathf.Atan2(v, du));
+        if (du > 0f && ang < 0.85f)
+        {
+            d = Mathf.Max(d, 0.03f - Mathf.Abs(r - 0.15f));
+            d = Mathf.Max(d, 0.03f - Mathf.Abs(r - 0.29f));
+        }
+        return d;
+    }
+
+    // Corchea: cabeza inclinada, plica y bandera
+    static float NoteDistance(float u, float v)
+    {
+        const float c = 0.866f, s = 0.5f;
+        float x = (u + 0.1f) * c + (v + 0.22f) * s, y = -(u + 0.1f) * s + (v + 0.22f) * c;
+        float head = 0.11f - Mathf.Sqrt(x * x + y * y / 0.45f);
+        float stem = 0.03f - SegmentDistance(u, v, 0f, -0.2f, 0f, 0.31f);
+        float flag = 0.035f - SegmentDistance(u, v, 0f, 0.31f, 0.17f, 0.12f);
+        return Mathf.Max(head, Mathf.Max(stem, flag));
     }
 
     // Ratón: cuerpo redondeado (casi una cápsula), con la línea entre los botones y la que los separa del resto

@@ -111,8 +111,7 @@ public class WorkshopScene : MonoBehaviour
     // ---- Para el fondo del menú principal (MenuBackdrop) ----
     // Pie del soporte del traje (el traje va 1,25 m más arriba, sobre la columna)
     public static Vector3 StandPosition { get { return SuitPos; } }
-    // Centro del claro del techo: la superficie del lago vista desde abajo (la salida de la cueva)
-    public static Vector3 SkylightPosition { get { return new Vector3(0.6f, CeilingAt(0.6f, 4f) + 0.35f, 4f); } }
+    // La salida de la cueva: ExitHole (la boca en el techo) y ExitSurface (la superficie del lago, arriba del túnel)
     public static float CeilingHeight(float x, float z) { return CeilingAt(x, z); }
     public WorkshopCritter MechanicCritter { get { return mechanic; } }
     public List<WorkshopCritter> FryCritters { get { return fry; } }
@@ -254,8 +253,11 @@ public class WorkshopScene : MonoBehaviour
         // Paredes, techo y suelo
         Texture2D rockTex = WorkshopKit.NoiseTexture(128, 6f, 1.6f, new Color(0.07f, 0.13f, 0.15f), new Color(0.2f, 0.3f, 0.3f), "Taller_Roca", 3);
         Texture2D sandTex = WorkshopKit.NoiseTexture(128, 9f, 1.2f, new Color(0.42f, 0.4f, 0.32f), new Color(0.62f, 0.58f, 0.45f), "Taller_Arena", 7);
-        GameObject cave = WorkshopKit.MeshObject("Paredes", env, WorkshopKit.CaveMesh(new Vector3(11f, 7.5f, 11f), 48, 24, 0.22f, 11), WorkshopKit.Lit(Color.white, rockTex, 0.15f, "Taller_Roca"));
+        Material rockMat = WorkshopKit.Lit(Color.white, rockTex, 0.15f, "Taller_Roca");
+        // El casquete de arriba queda abierto: la salida al lago (ver BuildExit)
+        GameObject cave = WorkshopKit.MeshObject("Paredes", env, WorkshopKit.CaveMesh(new Vector3(11f, 7.5f, 11f), 48, 24, 0.22f, 11, ExitRings), rockMat);
         cave.transform.position = new Vector3(0f, 0f, 2f);
+        BuildExit(env, rockMat);
         GameObject floor = WorkshopKit.MeshObject("Suelo", env, WorkshopKit.FloorMesh(11f, 14, 48, 0.35f, 5), WorkshopKit.Lit(Color.white, sandTex, 0.1f, "Taller_Arena"));
         floor.transform.position = new Vector3(0f, 0f, 2f);
 
@@ -335,7 +337,7 @@ public class WorkshopScene : MonoBehaviour
         }
     }
 
-    // Rayos de luz que bajan desde la entrada de la cueva
+    // Rayos de luz que bajan por la salida de la cueva (el hueco del techo)
     void BuildRays(Transform env)
     {
         Material rayMat = WorkshopKit.Glow(fxMaterialTemplate, WorkshopKit.BeamTexture(), new Color(0.55f, 0.85f, 1f, 0.16f));
@@ -343,10 +345,93 @@ public class WorkshopScene : MonoBehaviour
         for (int i = 0; i < 4; i++)
         {
             GameObject ray = WorkshopKit.MeshObject("Rayo" + i, env, beam, rayMat);
-            ray.transform.position = new Vector3(-1.5f + i * 1.2f, 7.2f, 3.5f + (i % 2) * 1.2f);
-            ray.transform.rotation = Quaternion.Euler(0f, 0f, 180f + (-14f + i * 7f));
+            ray.transform.position = ExitCenter + new Vector3(-0.9f + i * 0.6f, ExitHoleY + 0.6f, -0.5f + (i % 2) * 1.0f);
+            ray.transform.rotation = Quaternion.Euler(0f, i * 40f, 180f + (-14f + i * 7f));
             ray.transform.localScale = new Vector3(0.9f + (i % 3) * 0.4f, 7.5f, 1f);
             ray.AddComponent<WorkshopSway>().amount = 2f;
+        }
+    }
+
+    // ======================= SALIDA DE LA CUEVA =======================
+    // Un hueco redondo en el centro del techo y un túnel de roca que sube hasta la superficie del lago (brilla y
+    // ondula arriba). Por ahí sale el pez en la cinemática del menú. Luz y burbujas que suben marcan el camino.
+    static readonly Vector3 ExitCenter = new Vector3(0f, 0f, 2f);   // centro del techo (el centro de la cueva)
+    const int ExitRings = 2;                                        // anillos del casquete que se abren
+    const float ExitHoleY = 6.9f;                                   // altura de la boca, en el techo
+    const float ExitBottom = 5.5f, ExitTop = 13.5f;                 // el túnel (empieza un poco por debajo del borde)
+    public static Vector3 ExitHole { get { return ExitCenter + Vector3.up * ExitHoleY; } }
+    public static Vector3 ExitSurface { get { return ExitCenter + Vector3.up * (ExitTop - 0.4f); } }
+
+    void BuildExit(Transform env, Material rock)
+    {
+        Transform exit = new GameObject("SalidaCueva").transform;
+        exit.SetParent(env, false);
+
+        GameObject shaft = WorkshopKit.MeshObject("Tunel", exit, WorkshopKit.ShaftMesh(3.05f, 2.4f, ExitTop - ExitBottom, 36, 12, 0.12f, 21), rock);
+        shaft.transform.position = ExitCenter + Vector3.up * ExitBottom;
+
+        // La superficie del lago vista desde abajo, arriba del túnel (la ondulan las cáusticas en AnimateLair)
+        skylightMat = WorkshopKit.Glow(fxMaterialTemplate, RippleTexture(), new Color(0.7f, 0.95f, 1f, 0.75f));
+        GameObject sky = WorkshopKit.Shape(PrimitiveType.Cylinder, "SuperficieDelLago", exit, ExitCenter + Vector3.up * (ExitTop - 0.4f),
+                                           new Vector3(5.6f, 0.01f, 5.6f), skylightMat);
+        sky.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        Material glowMat = WorkshopKit.Glow(fxMaterialTemplate, FXFactory.SoftDot, new Color(0.6f, 0.9f, 1f, 0.5f));
+        GameObject halo = WorkshopKit.Shape(PrimitiveType.Quad, "BrilloSalida", exit, ExitCenter + Vector3.up * (ExitTop - 0.6f),
+                                            new Vector3(9f, 9f, 1f), glowMat, new Vector3(90f, 0f, 0f));
+        halo.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+        // Luz que entra por el túnel e ilumina el borde del hueco
+        Light l = new GameObject("LuzSalida").AddComponent<Light>();
+        l.transform.SetParent(exit, false);
+        l.transform.position = ExitCenter + Vector3.up * (ExitHoleY + 0.8f);
+        l.type = LightType.Point;
+        l.color = new Color(0.6f, 0.9f, 1f);
+        l.intensity = 2.6f;
+        l.range = 7.5f;
+        l.shadows = LightShadows.None;
+        Light top = new GameObject("LuzSuperficie").AddComponent<Light>();
+        top.transform.SetParent(exit, false);
+        top.transform.position = ExitCenter + Vector3.up * (ExitTop - 1.5f);
+        top.type = LightType.Point;
+        top.color = new Color(0.75f, 0.95f, 1f);
+        top.intensity = 3f;
+        top.range = 9f;
+        top.shadows = LightShadows.None;
+
+        // Burbujas que suben por la salida
+        Material bubbleMat = FXFactory.ParticleMaterial(fxMaterialTemplate, FXFactory.Bubble, Color.white);
+        ParticleSystem column = FXFactory.CreateParticleSystem("BurbujasSalida", exit, bubbleMat);
+        column.transform.position = ExitCenter + Vector3.up * 3.2f;
+        column.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
+        var main = column.main;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(6f, 9f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.9f, 1.6f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.18f);
+        main.startColor = new Color(0.85f, 0.97f, 1f, 0.65f);
+        main.gravityModifier = -0.03f;
+        main.maxParticles = 300;
+        var emission = column.emission;
+        emission.rateOverTime = 12f;
+        var shape = column.shape;
+        shape.enabled = true;
+        shape.shapeType = ParticleSystemShapeType.Cone;
+        shape.angle = 6f;
+        shape.radius = 1.1f;
+        var noise = column.noise;
+        noise.enabled = true;
+        noise.strength = 0.3f;
+        noise.frequency = 0.5f;
+        column.Play();
+
+        // Rocas que cuelgan del borde del hueco (tapan la unión del techo con el túnel)
+        for (int i = 0; i < 7 && stalactiteModel != null; i++)
+        {
+            float a = i / 7f * Mathf.PI * 2f + 0.3f;
+            Transform h = new GameObject("BordeSalida" + i).transform;
+            h.SetParent(exit, false);
+            h.position = ExitCenter + new Vector3(Mathf.Cos(a) * 3.1f, ExitHoleY - 0.1f + Mathf.Sin(i * 2.1f) * 0.3f, Mathf.Sin(a) * 3.1f);
+            h.rotation = Quaternion.Euler(0f, i * 61f, 0f);
+            PlaceRaw(stalactiteModel, h, 0.7f + (i % 3) * 0.2f);
         }
     }
 
@@ -539,8 +624,9 @@ public class WorkshopScene : MonoBehaviour
         cave.SetParent(env, false);
 
         // Estalactitas colgando del techo y estalagmitas junto a las paredes
+        // (ninguna cerca del centro del techo: ahí está el hueco de la salida)
         Vector2[] up = { new Vector2(-4f, 3f), new Vector2(5.8f, 4.6f), new Vector2(0.4f, 8.6f), new Vector2(-6.2f, 6.8f),
-                         new Vector2(6.3f, 2.4f), new Vector2(-2.2f, 9.2f), new Vector2(5.2f, 8.4f), new Vector2(-1.6f, 3.2f) };
+                         new Vector2(6.3f, 2.4f), new Vector2(-2.2f, 9.2f), new Vector2(5.2f, 8.4f), new Vector2(-1.8f, -1.2f) };
         for (int i = 0; i < up.Length; i++)
         {
             Transform h = new GameObject("Estalactita" + i).transform;
@@ -585,11 +671,7 @@ public class WorkshopScene : MonoBehaviour
             algaeLights.Add(l);
         }
 
-        // La superficie del lago vista desde abajo: un claro brillante en el techo que ondula
-        skylightMat = WorkshopKit.Glow(fxMaterialTemplate, RippleTexture(), new Color(0.65f, 0.92f, 1f, 0.55f));
-        GameObject sky = WorkshopKit.Shape(PrimitiveType.Cylinder, "SuperficieDelLago", cave, new Vector3(0.6f, CeilingAt(0.6f, 4f) + 0.35f, 4f),
-                                           new Vector3(4.2f, 0.01f, 3.4f), skylightMat);
-        sky.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        // (La superficie del lago vista desde abajo está arriba del túnel de la salida: BuildExit)
 
         // Cáusticas: la luz que atraviesa el agua dibuja una red que se mueve en el suelo (dos capas cruzadas)
         Texture2D caustic = CausticTexture();
@@ -722,7 +804,7 @@ public class WorkshopScene : MonoBehaviour
 
         // --- Lámparas colgantes sobre la mesa y el traje ---
         HangingLamp(lair, new Vector3(-2.5f, 4.3f, 1.4f));
-        HangingLamp(lair, new Vector3(1.3f, 4.7f, 1.6f));
+        HangingLamp(lair, new Vector3(2.7f, 4.7f, -0.4f));   // fuera del hueco de la salida
     }
 
     void BuildArm(Transform parent, Vector3 pos)

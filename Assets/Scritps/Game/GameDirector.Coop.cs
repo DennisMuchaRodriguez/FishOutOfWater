@@ -153,7 +153,7 @@ public partial class GameDirector
         SurvivalRun.SaveTotals(FishLost, BirdsKilled, FishRescued);
         SaveSystem.Save();
         Banner?.Invoke("FIN DE LA PARTIDA", "Llegaron a la oleada " + Mathf.Max(1, wave) + "  //  " + wavesCleared + " superadas", Danger);
-        Sfx.Play2D(Sonido.Derrota, 0.9f);
+        Music.PlayEnd(false);
         PauseMenu menu = FindFirstObjectByType<PauseMenu>();
         if (menu != null) menu.ShowEndScreen(false);
     }

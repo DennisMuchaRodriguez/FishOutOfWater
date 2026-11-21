@@ -116,6 +116,8 @@ public class LoadingScreen : MonoBehaviour
         shown = 0f;
         float start = Time.unscaledTime;
 
+        // Música de carga (si la escena que viene usa la misma pista que suena, sigue sin cortarse)
+        Music.OnLoading(sceneName);
         yield return Fade(1f, 0.25f);
 
         // Carga en segundo plano (hasta el 70% de la barra)

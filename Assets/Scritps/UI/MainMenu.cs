@@ -115,9 +115,10 @@ public partial class MainMenu : MonoBehaviour
         modesScreen = BuildModesScreen();
         mapScreen = BuildMapScreen();
         controlsScreen = BuildControlsScreen();
+        settingsScreen = BuildSettingsScreen();
         archiveScreen = BuildArchiveScreen();
         coopScreen = BuildCoopScreen();
-        foreach (CanvasGroup g in new[] { titleScreen, modesScreen, mapScreen, controlsScreen, archiveScreen, coopScreen }) Hide(g);
+        foreach (CanvasGroup g in new[] { titleScreen, modesScreen, mapScreen, controlsScreen, settingsScreen, archiveScreen, coopScreen }) Hide(g);
 
         fade = MenuUI.Panel("Fundido", root, MenuUI.Ink);
         fade.raycastTarget = false;
@@ -363,9 +364,10 @@ public partial class MainMenu : MonoBehaviour
         MenuUI.Text("Texto", pill, subtitle, 22f, new Vector2(0.5f, 0.5f), new Vector2(0f, 1f), new Vector2(500f, 40f), MenuUI.Accent)
             .characterSpacing = 6f;
 
-        Button play = MenuUI.ComicButton("JUGAR", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, -70f), new Vector2(380f, 74f), MenuUI.Orange, () => Go(modesScreen), 36f);
-        MenuUI.ComicButton("CONTROLES", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, -164f), new Vector2(340f, 60f), MenuUI.Blue, () => Go(controlsScreen), 28f);
-        MenuUI.ComicButton("SALIR", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, -244f), new Vector2(300f, 54f), MenuUI.BlueDark, Quit, 26f);
+        Button play = MenuUI.ComicButton("JUGAR", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, -62f), new Vector2(380f, 74f), MenuUI.Orange, () => Go(modesScreen), 36f);
+        MenuUI.ComicButton("CONTROLES", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, -146f), new Vector2(340f, 56f), MenuUI.Blue, () => Go(controlsScreen), 27f);
+        MenuUI.ComicButton("AJUSTES", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, -212f), new Vector2(340f, 56f), MenuUI.Blue, () => Go(settingsScreen), 27f);
+        MenuUI.ComicButton("SALIR", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, -276f), new Vector2(300f, 50f), MenuUI.BlueDark, Quit, 25f);
         play.Select();
 
         TextMeshProUGUI ver = MenuUI.Text("Version", s, "HISTORIA  ·  SUPERVIVENCIA  ·  COOPERATIVO", 14f, new Vector2(1f, 0f), new Vector2(-230f, 24f),
@@ -873,7 +875,13 @@ public partial class MainMenu : MonoBehaviour
         // Fondo del Taller: cinemática en el título, vista tranquila en lo demás
         MenuBackdrop.SetCinematic(g == titleScreen);
         Button first = g.GetComponentInChildren<Button>();
-        if (first != null && g != mapScreen && g != archiveScreen) first.Select();
+        if (g == settingsScreen && settingsPanel != null)
+        {
+            // Ajustes: valores al día y el teclado empieza en el primer deslizador
+            settingsPanel.Refresh();
+            if (settingsPanel.first != null) settingsPanel.first.Select();
+        }
+        else if (first != null && g != mapScreen && g != archiveScreen) first.Select();
     }
 
     static void Hide(CanvasGroup g)
@@ -962,6 +970,7 @@ public partial class MainMenu : MonoBehaviour
         {
             if (current == archiveScreen) Go(mapScreen);
             else if (current == mapScreen) Go(modesScreen);
+            else if (current == settingsScreen) CloseSettings();
             else if (current == modesScreen || current == controlsScreen) Go(titleScreen);
         }
     }

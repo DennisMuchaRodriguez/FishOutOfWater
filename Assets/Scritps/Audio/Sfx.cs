@@ -7,16 +7,22 @@ using UnityEngine;
 //   AudioSource s = Sfx.Loop(Sonido.Remolino, transform, 0.8f)  -> bucle que sigue a un objeto (Sfx.StopLoop(s))
 // Los clips están en Assets/Resources/Sonidos/<Nombre>.wav (variantes al azar: <Nombre>_2, <Nombre>_3...).
 // Para cambiar un sonido basta con reemplazar el archivo manteniendo el nombre. Si falta, no suena y no da error.
-// El volumen general se guarda en PlayerPrefs ("Volumen").
+// Volúmenes (Ajustes > Sonido, se guardan en PlayerPrefs):
+//   Volume         "Volumen"         general: todo lo que se oye (también la música)
+//   EffectsVolume  "VolumenEfectos"  los efectos (todo lo que pasa por Sfx). La música tiene el suyo (Music.Volume)
 public static class Sfx
 {
     const string Folder = "Sonidos/";
     const int PoolSize = 32;
     const string VolumeKey = "Volumen";
+    const string EffectsKey = "VolumenEfectos";
 
     static readonly Dictionary<string, AudioClip[]> clips = new Dictionary<string, AudioClip[]>();
     static readonly Dictionary<string, float> lastPlayed = new Dictionary<string, float>();
+    // Bucles vivos y su volumen pedido (para seguir el volumen de efectos al moverlo)
+    static readonly Dictionary<AudioSource, float> loops = new Dictionary<AudioSource, float>();
     static SfxHost host;
+    static float effects = 1f;
 
     public static float Volume
     {
@@ -29,10 +35,39 @@ public static class Sfx
         }
     }
 
+    public static float EffectsVolume
+    {
+        get { return effects; }
+        set
+        {
+            effects = Mathf.Clamp01(value);
+            PlayerPrefs.SetFloat(EffectsKey, effects);
+            RefreshLoops();
+        }
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void Init()
     {
         AudioListener.volume = Volume;
+        effects = Mathf.Clamp01(PlayerPrefs.GetFloat(EffectsKey, 1f));
+        loops.Clear();
+    }
+
+    static void RefreshLoops()
+    {
+        List<AudioSource> gone = null;
+        foreach (KeyValuePair<AudioSource, float> kv in loops)
+        {
+            if (kv.Key == null)
+            {
+                if (gone == null) gone = new List<AudioSource>();
+                gone.Add(kv.Key);
+                continue;
+            }
+            kv.Key.volume = kv.Value * effects;
+        }
+        if (gone != null) foreach (AudioSource s in gone) loops.Remove(s);
     }
 
     // Un clip al azar entre sus variantes (null si no existe)
@@ -98,7 +133,7 @@ public static class Sfx
         s.minDistance = Mathf.Max(0.5f, minDistance);
         s.maxDistance = Mathf.Max(150f, minDistance * 40f);
         s.clip = clip;
-        s.volume = Mathf.Clamp01(volume);
+        s.volume = Mathf.Clamp01(volume) * effects;
         s.pitch = Mathf.Clamp(pitch * Random.Range(1f - pitchSpread, 1f + pitchSpread), 0.1f, 3f);
         s.Play();
         return s;
@@ -113,7 +148,7 @@ public static class Sfx
         AudioSource s = Host.Next();
         s.spatialBlend = 0f;
         s.clip = clip;
-        s.volume = Mathf.Clamp01(volume);
+        s.volume = Mathf.Clamp01(volume) * effects;
         s.pitch = Mathf.Clamp(pitch * Random.Range(1f - pitchSpread, 1f + pitchSpread), 0.1f, 3f);
         s.Play();
         return s;
@@ -136,14 +171,26 @@ public static class Sfx
         s.minDistance = minDistance;
         s.maxDistance = Mathf.Max(150f, minDistance * 40f);
         s.dopplerLevel = 0f;
-        s.volume = Mathf.Clamp01(volume);
+        s.volume = Mathf.Clamp01(volume) * effects;
+        if (loops.Count > 64) RefreshLoops();   // quita los bucles que se destruyeron con su objeto
+        loops[s] = Mathf.Clamp01(volume);
         s.time = Random.Range(0f, clip.length * 0.9f);
         s.Play();
         return s;
     }
 
+    // Cambia el volumen de un bucle respetando el volumen de efectos
+    public static void SetLoopVolume(AudioSource s, float volume)
+    {
+        if (s == null) return;
+        loops[s] = Mathf.Clamp01(volume);
+        s.volume = Mathf.Clamp01(volume) * effects;
+    }
+
     public static void StopLoop(AudioSource s)
     {
-        if (s != null) Object.Destroy(s.gameObject);
+        if (s == null) return;
+        loops.Remove(s);
+        Object.Destroy(s.gameObject);
     }
 }

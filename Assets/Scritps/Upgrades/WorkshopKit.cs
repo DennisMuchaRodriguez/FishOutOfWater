@@ -200,7 +200,8 @@ public static class WorkshopKit
     // ---------- Mallas ----------
 
     // Cueva: elipsoide visto desde dentro, con bultos de roca. El suelo plano lo pone otra malla.
-    public static Mesh CaveMesh(Vector3 radii, int seg, int rings, float bumps, int seed)
+    // openTopRings > 0: deja abierto el casquete de arriba (un hueco redondo en el centro del techo: la salida)
+    public static Mesh CaveMesh(Vector3 radii, int seg, int rings, float bumps, int seed, int openTopRings = 0)
     {
         List<Vector3> v = new List<Vector3>();
         List<Vector2> uv = new List<Vector2>();
@@ -224,7 +225,7 @@ public static class WorkshopKit
             }
         }
         int row = seg + 1;
-        for (int r = 0; r < rings; r++)
+        for (int r = Mathf.Clamp(openTopRings, 0, rings - 1); r < rings; r++)
         {
             for (int s = 0; s < seg; s++)
             {
@@ -236,6 +237,50 @@ public static class WorkshopKit
         }
         Mesh m = new Mesh();
         m.name = "Taller_Cueva";
+        m.SetVertices(v);
+        m.SetUVs(0, uv);
+        m.SetTriangles(tri, 0);
+        m.RecalculateNormals();
+        m.RecalculateBounds();
+        return m;
+    }
+
+    // Túnel de roca vertical visto desde dentro (abierto arriba y abajo): la salida de la cueva hacia el lago.
+    // El pie está en el origen; se angosta un poco hacia arriba y tiene bultos como las paredes de la cueva
+    public static Mesh ShaftMesh(float bottomRadius, float topRadius, float height, int seg, int rings, float bumps, int seed)
+    {
+        List<Vector3> v = new List<Vector3>();
+        List<Vector2> uv = new List<Vector2>();
+        List<int> tri = new List<int>();
+        for (int r = 0; r <= rings; r++)
+        {
+            float k = (float)r / rings;
+            float y = height * k;
+            float radius = Mathf.Lerp(bottomRadius, topRadius, k);
+            for (int s = 0; s <= seg; s++)
+            {
+                float th = 2f * Mathf.PI * s / seg;
+                Vector3 dir = new Vector3(Mathf.Cos(th), 0f, Mathf.Sin(th));
+                float n = Mathf.PerlinNoise(seed + dir.x * 1.7f + 10f, y * 0.45f + 10f) * 0.6f
+                        + Mathf.PerlinNoise(dir.z * 3.1f + 40f, seed + y * 0.9f + 40f) * 0.4f;
+                float rr = radius * (1f - bumps * (n - 0.5f) * 2f);
+                v.Add(dir * rr + Vector3.up * y);
+                uv.Add(new Vector2((float)s / seg * 4f, y / 3f));
+            }
+        }
+        int row = seg + 1;
+        for (int r = 0; r < rings; r++)
+        {
+            for (int s = 0; s < seg; s++)
+            {
+                int a = r * row + s, b = a + 1, c = a + row, d = c + 1;
+                // Caras hacia dentro (hacia el eje del túnel)
+                tri.Add(a); tri.Add(b); tri.Add(c);
+                tri.Add(b); tri.Add(d); tri.Add(c);
+            }
+        }
+        Mesh m = new Mesh();
+        m.name = "Taller_Tunel";
         m.SetVertices(v);
         m.SetUVs(0, uv);
         m.SetTriangles(tri, 0);

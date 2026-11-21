@@ -52,6 +52,7 @@ public class MenuBackdrop : MonoBehaviour
     const float THelmet = 23f;        // 5. primer plano del casco
     const float TLaunch = 26f;        // 6. despegue
     const float TLiftOff = 27f;
+    const float TExitShot = 28.3f;    //    cámara mirando hacia arriba por la salida
     const float TSky = 30f;           // 7. afuera
     const float TBurst = 30.3f;
     const float TLoop = 37.5f;
@@ -104,6 +105,10 @@ public class MenuBackdrop : MonoBehaviour
     readonly List<Bird> birds = new List<Bird>();
     Color caveFog, caveAmbient, caveBg;
     float caveFogDensity, caveFar;
+    Material skyMaterial, caveSkybox;
+    Color skyHorizon = new Color(0.78f, 0.87f, 0.93f);
+    Vector3 sunDirection = Vector3.up;
+    static readonly int SkySunId = Shader.PropertyToID("_FOW_SkySunDir");
 
     class Bird
     {
@@ -149,6 +154,8 @@ public class MenuBackdrop : MonoBehaviour
     {
         if (Instance == this) Instance = null;
         foreach (Mesh m in bakedMeshes) if (m != null) Destroy(m);
+        // El sol del cielo vuelve a ser el de la luz principal (lo usa el cielo del lago)
+        if (outsideOn && skyMaterial != null) Shader.SetGlobalVector(SkySunId, Vector4.zero);
     }
 
     void BuildOverlay()
@@ -354,16 +361,33 @@ public class MenuBackdrop : MonoBehaviour
     {
         outside = new GameObject("ExteriorDelMenu").transform;
         outside.position = OutsideOrigin;
-        Vector3 sunDir = new Vector3(-0.35f, 0.42f, 1f).normalized;   // el sol, adelante y a la izquierda (contraluz)
+        // El sol: a la izquierda y un poco adelante (luz de costado; el disco se ve a la izquierda de la imagen)
+        Vector3 sunDir = new Vector3(-0.8f, 0.5f, 0.45f).normalized;
+        sunDirection = sunDir;
         Color horizon = new Color(0.8f, 0.88f, 0.94f), zenith = new Color(0.28f, 0.52f, 0.86f), sunTint = new Color(1f, 0.92f, 0.75f);
+
+        // El cielo del juego (el mismo del lago: degradado, sol y nubes)
+        Material skySource = Resources.Load<Material>(LakeAmbience.SkyPath);
+        if (skySource != null)
+        {
+            skyMaterial = new Material(skySource);
+            if (skyMaterial.HasProperty("_HorizonColor")) skyHorizon = skyMaterial.GetColor("_HorizonColor");
+        }
 
         // Agua: brillante, para que el sol deje su reflejo
         Material water = WorkshopKit.Lit(new Color(0.05f, 0.27f, 0.36f), null, 0.93f, "Menu_Lago");
         GameObject lake = WorkshopKit.Shape(PrimitiveType.Plane, "Lago", outside, Vector3.zero, new Vector3(160f, 1f, 160f), water);
         lake.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-        // Cielo, sol y nubes: sin niebla (sombreador de interfaz), dibujados antes que todo lo demás
-        Shader unlit = Shader.Find("UI/Default");
+        // Las orillas: tierra que sube desde el agua (pradera y lomas) con la decoración del juego encima
+        Texture2D grassTex = WorkshopKit.NoiseTexture(128, 8f, 1.3f, new Color(0.15f, 0.3f, 0.12f), new Color(0.3f, 0.48f, 0.2f), "Menu_Pasto", 17);
+        Material land = WorkshopKit.Lit(Color.white, grassTex, 0.06f, "Menu_Tierra");
+        GameObject ground = WorkshopKit.MeshObject("Orillas", outside, LandMesh(), land);
+        ground.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        PlaceDecoration();
+
+        // Sin el cielo del juego: cielo, sol y nubes propios (sin niebla, sombreador de interfaz, dibujados antes que todo)
+        Shader unlit = skyMaterial == null ? Shader.Find("UI/Default") : null;
         if (unlit != null)
         {
             Material skyMat = new Material(unlit) { name = "Menu_Cielo", renderQueue = 1000 };
@@ -393,19 +417,6 @@ public class MenuBackdrop : MonoBehaviour
             }
         }
 
-        // Orillas a lo lejos: colinas que la niebla vuelve azuladas
-        Material hill = WorkshopKit.Lit(new Color(0.1f, 0.24f, 0.16f), null, 0.05f, "Menu_Colina");
-        for (int i = 0; i < 16; i++)
-        {
-            float az = (i / 16f) * Mathf.PI * 2f + 0.2f * Mathf.Sin(i * 3.1f);
-            float dist = 330f + 60f * Mathf.Abs(Mathf.Sin(i * 1.7f));
-            Vector3 p = new Vector3(Mathf.Sin(az) * dist, -6f, Mathf.Cos(az) * dist);
-            Vector3 s = new Vector3(110f + 50f * Mathf.Abs(Mathf.Sin(i * 2.3f)), 30f + 26f * Mathf.Abs(Mathf.Sin(i * 1.3f)), 80f);
-            GameObject h = WorkshopKit.Shape(PrimitiveType.Sphere, "Colina", outside, p, s, hill);
-            h.transform.rotation = Quaternion.LookRotation(-p.normalized);
-            h.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        }
-
         // Ola que se abre donde el pez rompe el agua
         rippleMat = WorkshopKit.Glow(workshop.fxMaterialTemplate, FXFactory.White, new Color(1f, 1f, 1f, 0f));
         ripple = WorkshopKit.MeshObject("Ola", outside, WorkshopKit.RingMesh(0.85f, 1f, 64), rippleMat).transform;
@@ -417,11 +428,114 @@ public class MenuBackdrop : MonoBehaviour
         sun.color = new Color(1f, 0.95f, 0.86f);
         sun.intensity = 1.3f;
         sun.shadows = LightShadows.None;
-        sun.transform.rotation = Quaternion.LookRotation(-sunDir + Vector3.down * 0.15f);
+        sun.transform.rotation = Quaternion.LookRotation(-sunDir);
         sun.enabled = false;
 
         BuildBirds();
         outside.gameObject.SetActive(false);
+    }
+
+    // ---- El lago donde se pelea: la tierra de la orilla y la decoración del juego ----
+
+    const float LakeRadius = 110f;   // la orilla, a 110 m de donde el pez rompe el agua
+
+    // Altura del terreno: baja hasta el agua en la orilla, sube en la pradera y hace lomas lejos (con la niebla, se
+    // funden con el horizonte). az en radianes (0 = adelante)
+    static float LandHeight(float r, float az)
+    {
+        float d = r - LakeRadius;
+        float h = Mathf.Lerp(-0.8f, 0.35f, Mathf.InverseLerp(-6f, 2f, d));
+        h += Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(4f, 90f, d)) * 6f;
+        h += Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(120f, 420f, d)) * 24f;
+        float n = Mathf.PerlinNoise(Mathf.Cos(az) * 3f + 10f, Mathf.Sin(az) * 3f + 10f);
+        float n2 = Mathf.PerlinNoise(Mathf.Cos(az) * 9f + 40f, Mathf.Sin(az) * 9f + r * 0.015f);
+        h += ((n - 0.5f) * 18f + (n2 - 0.5f) * 6f) * Mathf.InverseLerp(10f, 220f, d);
+        return h;
+    }
+
+    static Mesh LandMesh()
+    {
+        float[] radii = { LakeRadius - 7f, LakeRadius - 2f, LakeRadius + 1f, LakeRadius + 5f, LakeRadius + 12f, LakeRadius + 25f, LakeRadius + 45f,
+                          LakeRadius + 75f, LakeRadius + 120f, LakeRadius + 180f, LakeRadius + 260f, LakeRadius + 360f, LakeRadius + 520f };
+        const int seg = 128;
+        List<Vector3> v = new List<Vector3>();
+        List<Vector2> uv = new List<Vector2>();
+        List<int> tri = new List<int>();
+        foreach (float r in radii)
+        {
+            for (int j = 0; j <= seg; j++)
+            {
+                float az = j / (float)seg * Mathf.PI * 2f;
+                Vector3 p = new Vector3(Mathf.Sin(az) * r, LandHeight(r, az), Mathf.Cos(az) * r);
+                v.Add(p);
+                uv.Add(new Vector2(p.x / 14f, p.z / 14f));
+            }
+        }
+        int row = seg + 1;
+        for (int i = 0; i + 1 < radii.Length; i++)
+        {
+            for (int j = 0; j < seg; j++)
+            {
+                int a = i * row + j, b = a + 1, c = a + row, d = c + 1;
+                // Caras hacia arriba
+                tri.Add(a); tri.Add(c); tri.Add(b);
+                tri.Add(b); tri.Add(c); tri.Add(d);
+            }
+        }
+        Mesh m = new Mesh { name = "Menu_Orillas" };
+        m.SetVertices(v);
+        m.SetUVs(0, uv);
+        m.SetTriangles(tri, 0);
+        m.RecalculateNormals();
+        m.RecalculateBounds();
+        return m;
+    }
+
+    // Los mismos modelos que decoran el lago del juego (Resources/Decoracion/Decoracion_Lago), por zonas: bosque y
+    // borde del bosque lejos, pradera, juncos en la orilla y en el agua baja, nenúfares flotando. La mayoría delante
+    // (lo que ve la cámara)
+    void PlaceDecoration()
+    {
+        DecorationSet set = Resources.Load<DecorationSet>(LakeDecorator.ResourcePath);
+        if (set == null || set.entries == null) return;
+        System.Random rng = new System.Random(31);
+        foreach (DecorationEntry e in set.entries)
+        {
+            if (e == null || !e.enabled || e.prefab == null) continue;
+            float dMin, dMax;
+            int count;
+            bool floating = false;
+            switch (e.zone)
+            {
+                case DecorZone.Bosque: dMin = 45f; dMax = 170f; count = 14; break;
+                case DecorZone.BordeBosque: dMin = 22f; dMax = 50f; count = 10; break;
+                case DecorZone.Pradera: dMin = 5f; dMax = 26f; count = 9; break;
+                case DecorZone.Orilla: dMin = -1f; dMax = 4f; count = 14; break;
+                case DecorZone.AguaBaja: dMin = -7f; dMax = -1.5f; count = 12; break;
+                case DecorZone.Superficie: dMin = -24f; dMax = -6f; count = 8; floating = true; break;
+                default: continue;   // el fondo del lago y las rocas de las laderas no se ven desde arriba
+            }
+            for (int i = 0; i < count; i++)
+            {
+                double pick = rng.NextDouble();
+                float azDeg = pick < 0.75 ? Mathf.Lerp(-80f, 80f, (float)rng.NextDouble()) : Mathf.Lerp(-180f, 180f, (float)rng.NextDouble());
+                float az = azDeg * Mathf.Deg2Rad;
+                float r = LakeRadius + Mathf.Lerp(dMin, dMax, (float)rng.NextDouble());
+                float scale = Mathf.Lerp(e.scaleRange.x, Mathf.Max(e.scaleRange.x, e.scaleRange.y), (float)rng.NextDouble()) * (e.modelScale > 0f ? e.modelScale : 1f);
+                float y = floating ? 0.03f : LandHeight(r, az) - e.sinkOffset * scale;
+                Transform holder = new GameObject(e.name).transform;
+                holder.SetParent(outside, false);
+                holder.localPosition = new Vector3(Mathf.Sin(az) * r, y, Mathf.Cos(az) * r);
+                holder.localRotation = Quaternion.Euler(0f, e.randomYaw ? (float)rng.NextDouble() * 360f : 0f, 0f);
+                GameObject inst = Instantiate(e.prefab, holder, false);
+                inst.transform.localPosition = Vector3.zero;
+                inst.transform.localRotation = Quaternion.Euler(e.modelRotation);
+                inst.transform.localScale = inst.transform.localScale * scale;
+                WorkshopKit.StripColliders(inst);
+                foreach (Renderer rend in inst.GetComponentsInChildren<Renderer>())
+                    rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+        }
     }
 
     // Cartel que mira al centro del exterior (sin niebla)
@@ -621,12 +735,20 @@ public class MenuBackdrop : MonoBehaviour
         if (workshop.EntranceLight != null) workshop.EntranceLight.enabled = !on;
         if (on)
         {
-            RenderSettings.fogColor = new Color(0.78f, 0.87f, 0.93f);
+            // La niebla toma el color del horizonte del cielo: las lomas lejanas se funden con él
+            RenderSettings.fogColor = skyHorizon;
             RenderSettings.fogDensity = 0.0026f;
             RenderSettings.ambientLight = new Color(0.56f, 0.63f, 0.72f);
+            if (skyMaterial != null)
+            {
+                caveSkybox = RenderSettings.skybox;
+                RenderSettings.skybox = skyMaterial;
+                Shader.SetGlobalVector(SkySunId, new Vector4(sunDirection.x, sunDirection.y, sunDirection.z, 1f));
+            }
             if (cam != null)
             {
-                cam.backgroundColor = new Color(0.8f, 0.88f, 0.94f);
+                cam.clearFlags = skyMaterial != null ? CameraClearFlags.Skybox : CameraClearFlags.SolidColor;
+                cam.backgroundColor = skyHorizon;
                 cam.farClipPlane = 1500f;
             }
         }
@@ -635,8 +757,14 @@ public class MenuBackdrop : MonoBehaviour
             RenderSettings.fogColor = caveFog;
             RenderSettings.fogDensity = caveFogDensity;
             RenderSettings.ambientLight = caveAmbient;
+            if (skyMaterial != null)
+            {
+                RenderSettings.skybox = caveSkybox;
+                Shader.SetGlobalVector(SkySunId, Vector4.zero);
+            }
             if (cam != null)
             {
+                cam.clearFlags = CameraClearFlags.SolidColor;
                 cam.backgroundColor = caveBg;
                 cam.farClipPlane = caveFar;
             }
@@ -806,7 +934,7 @@ public class MenuBackdrop : MonoBehaviour
     {
         if (!hero.gameObject.activeSelf) return;
         Vector3 top = StandTop;
-        Vector3 sky = WorkshopScene.SkylightPosition;
+        Vector3 hole = WorkshopScene.ExitHole, surface = WorkshopScene.ExitSurface;
 
         if (t < TSuit)
         {
@@ -840,10 +968,10 @@ public class MenuBackdrop : MonoBehaviour
         }
         else if (t < TSky)
         {
-            // Sale disparado hacia la superficie del lago (el claro del techo)
+            // Sale disparado: sube, se mete por el hueco del techo y sigue recto por el túnel hasta la superficie
             float u = Mathf.Clamp01((t - TLiftOff) / 2.8f);
             float e = 0.3f * u + 0.7f * u * u;
-            Vector3 a = top + new Vector3(0f, 2.4f, 0.2f), b = sky + new Vector3(0.3f, -2.2f, -0.6f), c = sky + new Vector3(0f, 2.8f, 0.4f);
+            Vector3 a = top + new Vector3(0f, 3f, 0f), b = hole + Vector3.down * 1.5f, c = surface + Vector3.up * 1.2f;
             Vector3 p = Bezier(top, a, b, c, e);
             Vector3 v = Bezier(top, a, b, c, Mathf.Min(1f, e + 0.02f)) - p;
             hero.position = p;
@@ -1126,11 +1254,11 @@ public class MenuBackdrop : MonoBehaviour
 
         if (t < TMechanic)
         {
-            // 1. La guarida: grúa que baja
+            // 1. La guarida: empieza mirando la luz que entra por la salida del techo y baja hasta el taller
             shot = 1;
             float e = Smooth01(t / TMechanic);
             pos = Vector3.Lerp(new Vector3(-4.8f, 3.9f, -4.2f), new Vector3(-3.0f, 2.2f, -5.4f), e);
-            look = Vector3.Lerp(new Vector3(1.2f, 3.0f, 5.2f), new Vector3(0.6f, 1.9f, 2.4f), e);
+            look = Vector3.Lerp(WorkshopScene.ExitHole + new Vector3(0.3f, -1.0f, 0.4f), new Vector3(0.6f, 1.9f, 2.4f), e);
             fov = Mathf.Lerp(52f, 47f, e);
         }
         else if (t < TArrive)
@@ -1175,14 +1303,25 @@ public class MenuBackdrop : MonoBehaviour
             look = helmet + Vector3.up * 0.02f;
             fov = 34f;
         }
-        else if (t < TSky)
+        else if (t < TExitShot)
         {
-            // 6. Despegue: desde abajo, mirando cómo sube hacia la luz
+            // 6. Despegue: desde abajo, junto al soporte
             shot = 6;
-            float e = Smooth01((t - TLaunch) / (TSky - TLaunch));
+            float e = Smooth01((t - TLaunch) / (TExitShot - TLaunch));
             pos = Vector3.Lerp(new Vector3(3.9f, 1.0f, -2.2f), new Vector3(3.6f, 1.2f, -1.8f), e);
             look = chest;
-            fov = Mathf.Lerp(46f, 58f, e);
+            fov = Mathf.Lerp(46f, 54f, e);
+            track = true;
+        }
+        else if (t < TSky)
+        {
+            // 6b. La salida: la cámara mira hacia arriba por el hueco del techo y lo ve subir por el túnel hacia la luz
+            shot = 8;
+            float e = Smooth01((t - TExitShot) / (TSky - TExitShot));
+            Vector3 hole = WorkshopScene.ExitHole;
+            pos = hole + new Vector3(3.0f, -5.3f, -2.6f) + Vector3.down * 0.3f * e;
+            look = Vector3.Lerp(chest, WorkshopScene.ExitSurface, 0.35f + 0.4f * e);
+            fov = Mathf.Lerp(58f, 64f, e);
             track = true;
         }
         else

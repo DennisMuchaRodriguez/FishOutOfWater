@@ -184,7 +184,7 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 ### Menú, mapa de niveles, cómics y progreso
 
 **Recorrido completo:**
-1. **Menú principal** (escena MainMenu): JUGAR, CONTROLES y SALIR. De fondo, el **Taller** con una cinemática que se repite (ver [Fondo del menú](#fondo-del-menú-el-taller-y-la-cinemática-del-traje)). **CONTROLES** es el manual del traje: tres paneles (MOVIMIENTO, COMBATE y CÁMARA, EN EL LAGO) con las teclas dibujadas como teclas y el ratón con el botón que se usa.
+1. **Menú principal** (escena MainMenu): JUGAR, CONTROLES, AJUSTES (volumen general, música y efectos) y SALIR. De fondo, el **Taller** con una cinemática que se repite (ver [Fondo del menú](#fondo-del-menú-el-taller-y-la-cinemática-del-traje)). **CONTROLES** es el manual del traje: tres paneles (MOVIMIENTO, COMBATE y CÁMARA, EN EL LAGO) con las teclas dibujadas como teclas y el ratón con el botón que se usa.
 2. **Elige modo**:
    - **HISTORIA** (1 jugador): abre el mapa de niveles. La tarjeta muestra tus estrellas y cuántos niveles completaste.
    - **SUPERVIVENCIA**: oleadas sin fin en el mismo lago (ver [Modo Supervivencia](#modo-supervivencia-oleadas-sin-fin)). La tarjeta muestra tu récord de oleadas.
@@ -987,7 +987,7 @@ En tercera persona queda solo la retícula (el panel de misión, como todo el ca
 | **Boot Duration** | 1.4 | 1.4 | Duración de la animación de encendido del casco |
 
 ### PauseMenu (en UiManager)
-Construye por código la pausa, la pantalla de "TRAJE DESTRUIDO" y la de resultado (ver [Menú, mapa de niveles, cómics y progreso](#menú-mapa-de-niveles-cómics-y-progreso)). Los nombres de las escenas están en `GameSession` (`MainMenu` y `SampleScene`).
+Construye por código la pausa, la pantalla de "TRAJE DESTRUIDO" y la de resultado (ver [Menú, mapa de niveles, cómics y progreso](#menú-mapa-de-niveles-cómics-y-progreso)). Los nombres de las escenas están en `GameSession` (`MainMenu` y `SampleScene`). En la pausa, a la derecha, la ficha **SONIDO** con los volúmenes (general, música y efectos; ver [Sonido](#sonido-assetsscritpsaudio)).
 
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
@@ -1025,8 +1025,8 @@ Estilo: el mismo del visor del casco (holograma azul eléctrico con destellos ca
   3. **Llega el pez**, sin traje, nadando hasta el soporte (la cámara lo sigue).
   4. **El traje**: las piezas aparecen girando a su alrededor y se le encajan una a una, de los pies a la escafandra, con chispas, destello y golpe de metal; la cámara da la vuelta. Al final, un anillo de luz sube por el traje.
   5. **El casco**: primer plano; un destello cruza el visor.
-  6. **Despegue**: se agacha, enciende el propulsor (llama y burbujas) y sale disparado hacia la superficie del lago, la luz del techo de la cueva.
-  7. **Afuera**: un destello, rompe el agua (salpicadura y ola) y vuela hacia la bandada de aves que da vueltas en el cielo. Las aves son las del juego (las que no son jefes, sacadas del catálogo de niveles).
+  6. **Despegue**: se agacha, enciende el propulsor (llama y burbujas), sube y se mete por **la salida de la cueva**: un hueco redondo en el centro del techo con un túnel de roca que sube hasta la superficie del lago (brilla arriba; por ahí entran la luz y los rayos y suben burbujas). Una cámara desde abajo lo ve alejarse por el túnel hacia la luz.
+  7. **Afuera, en el lago donde se pelea**: un destello, rompe el agua (salpicadura y ola) y vuela hacia la bandada de aves que da vueltas sobre la orilla. El lago se ve como el del juego: su cielo (`Resources/Ambiente/Cielo_Lago`), y orillas con juncos, nenúfares, pradera y bosque con los mismos modelos de la decoración del lago (`Resources/Decoracion/Decoracion_Lago`). Las aves son las del juego (las que no son jefes, sacadas del catálogo de niveles).
 - **Las demás pantallas** (modos, mapa, controles, cooperativo, archivo): la guarida tranquila, con el pez ya con su traje en el soporte y la cámara moviéndose despacio; el fondo se oscurece un poco para que se lean los paneles.
 - En el título, una sombra a la izquierda deja leer el título y los botones; la cinemática encuadra lo importante a la derecha.
 - Las piezas del traje: todo lo que en el modelo del traje (`Suit Model` del Taller) no es el pez (cabeza, ojos, cuerpo y aletas). Para que vuelen, se copia cada pieza en la pose de ese momento; al terminar vuelven las de verdad (animadas). Si el modelo trae el traje en una sola malla, llega como una sola pieza.
@@ -1217,7 +1217,25 @@ unos segundos (cualquier ave los atrapa fácil) y los **lanzados** pueden caer e
   - Disparos, golpes al traje y alarma con poca armadura.
   - Propulsor, dash y turbo.
   - Ambiente del lago y bajo el agua. Bajo el agua todo se oye apagado (filtro en el AudioListener).
-- El volumen general se guarda en PlayerPrefs (`Volumen`, `Sfx.Volume`).
+- **Volúmenes** (Menú principal > **AJUSTES**, y la ficha **SONIDO** de la pausa): tres deslizadores, se oyen al momento y se guardan solos en PlayerPrefs.
+  - **Volumen general** (`Volumen`, `Sfx.Volume`, 80 % por defecto): todo lo que se oye.
+  - **Música** (`VolumenMusica`, `Music.Volume`, 70 %).
+  - **Efectos** (`VolumenEfectos`, `Sfx.EffectsVolume`, 100 %): todo lo que pasa por `Sfx` (también los bucles del propulsor y del ambiente).
+
+### Música (`Assets/Resources/Musica`, `Music.cs`)
+Música original compuesta para el juego (partituras en `Herramientas/Musica/componer_musica.py`, tocadas con los instrumentos de la colección FluidR3_GM, licencia MIT):
+
+| Pista | Dónde suena | Cómo es |
+|---|---|---|
+| **Menu** "El Traje" | Menú principal y el Taller (visitas y sala cooperativa) | Épica, Re menor, 80 s en bucle: empieza bajo el agua (celesta, coro, pads), el tema entra en las trompas sobre el motor de cuerdas y estalla con trompetas, coro, taikos y timbales |
+| **Juego** "Batalla en el lago" | La partida (Historia, Supervivencia y Cooperativo) | Acción, Mi menor, 73 s en bucle: cuerdas y bajo que empujan, batería y taikos, el tema en trompas y trompetas. Va más baja que los efectos |
+| **Carga** "Bajo la superficie" | Pantalla de carga (si la escena que viene usa otra pista) | Tranquila, 25 s en bucle: pads, cristal y arpa |
+| **Derrota** | Al perder (traje destruido, peces cazados, cae el equipo) | Lamento de unos 18 s (con su cola): cuerdas y trompa que bajan, coro y timbal. Después, silencio |
+| **Victoria** | Al ganar un nivel | Fanfarria de 8 s en Re mayor |
+
+- Cambia de pista con un fundido cruzado; en la pausa baja; no la apaga el filtro de "bajo el agua".
+- **Para usar una música propia**, reemplaza el `.ogg` con el mismo nombre (si falta, no suena y no da error; sin Derrota/Victoria vuelven los sonidos de antes).
+- **Para retocar la música**: cambia las notas en `componer_musica.py` y ejecútalo desde la raíz del proyecto (`python3 Herramientas/Musica/componer_musica.py`, o solo una: `... Menu`). Necesita `fluidsynth`, `fluid-soundfont-gm`, `ffmpeg` y `pip install mido numpy`. Los bucles se tocan tres veces y se queda la del medio, así empalman sin corte.
 
 ### Archivo de aves: bocetos (`Herramientas/Archivo`)
 Los dibujos del Archivo (`Assets/Resources/Archivo/<archivo del Ave>.png`, 512×512 con transparencia) son bocetos holográficos hechos a partir de los modelos de las aves, en dos pasos:
