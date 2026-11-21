@@ -10,8 +10,11 @@ using UnityEditor;
 //   - la orilla (de 0.4 m bajo el agua a 1.3 m sobre ella, cerca del lago) -> arena, y una franja de tierra
 //   - el suelo plano -> pasto mezclado con su variante por manchas grandes
 //   - pendientes medias y senderos -> tierra; pendientes fuertes -> roca (la ribera del lago es tierra)
-// Al dar Play trabaja sobre una COPIA de cada TerrainData (los archivos no cambian). Para dejarlo fijo y
+// Al dar Play (en el editor) trabaja sobre una COPIA de cada TerrainData (los archivos no cambian). Para dejarlo fijo y
 // no gastar tiempo al cargar: menú Herramientas > Terreno > Pintar terreno (permanente).
+// En las builds el terreno va pintado de fábrica: antes de cada build TerrainBuildPaint (Editor) lo pinta y lo guarda
+// si hace falta. En la build nunca se cambia el TerrainData por una copia (así el terreno sí se dibuja) y cada carga del
+// lago deja en Player.log el estado de los terrenos.
 [DefaultExecutionOrder(-200)]
 public class TerrainStylizer : MonoBehaviour
 {
@@ -75,6 +78,7 @@ public class TerrainStylizer : MonoBehaviour
         foreach (Terrain t in terrains) if (t != null && t.terrainData != null && !AlreadyPainted(t.terrainData)) any = true;
         if (!any) return;
 
+#if UNITY_EDITOR
         // Copias: así el Play nunca modifica los archivos del proyecto
         foreach (Terrain t in terrains)
         {
@@ -85,7 +89,55 @@ public class TerrainStylizer : MonoBehaviour
             TerrainCollider col = t.GetComponent<TerrainCollider>();
             if (col != null) col.terrainData = copy;
         }
+#else
+        // En la build el terreno ya viene pintado (TerrainBuildPaint lo pinta y lo guarda antes de cada build). Si
+        // aun así llega sin pintar, se pinta el TerrainData cargado, sin copiarlo: en la build no hay archivos que
+        // cuidar, y un terreno con su TerrainData cambiado por una copia puede no dibujarse (se ve el cielo y los
+        // árboles flotando, aunque se choca con él)
+        Debug.LogWarning("TerrainStylizer: el terreno no venía pintado en la build; se pinta al cargar. " +
+                         "Para que venga pintado: Herramientas > Terreno > Pintar terreno (permanente) y vuelve a hacer la build.");
+#endif
         PaintAll(terrains);
+    }
+
+#if !UNITY_EDITOR
+    // Build: deja en Player.log cómo quedó cada terreno (si algún día no se ve, ahí está el motivo)
+    void Start()
+    {
+        LogTerrains("al empezar");
+    }
+#endif
+
+    // Estado de dibujo de todos los terrenos (activo, dibuja, datos, capas, material y si la cámara ve su capa)
+    public static void LogTerrains(string when)
+    {
+        Terrain[] all = FindObjectsByType<Terrain>(FindObjectsSortMode.None);
+        Camera cam = Camera.main;
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        sb.Append("TerrainStylizer (").Append(when).Append("): ").Append(all.Length).Append(" terrenos");
+        foreach (Terrain t in all)
+        {
+            if (t == null) continue;
+            TerrainData d = t.terrainData;
+            Material m = t.materialTemplate;
+            int bit = 1 << t.gameObject.layer;
+            sb.Append("\n  ").Append(t.name)
+              .Append(" | activo ").Append(t.isActiveAndEnabled)
+              .Append(" | dibuja ").Append(t.drawHeightmap)
+              .Append(" | instanciado ").Append(t.drawInstanced)
+              .Append(" | capa ").Append(LayerMask.LayerToName(t.gameObject.layer))
+              .Append(cam != null ? ((cam.cullingMask & bit) != 0 ? " (la cámara la ve)" : " (LA CÁMARA NO LA VE)") : " (sin cámara)");
+            if (d == null) sb.Append(" | SIN DATOS");
+            else
+                sb.Append(" | datos ").Append(d.name).Append(" ").Append(d.heightmapResolution).Append(" ").Append(d.size)
+                  .Append(" capas ").Append(d.terrainLayers != null ? d.terrainLayers.Length : 0)
+                  .Append(" alpha ").Append(d.alphamapResolution).Append("x").Append(d.alphamapTextureCount);
+            if (m == null) sb.Append(" | material: el de URP por defecto");
+            else
+                sb.Append(" | material ").Append(m.name).Append(" / ")
+                  .Append(m.shader != null ? m.shader.name + (m.shader.isSupported ? "" : " (SHADER NO SOPORTADO)") : "SIN SHADER");
+        }
+        Debug.Log(sb.ToString());
     }
 
     bool LayersReady()
@@ -443,6 +495,27 @@ public class TerrainStylizer : MonoBehaviour
     }
 
 #if UNITY_EDITOR
+    // Build: pinta de verdad los TerrainData de estos terrenos si alguno todavía no tiene estas capas, y los guarda.
+    // Devuelve cuántos terrenos pintó (0 si ya estaban pintados). Lo usa TerrainBuildPaint antes de cada build.
+    public int PaintAssetsIfNeeded(Terrain[] terrains)
+    {
+        if (!paintOnPlay || !LayersReady() || terrains == null) return 0;
+        List<Terrain> assets = new List<Terrain>();
+        bool any = false;
+        foreach (Terrain t in terrains)
+        {
+            if (t == null || t.terrainData == null || !EditorUtility.IsPersistent(t.terrainData)) continue;
+            assets.Add(t);
+            if (!AlreadyPainted(t.terrainData)) any = true;
+        }
+        if (!any) return 0;
+        // Se pintan todos juntos (los bordes entre terrenos y la cuenca del lago dependen de los vecinos)
+        PaintAll(assets.ToArray());
+        foreach (Terrain t in assets) EditorUtility.SetDirty(t.terrainData);
+        AssetDatabase.SaveAssets();
+        return assets.Count;
+    }
+
     // Pinta los TerrainData de verdad (se puede deshacer con Ctrl+Z) y los guarda
     [MenuItem("Herramientas/Terreno/Pintar terreno (permanente)")]
     static void BakeMenu()

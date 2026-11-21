@@ -83,6 +83,7 @@ Los colores son los mismos de la interfaz del juego: azul marino del casco, text
 
 1. En Unity: **File → Build Profiles → Windows** (Windows 64-bit). Revisa que en la lista de escenas estén `MainMenu` (la primera), `SampleScene` y `Taller`.
 2. **Build** → elige una carpeta nueva, por ejemplo `Builds/FishOutOfWater_Windows`.
+   - Antes de armarla, Unity pinta y guarda el terreno del lago (solo la primera vez). Después verás modificados los archivos `TerrainData_*.asset` y `New Terrain 1.asset`: súbelos al repositorio (ver la guía del proyecto, sección 11, punto 8).
 3. Prueba el `.exe` de esa carpeta: menú, una partida, el Taller y una sala cooperativa.
 4. Comprime **la carpeta entera** (el `.exe`, la carpeta `_Data`, `UnityPlayer.dll`, `MonoBleedingEdge`…) en un `.zip`: `FishOutOfWater_Windows_v0.1.zip`.
    - No hace falta incluir la carpeta `..._BurstDebugInformation_DoNotShip` si aparece.

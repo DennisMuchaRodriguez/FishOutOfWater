@@ -81,7 +81,7 @@ Datos del juego (fuera de las escenas):
 | **UiManager** | `UI_PlayerStatus`, `PauseMenu` | Barras de energía, munición y armadura; pausa, muerte y fin de partida |
 | **VistaInterior** | `HelmetVisorHUD` | Vista desde dentro del casco (marco, cristal, retícula) |
 | **Global Volume** / **Global Volume (1)** | Volume (URP) | Postproceso general / efecto bajo el agua (`Underwater Volume` del jugador) |
-| Terrain_* | Terrain | Terreno (capa Default) |
+| Terrain_* | Terrain | Terreno (capa Default): 9 terrenos de 600 m. Los pinta `TerrainStylizer` (pasto, tierra, arena, lecho y roca); en las builds va pintado de fábrica (ver la sección 11, punto 8) |
 | Water, Sphere (1) (desactivados) | Scripts de Bitgem | Agua vieja del asset. No se usa |
 | "Main Camera " (desactivada) | Camera | Duplicada. Bórrala |
 
@@ -1400,3 +1400,8 @@ desde el editor no aparece.
 5. `Assets/Niveles/Nivel_1` (tu archivo anterior) no se usa: los niveles del juego son los de `Assets/Data/Niveles`. Puedes borrarlo cuando quieras.
 6. Si al darle Play **no aparecen peces ni pájaros**, mira la consola. Lo más común es "GameDirector: no hay agua...": revisa que Lago_Agua esté dentro del hueco y pulsa *Reconstruir agua*.
 7. Si un modelo de pez sale diminuto o de lado: revisa que `Fish_Swim.fbx` tenga **Preserve Hierarchy** activado (pestaña Model).
+8. **El terreno en las builds.** En el editor, `TerrainStylizer` pinta el terreno al darle Play sobre una copia (los archivos no cambian). En una build eso dejaba un terreno que se choca pero **no se dibuja** (se ve el cielo en lugar del suelo, los árboles flotando y el borde del agua en escalones). Ahora:
+   - Antes de cada build, `TerrainBuildPaint` (`Assets/Scritps/Editor`) pinta los 9 terrenos **de verdad** y los guarda, si todavía no lo estaban (lo mismo que **Herramientas > Terreno > Pintar terreno (permanente)**). La primera build tarda unos segundos más; las siguientes no tocan nada.
+   - Por eso, después de esa primera build, los archivos `TerrainData_*.asset` y `New Terrain 1.asset` aparecen modificados: súbelos al repositorio.
+   - Si cambias las capas o los valores del `TerrainStylizer`, usa otra vez **Herramientas > Terreno > Pintar terreno (permanente)** antes de la build (si el terreno ya tiene esas 6 capas, la build no lo vuelve a pintar).
+   - En la build el terreno nunca se cambia por una copia. Cada vez que carga el lago, la build escribe en `Player.log` cómo quedó cada terreno (activo, si se dibuja, sus capas, su material y si la cámara lo ve). En Windows está en `%USERPROFILE%\AppData\LocalLow\DefaultCompany\Fish Out of Water\Player.log` (busca "TerrainStylizer").
