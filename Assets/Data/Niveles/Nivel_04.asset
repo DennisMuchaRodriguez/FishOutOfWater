@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LevelDefinition
   number: 4
   displayName: "El cardumen asustado"
-  description: "El cardumen est\u00E1 nervioso: no dejes que lo dispersen."
+  description: "Llega el piquero: no caza peces, se lanza contra ti como un dardo. \u00A1Esqu\u00EDvalo con el dash y der\u00EDbalo antes!"
   fish:
   - type: {fileID: 11400000, guid: ec036fa557a443eaa27e1a65665f1eea, type: 2}
     count: 6
@@ -38,12 +38,16 @@ MonoBehaviour:
       count: 3
     - type: {fileID: 11400000, guid: c2736885980147aca076ce9b0637bce2, type: 2}
       count: 1
+    - type: {fileID: 11400000, guid: 202595e650634e58a9a5aea925930cd8, type: 2}
+      count: 1
     healthMultiplier: 1.15
   - delayBefore: 12
     birds:
     - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
       count: 4
     - type: {fileID: 11400000, guid: c2736885980147aca076ce9b0637bce2, type: 2}
+      count: 2
+    - type: {fileID: 11400000, guid: 202595e650634e58a9a5aea925930cd8, type: 2}
       count: 2
     healthMultiplier: 1.32
   isBossLevel: 0

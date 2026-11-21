@@ -59,6 +59,8 @@ MonoBehaviour:
       count: 1
     - type: {fileID: 11400000, guid: 7a3219b6c3464e5e911a3439f0778ece, type: 2}
       count: 2
+    - type: {fileID: 11400000, guid: 202595e650634e58a9a5aea925930cd8, type: 2}
+      count: 2
     healthMultiplier: 1.78
   isBossLevel: 0
   workshopAfter: 1

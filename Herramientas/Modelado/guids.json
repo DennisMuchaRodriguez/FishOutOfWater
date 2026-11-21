@@ -95,6 +95,14 @@
    "png": "e8667452e79346638df34a5e5b2a7773",
    "mat": "554cdafa738247a0899aee9684a2c273",
    "folder_meta": "2474561cb3914bcb9eba36a296405556"
+  },
+  "Ave_Piquero": {
+   "display": "Piquero",
+   "folder": "Assets/Models/Aves/Ave_Piquero",
+   "fbx": "cd1fb79103854ce488964b0c340703a0",
+   "png": "dd74d6ce14924b0c999b7d6ad39a9784",
+   "mat": "65f9f22d2b6e4a09838cce5c46c1ed7e",
+   "folder_meta": "1bfdaab441484e7a9fb6d18a57d5441a"
   }
  },
  "characters": {

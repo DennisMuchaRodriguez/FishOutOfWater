@@ -166,6 +166,14 @@ public static class BirdArchive
                 e.tip = "Cuando deje de volar en círculos sobre ti, cambia de dirección de inmediato.";
                 e.tags = new[] { "PICADA", "VELOZ", "TE LANZA" };
                 break;
+            case BirdAbility.Kamikaze:
+                // (piquero de patas azules)
+                e.role = "KAMIKAZE";
+                e.hunt = "No caza peces. En la naturaleza pesca lanzándose al agua como una flecha: aquí se lanza contra ti.";
+                e.fight = "Te rodea, se queda quieto apuntándote (chilla y se pone rojo) y se lanza en línea recta. Si te alcanza, te golpea fuerte y revienta. Si fallas, vuelve a intentarlo.";
+                e.tip = "Cuando se ponga rojo, haz el dash a un lado. Es frágil: uno o dos disparos lo derriban.";
+                e.tags = new[] { "KAMIKAZE", "MUY VELOZ", "FRÁGIL" };
+                break;
             default:
                 e.role = "EMBESTIDA";
                 e.hunt = "Acecha en círculos y se lanza en picada sobre los peces.";

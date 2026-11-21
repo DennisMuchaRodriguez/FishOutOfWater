@@ -65,6 +65,21 @@ public static class SurvivalWaves
     const float BossRepeatHealth = 0.15f;  // vida extra de los jefes en cada vuelta
     const float MaxSplitChance = 0.75f;
 
+    // Cooperativo: por cada jugador más que 1 (lo arma el anfitrión con CoopSession.PlayerCount en cada oleada,
+    // así se ajusta si alguien se va). Con 4 jugadores: x2,65 aves, que además crecen más rápido de oleada en
+    // oleada, +30 % de vida y jefes con el doble de vida
+    const float BirdsPerPlayer = 0.55f;
+    const float RampPerPlayer = 0.25f;     // las aves por oleada crecen un 25 % más rápido por jugador extra
+    const float HealthPerPlayer = 0.10f;
+    const float BossHealthPerPlayer = 0.35f;
+    const int MaxBirdsPerPlayer = 7;       // tope de aves: 18 + 7 por jugador extra (39 con 4 jugadores)
+
+    // Piqueros kamikaze: van aparte de las demás especies (vienen siempre, más en cada oleada y con cada jugador)
+    const float KamikazeBase = 1f;
+    const float KamikazePerWave = 0.3f;
+    const float KamikazePerPlayer = 0.7f;  // +70 % por jugador extra
+    const int KamikazeMax = 4;             // tope: 4 + 4 por jugador extra
+
     class Species
     {
         public BirdType type;
@@ -112,24 +127,44 @@ public static class SurvivalWaves
 
     public static Wave Build(int number, int seed)
     {
+        return Build(number, seed, 1);
+    }
+
+    // players: jugadores en la sala (1 fuera del cooperativo)
+    public static Wave Build(int number, int seed, int players)
+    {
         if (species == null) Gather();
         int n = Mathf.Max(1, number);
+        int extra = Mathf.Clamp(players, 1, 4) - 1;
         System.Random rng = new System.Random(seed * 31 + n * 7919);
-        Wave wave = new Wave { number = n, healthMultiplier = HealthFor(n) };
+        Wave wave = new Wave { number = n, healthMultiplier = HealthFor(n) * (1f + HealthPerPlayer * extra) };
 
         List<Species> normal = new List<Species>();
         List<Species> bosses = new List<Species>();
+        Species kamikaze = null;
         foreach (Species s in species)
         {
             if (s.boss) bosses.Add(s);
+            else if (s.type.ability == BirdAbility.Kamikaze) kamikaze = s;
             else normal.Add(s);
         }
         if (normal.Count == 0 && bosses.Count == 0) return wave;
 
-        int count = Mathf.RoundToInt(BaseBirds + BirdsPerWave * n + (float)(rng.NextDouble() * 2.0 - 1.0));
-        count = Mathf.Clamp(count, MinBirds, MaxBirds);
+        float perWave = BirdsPerWave * (1f + RampPerPlayer * extra);
+        int count = Mathf.RoundToInt((BaseBirds + perWave * n) * (1f + BirdsPerPlayer * extra) + (float)(rng.NextDouble() * 2.0 - 1.0));
+        count = Mathf.Clamp(count, MinBirds, MaxBirds + MaxBirdsPerPlayer * extra);
         // Respiro después de un jefe
-        if (n > BossEvery && n % BossEvery == 1) count = Mathf.Max(MinBirds, Mathf.RoundToInt(count * 0.85f));
+        bool breather = n > BossEvery && n % BossEvery == 1;
+        if (breather) count = Mathf.Max(MinBirds, Mathf.RoundToInt(count * 0.85f));
+
+        // Piqueros kamikaze (aparte): más con cada oleada y con cada jugador
+        int kamikazes = 0;
+        if (kamikaze != null && kamikaze.unlockWave <= n)
+        {
+            float k = (KamikazeBase + KamikazePerWave * (n - kamikaze.unlockWave)) * (1f + KamikazePerPlayer * extra);
+            kamikazes = Mathf.Clamp(Mathf.RoundToInt(k + (float)(rng.NextDouble() - 0.5)), 1, KamikazeMax * (1 + extra));
+            if (breather) kamikazes = Mathf.Max(1, Mathf.RoundToInt(kamikazes * 0.85f));
+        }
 
         // Jefes: uno en las primeras vueltas (en el orden de la historia); después dos o tres distintos
         if (IsBossWave(n) && bosses.Count > 0)
@@ -150,9 +185,13 @@ public static class SurvivalWaves
             }
             // La escolta: la mitad de una oleada normal (menos si hay varios jefes)
             count = Mathf.Max(3, Mathf.RoundToInt(count * (wave.bosses.Count > 1 ? 0.4f : 0.5f)));
+            kamikazes = Mathf.RoundToInt(kamikazes * 0.5f);
+            // Más jugadores: jefes con más vida (si no, cuatro trajes lo bajan en segundos)
+            wave.bossHealthMultiplier *= 1f + BossHealthPerPlayer * extra;
         }
 
         List<BirdType> flock = PickFlock(normal, n, count, rng);
+        for (int i = 0; i < kamikazes; i++) flock.Add(kamikaze.type);
         Arrange(wave, flock, rng);
         return wave;
     }

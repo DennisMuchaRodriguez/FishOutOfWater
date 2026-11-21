@@ -99,6 +99,8 @@ public partial class GameDirector : MonoBehaviour
     {
         get
         {
+            // Cooperativo en línea: sin peces defensores (solo los jugadores)
+            if (IsCoop) return 0;
             if (testDefenders > 0) return testDefenders;
             if (IsSurvival) return SurvivalWaves.DefendersFor(Mathf.Max(1, CurrentWave > 0 ? CurrentWave : SurvivalRun.NextWave), SurvivalWaves.WorkshopEvery);
             if (LevelNumber < defenderStartLevel) return 0;

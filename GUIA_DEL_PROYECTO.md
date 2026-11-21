@@ -62,7 +62,7 @@ El juego tiene dos escenas (en Build Settings, en este orden):
 
 Datos del juego (fuera de las escenas):
 - `Assets/Data/Niveles`: los 20 niveles (Nivel_01 a Nivel_20).
-- `Assets/Data/Aves`: las 8 aves (Gaviota, Martín pescador, Charrán, Garza, Cormorán, Serreta, Pelícano, Águila pescadora) y los 4 jefes (Garza Gris, Pelícano Saco, Cormorán Rey, Reina Águila).
+- `Assets/Data/Aves`: las 9 aves (Gaviota, Martín pescador, Charrán, Garza, Cormorán, Serreta, Pelícano, Águila pescadora y el Piquero kamikaze) y los 4 jefes (Garza Gris, Pelícano Saco, Cormorán Rey, Reina Águila).
 - `Assets/Data/Mejoras` y `Assets/Resources/TallerPlan`: las mejoras del traje y qué ofrece el Taller en cada visita.
 - `Assets/Resources/Decoracion/Decoracion_Lago`: qué decoración se reparte alrededor y dentro del lago (bosque, orilla, plantas acuáticas, algas, piedras, chatarra). Ver [Vegetación y ambiente del lago](#vegetación-y-ambiente-del-lago).
 - `Assets/Resources/Ambiente/Cielo_Lago` y `Assets/Ambiente/CieloEstilizado.shader`: el cielo del lago.
@@ -293,6 +293,8 @@ la cantidad sube más despacio y la oleada 4 de cada tramo es la más dura antes
   pelícano...) que sube cada 8 oleadas. Las recién llegadas salen más seguido; las gaviotas, cada vez menos; las pesadas
   (garza, pelícano, cormorán, águila), un poco menos.
 - Las oleadas salen de la **semilla de la partida**: la misma partida siempre arma las mismas oleadas.
+- **Piqueros kamikaze** (aparte de esa cantidad, desde la oleada 1): 1 + 0,3 por oleada (1 al principio, 4 como
+  mucho jugando solo). En la oleada de respiro, un 15 % menos; en las de jefe, la mitad.
 
 **Grupos por distintos lados** (desde la oleada 2; cada vez más seguido, hasta 3 de cada 4 oleadas):
 - **Tenaza**: dos grupos a la vez por lados opuestos.
@@ -304,7 +306,7 @@ la cantidad sube más despacio y la oleada 4 de cada tramo es la más dura antes
   DERECHA, POR DETRÁS). Si derribas a todas antes de tiempo, el grupo siguiente llega a los 3 s (no hay que esperar).
 - La oleada no termina hasta que llegaron y cayeron todos los grupos.
 
-**Peces defensores**: **1 más cada 5 oleadas**, al volver del Taller (ninguno en las oleadas 1-5, 1 en las 6-10, 2 en
+**Peces defensores** (solo jugando solo: en el cooperativo en línea no hay): **1 más cada 5 oleadas**, al volver del Taller (ninguno en las oleadas 1-5, 1 en las 6-10, 2 en
 las 11-15, 3 en las 16-20... hasta 8). Al volver del Taller todos tienen el traje reparado. No cuentan entre los 28 peces del lago (si cazan a uno no suma a la derrota).
 
 **El casco**: en Supervivencia el panel de misión dice "OLEADA n" y las 5 pastillas son el tramo hasta el próximo jefe
@@ -352,17 +354,32 @@ Usa **Netcode for GameObjects 2.14** y **Multiplayer Services 2.5** (Lobby + Rel
      **vuelves reparado en el próximo Taller**. Se pierde si **caen todos** o si cazan demasiados peces.
 6. **Cada 5 oleadas, todos al Taller**: **cada uno elige su propia mejora** (las mejoras son de cada jugador y solo
    para esa partida) y espera a los demás ("ESPERANDO A TUS COMPAÑEROS 2/4"); cuando todos terminan, vuelven
-   juntos al lago con el traje reparado y un pez defensor más.
+   juntos al lago con el traje reparado. **En el cooperativo no hay peces defensores**: solo los jugadores.
 7. **Fin de la partida**: oleadas superadas, aves derribadas y peces. El anfitrión elige **NUEVA PARTIDA** o
    **VOLVER A LA SALA**; cualquiera puede **SALIR DE LA SALA**. Las partidas cooperativas no cambian el récord de
    Supervivencia (el Archivo de aves sí cuenta las aves que derribó cada uno).
 
+**Más jugadores, más difícil** (`SurvivalWaves.Build(n, semilla, jugadores)`, constantes `...PerPlayer` al principio
+de `SurvivalWaves.cs`; cuenta los jugadores de la sala al armar cada oleada). Por cada jugador extra:
+- **+55 % de aves** y la cantidad **crece un 25 % más rápido** de oleada en oleada (el tope sube 7 aves por jugador).
+- **+70 % de piqueros kamikaze** (tope: 4 por jugador).
+- Aves con **+10 % de vida** y jefes con **+35 %** (si no, cuatro trajes los bajan en segundos).
+
+| Jugadores | Aves oleada 1 | Oleada 4 | Oleada 9 | Tope | Kamikazes (oleada 1 → 9) | Vida aves / jefes |
+|---|---|---|---|---|---|---|
+| 1 | 4–5 | 6 | 9 | 18 | 1 → 3–4 | ×1 / ×1 |
+| 2 | 7 | 10–11 | 16 | 25 | 2 → 6 | +10 % / +35 % |
+| 3 | 10 | 15–16 | 25 | 32 | 2–3 → 8 | +20 % / +70 % |
+| 4 | 13 | 21 | 35 | 39 | 3 → 10–11 | +30 % / +105 % |
+
+El cartel de cada oleada dice "COOPERATIVO" y, al volver del Taller, "Más jugadores, más aves".
+
 **Cómo funciona por dentro**
-- **El anfitrión simula todo** (oleadas, aves, peces, defensores, cápsulas) igual que en Supervivencia y manda:
+- **El anfitrión simula todo** (oleadas, aves, peces, cápsulas) igual que en Supervivencia y manda:
   cuando algo aparece o muere (mensajes seguros); dónde están las aves (10 veces por segundo) y los peces (7 por
   segundo) en mensajes rápidos; el estado del juego (oleada, cuenta atrás, peces, hora del día); los carteles,
   avisos y sonidos; y a cada jugador, los golpes, empujones y corrientes que recibe.
-- **En los demás jugadores** las aves, los peces, los defensores y las cápsulas son "marionetas": el mismo modelo,
+- **En los demás jugadores** las aves, los peces y las cápsulas son "marionetas": el mismo modelo,
   colisionador y vida (así la mira, los misiles y los disparos funcionan igual), pero no piensan: siguen lo que
   manda el anfitrión, suavizado.
 - **Cada jugador maneja su pez** y manda cómo está 20 veces por segundo. Sus disparos se ven en las otras pantallas
@@ -633,7 +650,10 @@ igual si vuela hacia adelante o hacia atrás, si sube, si cae o si nada: solo ca
 conserva). Durante 0,4 s las aves no lo pueden golpear. En el aire gasta 4 de combustible si tiene (sin combustible
 igual esquiva); en el agua no gasta.
 - **Tercera persona**: solo gira el modelo del pez; la cámara no gira (lo sigue de lado).
-- **Primera persona**: toda la pantalla da la vuelta completa.
+- **Primera persona**: la pantalla **no** da la vuelta (mareaba). La cámara solo se inclina 12° hacia el lado del
+  esquive y vuelve. La vuelta completa se ve en el casco: un **arco de luz recorre el borde del visor** dando la
+  vuelta entera hacia el lado del esquive y **8 líneas de velocidad** cruzan la pantalla (`HelmetVisorHUD`,
+  `UpdateDodgeSpin`). El pez igual da la vuelta de 360° (se ve en tercera persona y en las pantallas de los demás).
 - El **fuego del propulsor no gira** con el pez: sigue saliendo hacia donde salía.
 Campos: `Dodge Left Key` Q, `Dodge Right Key` E, `Dodge On Double Tap` ✘ (si lo activas, también con doble toque de
 A / D), `Double Tap Time` 0,28, `Dodge Distance` 20, `Dodge Duration` 0,5, `Dodge Cooldown` 0,6,
@@ -1063,6 +1083,7 @@ Estos componentes aparecen al darle Play. **Lo que cambies en su Inspector duran
 
 ### Peces defensores (`DefenderFish`, desde el nivel 10)
 Desde el nivel 10 se suman **2 peces defensores cada 3 niveles**: 2 en los niveles 10-12, 4 en 13-15, 6 en 16-18 y 8 en 19-20.
+En el **cooperativo en línea no hay defensores** (`DefenderCount` devuelve 0 con `IsCoop`): solo los jugadores.
 Son peces de otros colores (verde, violeta y turquesa, no naranja como el protagonista) con un **traje gris y blanco**
 (`Traje_Defensor`): casco con visor, mochila con tanques y un cañón de agua en la espalda.
 - **No vuelan**: nadan rápido (8,5 m/s; los demás pasean a ~3 m/s) cerca de la superficie, sin hundirse mucho, cada uno
@@ -1143,6 +1164,7 @@ Además de su forma de pescar, cada especie te ataca a su manera:
 | Serreta | **A distancia**: te rodea de lejos y escupe chorros de agua en ráfagas | Sí |
 | Pelícano | **Aplastador**: embestida pesada que empuja mucho | No (blindado) |
 | Águila pescadora | **Picada** desde muy alto | Poco |
+| Piquero | **Kamikaze** (`BirdAI.Kamikaze.cs`): **no caza peces**. Te rodea a 16 m, un poco más alto; se queda quieto, chilla y se pone rojo (aviso de 0,55 s: ¡dash!) y se lanza en línea recta, muy rápido, corrigiendo poco. Si te alcanza te quita 16 y revienta; si lo esquivas pasa de largo, remonta y vuelve a intentarlo. Si nadas hondo (más de 2 m) espera arriba | Mucho (frágil: 1 o 2 disparos) |
 
 Los proyectiles de las aves (`EnemyProjectile`) los absorbe el Escudo de burbuja como cualquier golpe.
 
@@ -1176,10 +1198,14 @@ Los proyectiles de las aves (`EnemyProjectile`) los absorbe el Escudo de burbuja
 
 **Tamaño y vida:** las aves comunes son 1.35 veces más grandes (modelo y esfera de impacto) y tienen 1.5 veces más vida
 (gaviota 45, martín pescador 30, charrán 25, serreta 50, cormorán 90, garza 135, águila pescadora 165, pelícano 210).
+El piquero tiene 30 a propósito (1 o 2 disparos), pero es el más veloz en la embestida.
 
 #### Efecto al dispararles (`Assets/Scritps/FX/HitFX.cs`)
 Se crea solo y no tiene campos. Las armas del traje son de agua: cada impacto revienta como un **globo de agua**.
-- **Parpadeo** del cuerpo del ave: un destello fuerte y dos o tres encendidos cortos que se apagan (blanco; azul si es blindada; naranja si es un jefe vulnerable). Usa la emisión del material, así se ve también a la sombra. Además un pequeño **bamboleo**.
+- **Todo el ave se pone roja** (rojo coral, como el naranja del pez) con cada golpe: se tiñe el color del material y se enciende la emisión, así se ve también a la sombra y de lejos. Un destello fuerte y dos o tres encendidos cortos que se apagan. Azul si es blindada (garza, pelícano) y dorado si es un jefe vulnerable. Además un pequeño **bamboleo**.
+- **Con poca vida** (menos del 35 %) las aves comunes **laten en rojo**, más rápido cuanto menos vida les queda: sabes cuál está por caer.
+- **Al morir** el ave se pone **roja incandescente** un instante y después se apaga a un gris oscuro mientras cae.
+- Todo con un solo `MaterialPropertyBlock` por ave (sin materiales nuevos ni shaders extra).
 - **Gotas** que salen disparadas y caen (se estiran con la velocidad), una **nube de rocío**, **plumas** del color de la especie, un **aro** y un **fogonazo**. Los golpes fuertes (disparo cargado, misil) llevan el doble de agua, **chispas** y un pequeño sacudón de cámara.
 - **Número de daño** que sube y se desvanece (los impactos seguidos se suman). En un jefe vulnerable sale con "x2".
 - Al primer impacto en un ave blindada sale "BLINDADA".
@@ -1249,6 +1275,8 @@ Los dibujos del Archivo (`Assets/Resources/Archivo/<archivo del Ave>.png`, 512×
    `python render_aves.py <carpeta_de_salida>`
 2. `bocetos.py` (numpy + Pillow): convierte esos renders en boceto azul eléctrico (contornos dobles, sombreado a rayas, círculo de construcción, brillo y líneas de escaneo) y escribe los `.png` con su `.meta`.
    `python bocetos.py <carpeta_de_los_renders>`
+El modelo del **Piquero** (piquero de patas azules con gafas de aviador en la frente, cuerpo de torpedo blanco, alas
+cafés y pico largo) sale de `Herramientas/Modelado/aves/Ave_Piquero.py` con el kit de aves (`kit.py`, GUIDs en `guids.json`).
 **Para usar un dibujo propio**, reemplaza el `.png` con el mismo nombre que el archivo del Ave (por ejemplo `Ave_Gaviota.png`). Si un Ave no tiene dibujo, su ficha sale sin boceto.
 
 ### Cómics de la Historia: bocetos (`Herramientas/Comics`)

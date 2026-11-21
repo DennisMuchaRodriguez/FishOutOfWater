@@ -8,7 +8,9 @@ using UnityEngine;
 //  - El impulso es brusco: sale de golpe a toda velocidad y frena enseguida (recorre Dodge Distance metros).
 //  - Durante un instante las aves no lo pueden golpear (se le pasan de largo).
 //  - Tercera persona: solo gira el modelo del pez; la cámara no gira (lo sigue de lado).
-//  - Primera persona: toda la pantalla da la vuelta completa con el giro.
+//  - Primera persona: la pantalla NO da la vuelta (mareaba). La cámara solo se inclina un poco hacia el lado del
+//    esquive y vuelve; la vuelta completa se ve en el casco: un reflejo de luz recorre el borde del visor dando la
+//    vuelta entera y unas líneas de velocidad cruzan la pantalla (HelmetVisorHUD).
 //  - El fuego del propulsor no gira con el pez: sigue saliendo hacia donde salía (KeepJetSteady).
 public partial class PlayerController_Base
 {
@@ -140,11 +142,26 @@ public partial class PlayerController_Base
         jet.localPosition = fix * jetRestPosition;
     }
 
-    // Giro de la cámara: en primera persona toda la pantalla da la vuelta completa; en tercera persona la cámara no
-    // gira (solo gira el modelo del pez)
+    // Inclinación de la cámara en primera persona: unos grados hacia el lado del esquive, que suben y vuelven
+    // (la vuelta completa la muestra el casco). En tercera persona la cámara no gira (solo gira el modelo del pez)
+    const float DodgeCameraLean = 12f;
+
     float DodgeCameraRoll()
     {
         if (!IsDodging || isThirdPerson) return 0f;
-        return DodgeRoll();
+        return -dodgeDir * DodgeCameraLean * Mathf.Sin(Mathf.PI * DodgeProgress);
     }
+
+    // Avance del esquive: 0..1 mientras dura; -1 si no está esquivando (lo usa el casco para su efecto)
+    public float DodgeProgress
+    {
+        get
+        {
+            if (!IsDodging) return -1f;
+            return Mathf.Clamp01((Time.time - dodgeStartTime) / Mathf.Max(0.05f, dodgeDuration));
+        }
+    }
+
+    // Hacia dónde esquiva: -1 izquierda, 1 derecha
+    public int DodgeSide { get { return dodgeDir; } }
 }

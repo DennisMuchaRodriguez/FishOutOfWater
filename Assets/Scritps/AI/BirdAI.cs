@@ -358,6 +358,9 @@ public partial class BirdAI : MonoBehaviour
                 new BTSequence("Aturdido",
                     new BTCondition("¿Aturdido?", () => stunTimer > 0f),
                     new BTAction("Quedarse quieto", Hover)),
+                new BTSequence("Kamikaze",
+                    new BTCondition("¿Kamikaze con blanco?", WantsKamikaze),
+                    new BTAction("Lanzarse contra el jugador", Kamikaze)),
                 new BTSequence("Furia",
                     new BTCondition("¿Jefe cambiando de fase?", () => IsBoss && phaseChangeTimer > 0f),
                     new BTAction("Rugir", BossRoar)),
@@ -501,6 +504,8 @@ public partial class BirdAI : MonoBehaviour
 
     bool AcquireFish()
     {
+        // El kamikaze no caza peces (sin jugador a la vista, patrulla)
+        if (IsKamikaze) return false;
         if (TargetFish != null && (!TargetFish.IsCatchable || (TargetFish.Hunter != null && TargetFish.Hunter != this)))
         {
             ReleaseTarget();
@@ -1109,7 +1114,17 @@ public partial class BirdAI : MonoBehaviour
     void OnCollisionEnter(Collision collision)
     {
         if (dead || IsNetPuppet) return;
-        if (collision.collider.GetComponentInParent<PlayerController_Base>() != null && attackTimer <= 0f)
+        PlayerController_Base hit = collision.collider.GetComponentInParent<PlayerController_Base>();
+        if (hit == null) return;
+        // El kamikaze revienta contra el que choca (aunque no fuera su blanco)
+        if (IsKamikaze)
+        {
+            if (hit.IsDodgeInvulnerable) return;
+            if (!hit.isDead) player = hit;
+            KamikazeImpact();
+            return;
+        }
+        if (attackTimer <= 0f)
         {
             HitPlayer();
         }
@@ -1185,9 +1200,10 @@ public partial class BirdAI : MonoBehaviour
             armorLabelShown = true;
             HitFX.BirdLabel(point, "BLINDADA", new Color(0.75f, 0.93f, 1f, 1f));
         }
-        // Parpadeo: blanco; azul si está blindada; naranja si el jefe está vulnerable (color de emisión HDR)
-        Color c = bonus ? new Color(3.4f, 1.8f, 0.5f, 1f) : (IsArmored ? new Color(1.2f, 2.1f, 3.6f, 1f) : new Color(2.8f, 2.8f, 3.1f, 1f));
-        Flash(c, strong ? 0.38f : 0.28f);
+        // Parpadeo: TODO el ave se pone roja (coral, como el naranja del pez); azul si está blindada; dorado si el
+        // jefe está vulnerable (color de emisión HDR; el color base se tiñe del mismo color)
+        Color c = bonus ? new Color(3.4f, 1.8f, 0.5f, 1f) : (IsArmored ? new Color(1.2f, 2.1f, 3.6f, 1f) : HitRed);
+        Flash(c, strong ? 0.42f : 0.32f);
         // Tambaleo: más fuerte en las aves livianas
         hitRollAmp = (Random.value < 0.5f ? -1f : 1f) * Mathf.Lerp(4f, 28f, Mathf.Clamp01(ProjectilePushScale / 1.8f)) * (strong ? 1.4f : 1f);
         hitRollTime = 0f;
@@ -1203,27 +1219,67 @@ public partial class BirdAI : MonoBehaviour
     float flashDuration = 0.1f;
     int pendingNumber;
     float lastNumberTime = -10f;
+    bool flashBlockSet;
+
+    // Rojo del golpe (emisión HDR): coral, del mismo tono que el naranja del pez y los números de daño fuertes
+    static readonly Color HitRed = new Color(3.6f, 0.62f, 0.42f, 1f);
+    // Herida (menos de esto de vida): late suave en rojo
+    const float LowHealthPulse = 0.35f;
 
     // Parpadeo al recibir un disparo: un destello fuerte y después dos o tres encendidos cortos que se apagan
-    // (como el parpadeo de daño de los juegos clásicos). Usa la emisión del material y aclara el color base
+    // (como el parpadeo de daño de los juegos clásicos). Usa la emisión del material Y tiñe el color base del mismo
+    // color, así se pone rojo el ave entera (no solo brilla). Además: herida, late en rojo; muerta, queda oscura
     void UpdateFlash(float dt)
     {
-        if (flashTimer <= 0f || bodyRenderers.Count == 0) return;
-        if (flashBlock == null) flashBlock = new MaterialPropertyBlock();
-        flashTimer -= dt;
-        if (flashTimer <= 0f)
+        if (bodyRenderers.Count == 0) return;
+        if (flashTimer > 0f) flashTimer -= dt;
+
+        Color emission = Color.black;
+        Color tint = Color.white;
+        bool active = false;
+        if (flashTimer > 0f)
         {
-            foreach (Renderer r in bodyRenderers) if (r != null) r.SetPropertyBlock(null);
+            float dur = Mathf.Max(0.01f, flashDuration);
+            float elapsed = dur - flashTimer;
+            float k = flashTimer / dur;                       // 1 al empezar, 0 al terminar
+            const float First = 0.07f, Blink = 0.05f;
+            bool on = elapsed < First || ((int)((elapsed - First) / Blink)) % 2 == 1;
+            float amount = on ? (elapsed < First ? 1f : 0.35f + 0.6f * k) : 0.06f * k;
+            emission = new Color(flashColor.r * amount, flashColor.g * amount, flashColor.b * amount, 1f);
+            // El color base toma el tono del destello (normalizado), más fuerte en el primer golpe
+            float m = Mathf.Max(0.01f, Mathf.Max(flashColor.r, Mathf.Max(flashColor.g, flashColor.b)));
+            Color hue = new Color(flashColor.r / m, flashColor.g / m, flashColor.b / m, 1f);
+            tint = Color.Lerp(Color.white, hue * 1.3f, (on ? amount : 0.15f * k) * 0.85f);
+            tint.a = 1f;
+            active = true;
+        }
+        else if (dead)
+        {
+            // Derribada: empapada y oscura mientras cae
+            tint = new Color(0.42f, 0.4f, 0.44f, 1f);
+            active = true;
+        }
+        else if (!IsBoss && Health01 < LowHealthPulse && health != null)
+        {
+            // Herida: late en rojo (más rápido y fuerte cuanto menos vida le queda)
+            float low = 1f - Health01 / LowHealthPulse;
+            float p = 0.5f + 0.5f * Mathf.Sin(Time.time * Mathf.Lerp(6f, 12f, low));
+            float a = (0.18f + 0.3f * low) * p;
+            tint = Color.Lerp(Color.white, new Color(1.25f, 0.42f, 0.36f, 1f), a);
+            emission = new Color(HitRed.r, HitRed.g, HitRed.b, 1f) * (0.25f * a);
+            active = true;
+        }
+
+        if (!active)
+        {
+            if (flashBlockSet)
+            {
+                foreach (Renderer r in bodyRenderers) if (r != null) r.SetPropertyBlock(null);
+                flashBlockSet = false;
+            }
             return;
         }
-        float dur = Mathf.Max(0.01f, flashDuration);
-        float elapsed = dur - flashTimer;
-        float k = flashTimer / dur;                       // 1 al empezar, 0 al terminar
-        const float First = 0.06f, Blink = 0.045f;
-        bool on = elapsed < First || ((int)((elapsed - First) / Blink)) % 2 == 1;
-        float amount = on ? (elapsed < First ? 1f : 0.3f + 0.6f * k) : 0.04f * k;
-        Color emission = new Color(flashColor.r * amount, flashColor.g * amount, flashColor.b * amount, 1f);
-        Color tint = Color.Lerp(Color.white, new Color(1.5f, 1.5f, 1.55f, 1f), on ? amount : 0f);
+        if (flashBlock == null) flashBlock = new MaterialPropertyBlock();
         foreach (Renderer r in bodyRenderers)
         {
             if (r == null) continue;
@@ -1232,6 +1288,7 @@ public partial class BirdAI : MonoBehaviour
             flashBlock.SetColor(BaseColorId, tint);
             r.SetPropertyBlock(flashBlock);
         }
+        flashBlockSet = true;
     }
 
     // Color de las plumas que saltan con cada disparo (según la especie)
@@ -1249,6 +1306,7 @@ public partial class BirdAI : MonoBehaviour
                 case BirdAbility.GroupDive: return new Color(0.6f, 0.34f, 0.22f);
                 case BirdAbility.Scoop: return new Color(0.92f, 0.9f, 0.86f);
                 case BirdAbility.HighDive: return new Color(0.45f, 0.32f, 0.22f);
+                case BirdAbility.Kamikaze: return new Color(0.62f, 0.46f, 0.34f);
             }
             return new Color(0.8f, 0.8f, 0.82f);
         }
@@ -1301,7 +1359,8 @@ public partial class BirdAI : MonoBehaviour
         Sfx.Play(Sonido.ExplosionAgua, transform.position, 1f, IsBoss ? 0.72f : WaterPitch, IsBoss ? 30f : 12f, 0.08f, 0.04f);
         Sfx.Play(IsBoss ? Sonido.RugidoJefe : Sonido.MuerteAve, transform.position, IsBoss ? 1f : 0.55f, IsBoss ? 0.75f : CallPitch, IsBoss ? 25f : 8f);
         HitFX.BirdDeath(transform.position, bodyRadius * 0.9f, FeatherColor, IsBoss);
-        Flash(new Color(3.2f, 3.2f, 3.5f, 1f), 0.3f);
+        // Rojo incandescente al derribarla (más largo que un golpe); después queda oscura mientras cae
+        Flash(new Color(4.6f, 0.9f, 0.45f, 1f), 0.6f);
 
         Died?.Invoke(this);
         Destroy(gameObject, 6f);

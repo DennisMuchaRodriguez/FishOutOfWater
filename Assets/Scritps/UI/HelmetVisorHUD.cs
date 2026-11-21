@@ -75,6 +75,14 @@ public class HelmetVisorHUD : MonoBehaviour
     RawImage rimSheen;
     readonly RawImage[] glints = new RawImage[2];
     static readonly Color GlintColor = new Color(0.72f, 0.92f, 1f, 1f);
+    // Esquive en primera persona: la pantalla no gira (mareaba); el giro se ve en el casco: un reflejo da la vuelta
+    // completa por el borde del visor y unas líneas de velocidad cruzan la pantalla hacia el lado contrario
+    RectTransform spinRoot;
+    RawImage spinArc;
+    readonly RawImage[] speedLines = new RawImage[8];
+    readonly float[] speedLineY = new float[8];
+    readonly float[] speedLineLen = new float[8];
+    float lastDodgeProgress = -1f;
     CanvasGroup hudGroup;
     RectTransform reticleRoot;
     RawImage reticleRing, reticleDot;
@@ -296,6 +304,90 @@ public class HelmetVisorHUD : MonoBehaviour
         {
             glints[i] = CreateRaw("Destello" + i, frameRoot, FXFactory.Streak, GlintColor, false);
             glints[i].rectTransform.sizeDelta = new Vector2(7f, 110f);
+        }
+
+        // Giro del esquive (primera persona)
+        spinRoot = CreateRect("GiroEsquive", frameRoot, true);
+        spinArc = CreateRaw("ArcoGiro", spinRoot, MakeSpinArcTexture(), new Color(GlintColor.r, GlintColor.g, GlintColor.b, 0f), false);
+        for (int i = 0; i < speedLines.Length; i++)
+        {
+            speedLines[i] = CreateRaw("Velocidad" + i, spinRoot, FXFactory.Streak, new Color(1f, 1f, 1f, 0f), false);
+            speedLines[i].rectTransform.localEulerAngles = new Vector3(0f, 0f, 90f);   // la raya es vertical: acostada
+        }
+        spinRoot.gameObject.SetActive(false);
+    }
+
+    // Reflejo en arco para el giro del esquive: un anillo cerca del borde, brillante en la punta y con una estela que
+    // se apaga a lo largo de ~150°
+    static Texture2D MakeSpinArcTexture()
+    {
+        const int S = 256;
+        Texture2D tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        tex.name = "FX_ArcoGiro";
+        Color32[] px = new Color32[S * S];
+        for (int y = 0; y < S; y++)
+        {
+            for (int x = 0; x < S; x++)
+            {
+                float u = (x + 0.5f) / S * 2f - 1f, v = (y + 0.5f) / S * 2f - 1f;
+                float r = Mathf.Sqrt(u * u + v * v);
+                float ring = Mathf.Clamp01(1f - Mathf.Abs(r - 0.93f) / 0.05f);
+                // ángulo desde la punta (arriba) hacia atrás, en sentido antihorario
+                float ang = Mathf.Atan2(-u, v) * Mathf.Rad2Deg;
+                if (ang < 0f) ang += 360f;
+                float tail = ang <= 150f ? Mathf.Pow(1f - ang / 150f, 1.6f) : 0f;
+                float head = Mathf.Clamp01(1f - ang / 12f) * Mathf.Clamp01(1f - Mathf.Abs(r - 0.93f) / 0.09f);
+                float a = Mathf.Clamp01(ring * tail + head * 0.8f);
+                px[y * S + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(255f * a));
+            }
+        }
+        tex.SetPixels32(px);
+        tex.Apply();
+        return tex;
+    }
+
+    // Mientras dura el esquive (solo en primera persona): el reflejo da una vuelta completa por el borde del visor
+    // (como lo hace el pez) y las rayas de velocidad pasan hacia el lado contrario. La cámara apenas se inclina
+    void UpdateDodgeSpin(bool firstPerson)
+    {
+        if (spinRoot == null || canvasRect == null) return;
+        float k = player.DodgeProgress;
+        bool on = firstPerson && k >= 0f;
+        if (spinRoot.gameObject.activeSelf != on) spinRoot.gameObject.SetActive(on);
+        if (!on)
+        {
+            lastDodgeProgress = -1f;
+            return;
+        }
+        Rect r = canvasRect.rect;
+        int side = player.DodgeSide >= 0 ? 1 : -1;
+        float fade = Mathf.Sin(Mathf.PI * k);
+        float ease = 1f - (1f - k) * (1f - k) * (1f - k);
+
+        float size = Mathf.Min(r.width, r.height) * 1.04f;
+        spinArc.rectTransform.sizeDelta = new Vector2(size, size);
+        spinArc.rectTransform.localEulerAngles = new Vector3(0f, 0f, -side * 360f * ease);
+        spinArc.color = new Color(GlintColor.r, GlintColor.g, GlintColor.b, 0.9f * fade);
+
+        // Rayas nuevas en cada esquive
+        if (lastDodgeProgress < 0f || k < lastDodgeProgress)
+        {
+            for (int i = 0; i < speedLines.Length; i++)
+            {
+                speedLineY[i] = Random.Range(-0.4f, 0.4f) * r.height;
+                speedLineLen[i] = Random.Range(0.18f, 0.34f) * r.width;
+            }
+        }
+        lastDodgeProgress = k;
+        for (int i = 0; i < speedLines.Length; i++)
+        {
+            float t = Mathf.Clamp01(k * 1.3f - i * 0.03f);
+            float x = side * Mathf.Lerp(0.7f, -0.7f, t) * r.width;
+            RectTransform lt = speedLines[i].rectTransform;
+            lt.anchoredPosition = new Vector2(x, speedLineY[i]);
+            lt.sizeDelta = new Vector2(3f, speedLineLen[i]);
+            speedLines[i].color = new Color(GlintColor.r, GlintColor.g, GlintColor.b, 0.45f * fade * (1f - Mathf.Abs(speedLineY[i]) / r.height));
         }
     }
 
@@ -526,6 +618,7 @@ public class HelmetVisorHUD : MonoBehaviour
 
         UpdateBoot(dt);
         UpdateSway(dt, firstPerson);
+        UpdateDodgeSpin(firstPerson && !cinematic);
         UpdateGlass(dt);
         UpdateShine();
         UpdateDamage(dt);

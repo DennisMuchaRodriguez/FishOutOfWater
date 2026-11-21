@@ -136,8 +136,8 @@ public partial class GameDirector
         int n = SurvivalRun.NextWave;
         int fishLayer = LayerMask.NameToLayer("Fish");
         if (n == 1)
-            Banner?.Invoke("SUPERVIVENCIA", "Oleadas sin fin  //  Cada " + SurvivalWaves.WorkshopEvery +
-                           " oleadas: Taller, traje reparado y un defensor más", Cyan);
+            Banner?.Invoke(IsCoop ? "COOPERATIVO" : "SUPERVIVENCIA", "Oleadas sin fin  //  Cada " + SurvivalWaves.WorkshopEvery +
+                           (IsCoop ? " oleadas: Taller y traje reparado. Más jugadores, más aves" : " oleadas: Taller, traje reparado y un defensor más"), Cyan);
         else
             Banner?.Invoke("SE ACERCA LA OLEADA " + n, "Traje reparado  //  Quedan " + FishAlive + " peces en el lago", Cyan);
         if (DefendersSpawned > 0)
@@ -148,7 +148,8 @@ public partial class GameDirector
         bool firstHere = true;
         while (!ended)
         {
-            SurvivalWaves.Wave wave = SurvivalWaves.Build(n, SurvivalRun.Seed);
+            // Cooperativo: la oleada se arma para los jugadores que hay en la sala (más aves y más vida)
+            SurvivalWaves.Wave wave = SurvivalWaves.Build(n, SurvivalRun.Seed, IsCoop ? Mathf.Max(1, CoopSession.PlayerCount) : 1);
             SurvivalWave = wave;
             CurrentWave = n;
             State = firstHere ? GameState.Calm : GameState.Intermission;
@@ -267,7 +268,8 @@ public partial class GameDirector
                            news + next + (hurt ? "  //  El traje no se repara hasta entonces" : "  //  Recarga munición"), Cyan);
             Play2DAll(Sonido.PezRescatado, 0.8f, 0.85f);
             int before = DefendersSpawned;
-            AddDefenders(fishLayer, SurvivalWaves.DefendersFor(n, every));
+            // (en cooperativo no hay defensores: DefenderCount es 0)
+            AddDefenders(fishLayer, IsCoop ? 0 : SurvivalWaves.DefendersFor(n, every));
             if (DefendersSpawned > before)
                 Toast?.Invoke("¡LLEGAN " + (DefendersSpawned - before) + " PECES DEFENSORES!", Cyan);
             calm = survivalCalm;

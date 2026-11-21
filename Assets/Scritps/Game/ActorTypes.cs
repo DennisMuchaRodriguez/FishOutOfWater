@@ -49,7 +49,8 @@ public enum BirdAbility
     UnderwaterHunter,   // cormorán: se mete al agua y persigue peces nadando
     GroupDive,          // serreta: varias bucean a la vez desde lados distintos del cardumen
     Scoop,              // pelícano: atrapa varios peces de un bocado
-    HighDive            // águila pescadora: acecha muy alto y cae en picada larga y precisa
+    HighDive,           // águila pescadora: acecha muy alto y cae en picada larga y precisa
+    Kamikaze            // piquero: no caza peces; se lanza contra el jugador y revienta (BirdAI.Kamikaze.cs)
 }
 
 // Jefes del modo Historia (oleada 3 de los niveles 5, 10, 15 y 20)
