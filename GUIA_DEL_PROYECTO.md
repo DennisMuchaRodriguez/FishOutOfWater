@@ -68,7 +68,7 @@ Datos del juego (fuera de las escenas):
 - `Assets/Resources/Ambiente/Cielo_Lago` y `Assets/Ambiente/CieloEstilizado.shader`: el cielo del lago.
 - `Assets/Resources/Sonidos`: los sonidos (ver [Sonido](#sonido-assetsscritpsaudio)).
 - `Assets/Data/Peces`: Pez_Naranja, Pez_Dorado y Pez_Rosa.
-- `Assets/Data/Comics`: los cómics de la historia (viñetas en blanco por ahora).
+- `Assets/Data/Comics`: los cómics de la historia; sus dibujos están en `Assets/Art/Comics` (ver [Cómics de la Historia](#cómics-de-la-historia-bocetos-herramientascomics)).
 - `Assets/Resources/LevelCatalog`: la lista ordenada de niveles que lee el mapa.
 - `Assets/Resources/Fonts`: fuentes de la interfaz (Oxanium, Rajdhani y Lilita One, licencia OFL).
 
@@ -509,7 +509,7 @@ Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel 
 
 - La vida de las aves sube 5 % por nivel, y la tercera oleada lleva 15 % más.
 - Cada bloque suma especies nuevas (gaviota y martín pescador al principio; garza, cormorán y serreta en la orilla y bajo el agua; pelícano y águila pescadora en los cielos). En los niveles de jefe, la tercera oleada trae al jefe del bloque (ver [Jefes](#jefes-birdaibosscs)).
-- Cómics (en blanco): origen antes del nivel 1; antes y después de los jefes 5, 10 y 15; antes del jefe 20 y el final después del nivel 20.
+- Cómics (dibujados a lápiz, 34 viñetas): origen antes del nivel 1; el Taller en la primera visita; antes y después de los jefes 5, 10 y 15; antes del jefe 20 y el final después del nivel 20.
 
 **Para agregar un nivel:** duplica uno (Ctrl+D), cámbiale los datos y súmalo al final de la lista **Levels** de `Resources/LevelCatalog`.
 **Para un ave nueva:** duplica una de `Data/Aves` (por ejemplo `Ave_Gaviota`), cambia el modelo y los valores, y úsala en las oleadas. Su **Ability** decide cómo pesca y cómo pelea.
@@ -1178,11 +1178,15 @@ Los proyectiles de las aves (`EnemyProjectile`) los absorbe el Escudo de burbuja
 (gaviota 45, martín pescador 30, charrán 25, serreta 50, cormorán 90, garza 135, águila pescadora 165, pelícano 210).
 
 #### Efecto al dispararles (`Assets/Scritps/FX/HitFX.cs`)
-Se crea solo y no tiene campos. Cada impacto en un ave hace:
+Se crea solo y no tiene campos. Las armas del traje son de agua: cada impacto revienta como un **globo de agua**.
 - **Parpadeo** del cuerpo del ave: un destello fuerte y dos o tres encendidos cortos que se apagan (blanco; azul si es blindada; naranja si es un jefe vulnerable). Usa la emisión del material, así se ve también a la sombra. Además un pequeño **bamboleo**.
-- **Plumas** del color de la especie, un **aro** y un **fogonazo** en el punto del impacto.
+- **Gotas** que salen disparadas y caen (se estiran con la velocidad), una **nube de rocío**, **plumas** del color de la especie, un **aro** y un **fogonazo**. Los golpes fuertes (disparo cargado, misil) llevan el doble de agua, **chispas** y un pequeño sacudón de cámara.
 - **Número de daño** que sube y se desvanece (los impactos seguidos se suman). En un jefe vulnerable sale con "x2".
-- Al primer impacto en un ave blindada sale "BLINDADA". Al morir, una explosión de plumas.
+- Al primer impacto en un ave blindada sale "BLINDADA".
+- **Ave derribada: explosión de agua** (unas 60 gotas, rocío, plumas, chispas y dos ondas), un **sacudón de cámara** si estás a menos de 35 m y una **pausa cortísima** (hit-stop de 0,05 s) si fue cerca: el golpe se siente. Los jefes: el doble de agua y un sacudón más fuerte (sin pausa: tienen su cámara lenta).
+  - La pausa nunca pasa en cooperativo, en la pausa del juego, cargando ni durante la cámara lenta del final.
+- **Sonidos**: el golpe suena como agua que revienta (`GolpeAgua`, con el golpe sordo del ave más bajito) y el derribo como una explosión de agua (`ExplosionAgua`, con el grito del ave más bajito). Más graves cuanto más grande es el ave.
+- **Rendimiento**: todo sale de 5 sistemas de partículas que se crean una sola vez (no se instancia nada por golpe). Cuanto más lejos de la cámara, menos partículas (nada a más de 140 m; detrás de la cámara, casi nada), y hay un **tope de 240 partículas nuevas por cuadro**, así una ráfaga larga de la metralleta no dispara miles de golpe.
 
 #### Jefes (`BirdAI.Boss.cs`)
 Los jefes son más grandes y **no cazan como las demás aves**: te rodean a pocos metros con ataques rápidos y cada pocos segundos
@@ -1246,6 +1250,23 @@ Los dibujos del Archivo (`Assets/Resources/Archivo/<archivo del Ave>.png`, 512×
 2. `bocetos.py` (numpy + Pillow): convierte esos renders en boceto azul eléctrico (contornos dobles, sombreado a rayas, círculo de construcción, brillo y líneas de escaneo) y escribe los `.png` con su `.meta`.
    `python bocetos.py <carpeta_de_los_renders>`
 **Para usar un dibujo propio**, reemplaza el `.png` con el mismo nombre que el archivo del Ave (por ejemplo `Ave_Gaviota.png`). Si un Ave no tiene dibujo, su ficha sale sin boceto.
+
+### Cómics de la Historia: bocetos (`Herramientas/Comics`)
+Las 34 viñetas de los 10 cómics (`Assets/Art/Comics/<viñeta>.jpg`, 1380×660) son **bocetos a lápiz con poco color**: grafito, sombreado a rayas, una aguada apagada sobre papel cálido; el pez protagonista conserva un poco de su naranja. Están hechas con los modelos del juego (el pez con y sin traje, los peces del lago, las aves y los 4 jefes, el bagre mecánico, el Taller, la vegetación y la chatarra), así se parecen al juego.
+
+**La historia** (`guion.py`): un pez pequeño se cansa de que las aves se lleven a su cardumen, se arma un traje con la chatarra del fondo del lago (un frasco de escafandra, un propulsor y una pistola de agua) y sale volando a pelear. Después del nivel 3 conoce al viejo bagre mecánico del Taller, que le mejora el traje. Vence a la Garza Gris Gigante, al Pelícano Saco Sin Fondo (desde ahí otros peces se ponen traje: los defensores), al Cormorán Rey y a la Reina Águila Marina; el lago vuelve a la calma y el traje queda en la vitrina del Taller… "por si algún día vuelven las aves".
+
+Se hacen en tres pasos (desde la raíz del proyecto):
+1. `render_vinetas.py` (Blender como módulo `bpy`, Cycles en CPU): arma cada escena (abajo en el archivo, una función por viñeta) y la renderiza en 4 pasadas: luz, color, normales y clases. Con `borrador` sale a media resolución y rápido, para probar encuadres.
+   `python Herramientas/Comics/render_vinetas.py <carpeta> final [viñeta ...]`
+2. `vinetas.py` (numpy + Pillow): convierte las pasadas en el boceto y escribe `Assets/Art/Comics/<viñeta>.jpg` con su `.meta`.
+   `python3 Herramientas/Comics/vinetas.py <carpeta> [viñeta ...]`
+3. `asignar_vinetas.py`: pone los dibujos y los textos de `guion.py` en los cómics (`Assets/Data/Comics`).
+   `python3 Herramientas/Comics/asignar_vinetas.py`
+
+**Para usar un dibujo propio** (por ejemplo cuando tengas un artista), reemplaza el `.jpg` de la viñeta con otra imagen del mismo nombre (mejor del mismo tamaño o la misma proporción 2,1:1) o arrastra otro Sprite a **Image** en el cómic. **Para cambiar un texto**, edítalo en el cómic (Inspector) o en `guion.py` y vuelve a ejecutar el paso 3.
+
+**Rendimiento**: se importan como Sprite sin mipmaps, con compresión normal y **crunch** (la build pesa poco) y un tope de 2048 px. Ocupan cerca de 0,5 MB cada una en memoria y unos 160 KB en el proyecto (JPG de calidad 92).
 
 ### Vegetación y ambiente del lago
 Todo se agrega solo al darle Play en la escena del lago (`LakeDecorator` y `LakeAmbience`), sin tocar la escena.

@@ -14,15 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ComicDefinition
   title: "El origen del traje"
   panels:
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
+  - image: {fileID: 21300000, guid: 5729d61d6fff4766a1d3796523ff6ff9, type: 3}
+    caption: "En el lago, los peces viv\u00EDan tranquilos entre los nen\u00FAfares."
+  - image: {fileID: 21300000, guid: 3c47091dcc1941019a2971bb9a3fd1bb, type: 3}
+    caption: "Hasta que llegaron las aves. Cada d\u00EDa se llevaban m\u00E1s peces del cardumen."
+  - image: {fileID: 21300000, guid: 922e1bcca5ea4bf6a07861ed0316aac9, type: 3}
+    caption: "Un pez peque\u00F1o se cans\u00F3 de esconderse entre las algas."
+  - image: {fileID: 21300000, guid: ee643faca0014338bed5176d2975e3df, type: 3}
+    caption: "En el fondo hab\u00EDa chatarra: latas, ruedas, frascos... y un motor viejo."
+  - image: {fileID: 21300000, guid: f8df5fa5eb3540ef8d051cdb6086a350, type: 3}
+    caption: "Con todo eso se arm\u00F3 un traje: escafandra, propulsor y una pistola de agua."
+  - image: {fileID: 21300000, guid: 0ab41d2d22f4478b819dc37ff7165012, type: 3}
+    caption: "Los peces no saben volar... \u00A1hasta ahora!"

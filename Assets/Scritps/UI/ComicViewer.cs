@@ -104,6 +104,10 @@ public class ComicViewer : MonoBehaviour
         captionText = MenuUI.Text("Texto", captionBox, "", 22f, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(520f, 76f), MenuUI.Ink);
         UseComicFont(captionText);
         captionText.alignment = TextAlignmentOptions.MidlineLeft;
+        // Un texto largo se achica un poco en vez de salirse del recuadro
+        captionText.enableAutoSizing = true;
+        captionText.fontSizeMin = 15f;
+        captionText.fontSizeMax = 22f;
 
         // Puntos de avance
         int n = comic.panels.Count;

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ComicDefinition
   title: "\u00A1Victoria! De vuelta al Taller"
   panels:
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
+  - image: {fileID: 21300000, guid: cfaa322f49bb46ca84cc8d55999cec67, type: 3}
+    caption: "La garza huy\u00F3 con las plumas revueltas. \u00A1El cardumen est\u00E1 a salvo!"
+  - image: {fileID: 21300000, guid: c90768c0cf6a424394ddcc3c9bf68c65, type: 3}
+    caption: "Abajo, en el Taller, el bagre ya ten\u00EDa otra pieza lista."

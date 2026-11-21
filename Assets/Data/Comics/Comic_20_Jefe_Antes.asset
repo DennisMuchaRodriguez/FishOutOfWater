@@ -14,11 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ComicDefinition
   title: "La Reina \u00C1guila Marina"
   panels:
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
+  - image: {fileID: 21300000, guid: 8b03a9be0c674dcda2ec6f3fb550203a, type: 3}
+    caption: "El cielo se ti\u00F1\u00F3 de rojo. Todas las aves callaron."
+  - image: {fileID: 21300000, guid: 257badc2d9054b68b0c9438c842addd6, type: 3}
+    caption: "La Reina \u00C1guila Marina baj\u00F3 de las nubes, con las garras por delante."
+  - image: {fileID: 21300000, guid: d885943b63ca4f7b86b7b4d5f58d00dc, type: 3}
+    caption: "Con un grito llam\u00F3 a sus gaviotas: el cielo se llen\u00F3 de alas."
+  - image: {fileID: 21300000, guid: fce6d6b3bc3f4bbf968d92881b225007, type: 3}
+    caption: "La \u00FAltima batalla. \u00A1Por el lago y por el cardumen!"

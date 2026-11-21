@@ -1124,7 +1124,7 @@ public partial class BirdAI : MonoBehaviour
         hitPunch = IsArmored ? 0.45f : 1f;
         ShowHitEffect(amount, point);
         FXFactory.SpawnOneShot(hitPrefab, point, Quaternion.identity, 0.8f, 2f);
-        Sfx.Play(IsArmored ? Sonido.GolpeBlindado : Sonido.GolpeAve, point, 0.9f, CallPitch, 6f, 0.1f, 0.06f);
+        PlayHitSound(point);
         // A veces rompe la línea de fuego para que el siguiente disparo no le dé
         AfterHitEvasion();
 
@@ -1148,6 +1148,21 @@ public partial class BirdAI : MonoBehaviour
     }
 
     // ======================= EFECTO DEL DISPARO =======================
+
+    // Más grave cuanto más grande es el ave (los jefes, mucho más)
+    float WaterPitch { get { return Mathf.Clamp(1.12f - bodyRadius * 0.12f, 0.72f, 1.15f); } }
+
+    // El disparo de agua revienta en el ave (y el golpe sordo del cuerpo, más bajito); blindada: tintineo
+    void PlayHitSound(Vector3 point)
+    {
+        if (IsArmored)
+        {
+            Sfx.Play(Sonido.GolpeBlindado, point, 0.9f, CallPitch, 6f, 0.1f, 0.06f);
+            return;
+        }
+        Sfx.Play(Sonido.GolpeAgua, point, 0.85f, WaterPitch, 8f, 0.12f, 0.05f);
+        Sfx.Play(Sonido.GolpeAve, point, 0.35f, CallPitch, 6f, 0.1f, 0.06f);
+    }
 
     void ShowHitEffect(int amount, Vector3 point)
     {
@@ -1282,8 +1297,10 @@ public partial class BirdAI : MonoBehaviour
         rb.constraints = RigidbodyConstraints.None;
         rb.AddTorque(Random.insideUnitSphere * 6f, ForceMode.VelocityChange);
         FXFactory.SpawnOneShot(deathPrefab, transform.position, Quaternion.identity, 1.2f, 3f);
-        Sfx.Play(IsBoss ? Sonido.RugidoJefe : Sonido.MuerteAve, transform.position, 1f, IsBoss ? 0.75f : CallPitch, IsBoss ? 25f : 8f);
-        HitFX.BirdDeath(transform.position, bodyRadius * 0.9f, FeatherColor);
+        // Explosión de agua + el grito del ave (más bajito: lo que se nota es la explosión)
+        Sfx.Play(Sonido.ExplosionAgua, transform.position, 1f, IsBoss ? 0.72f : WaterPitch, IsBoss ? 30f : 12f, 0.08f, 0.04f);
+        Sfx.Play(IsBoss ? Sonido.RugidoJefe : Sonido.MuerteAve, transform.position, IsBoss ? 1f : 0.55f, IsBoss ? 0.75f : CallPitch, IsBoss ? 25f : 8f);
+        HitFX.BirdDeath(transform.position, bodyRadius * 0.9f, FeatherColor, IsBoss);
         Flash(new Color(3.2f, 3.2f, 3.5f, 1f), 0.3f);
 
         Died?.Invoke(this);

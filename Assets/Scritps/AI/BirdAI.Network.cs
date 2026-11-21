@@ -96,7 +96,7 @@ public partial class BirdAI
         hitPunch = IsArmored ? 0.45f : 1f;
         ShowHitEffect(amount, point);
         FXFactory.SpawnOneShot(hitPrefab, point, Quaternion.identity, 0.8f, 2f);
-        Sfx.Play(IsArmored ? Sonido.GolpeBlindado : Sonido.GolpeAve, point, 0.9f, CallPitch, 6f, 0.1f, 0.06f);
+        PlayHitSound(point);
     }
 
     // El anfitrión dice que murió: cae con todos sus efectos

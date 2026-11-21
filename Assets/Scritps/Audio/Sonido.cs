@@ -32,6 +32,8 @@ public static class Sonido
     public const string Graznido = "Graznido";
     public const string Gaviota = "Gaviota";
     public const string GolpeAve = "GolpeAve";
+    public const string GolpeAgua = "GolpeAgua";            // el disparo de agua revienta en el ave
+    public const string ExplosionAgua = "ExplosionAgua";    // ave derribada: explosión de agua
     public const string GolpeBlindado = "GolpeBlindado";
     public const string MuerteAve = "MuerteAve";
     public const string Embestida = "Embestida";

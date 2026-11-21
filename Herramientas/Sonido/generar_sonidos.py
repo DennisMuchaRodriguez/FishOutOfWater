@@ -243,6 +243,33 @@ def salida_agua(v):
     return mixdown(body, drops(0.45, 6, r, 700, 1800, 0.4))
 
 
+# Golpe de agua en un ave: como un globo de agua que revienta (corto, se oye bien pero no molesta aunque sean muchos)
+@sound('GolpeAgua', peak=-4, variants=3)
+def golpe_agua(v):
+    r = rng(600 + v)
+    splat = bp(noise(0.16, r), 650, 5200) * env_ad(0.16, 0.002, curve=5.5)
+    plop = sine(sweep(760 + 110 * v, 220, 0.07, 1.5), 0.07) * env_exp(0.07, 0.022) * 0.9
+    thump = sine(sweep(150, 62, 0.09), 0.09) * env_exp(0.09, 0.03) * 0.55
+    return mixdown(splat * 0.95, plop, thump, place(silence(0.05), drops(0.28, 4, r, 1000, 2600, 0.22), 0.04))
+
+
+# Ave derribada: explosión de agua (golpe grave, estallido de rocío que se va apagando, burbujas y gotas que caen)
+@sound('ExplosionAgua', peak=-3, variants=3)
+def explosion_agua(v):
+    r = rng(620 + v)
+    boom = sine(sweep(115 - 8 * v, 40, 0.45), 0.45) * env_exp(0.45, 0.11) * 1.1
+    burst = moving_filter(noise(0.85, r), sweep(7000, 800, 0.85, 0.6), 'lp') * env_ad(0.85, 0.003, curve=3.4)
+    spray = hp(noise(0.6, r), 3200) * env_exp(0.6, 0.16) * 0.35
+    out = mixdown(boom, burst * 0.85, spray)
+    bub = silence(1.1)
+    for i in range(6 + v):
+        f = r.uniform(320, 900)
+        b = sine(sweep(f, f * r.uniform(1.8, 2.6), 0.06, 2.0), 0.06) * env_exp(0.06, 0.02) * r.uniform(0.15, 0.32)
+        bub = place(bub, b, r.uniform(0.12, 0.75))
+    out = mixdown(out, bub, place(silence(1.1), drops(0.8, 12, r, 700, 2200, 0.28), 0.22))
+    return reverb(out, 0.18, 0.6)
+
+
 @sound('AmbienteLago', peak=-6, loop=True)
 def ambiente_lago(v):
     r = rng(170)

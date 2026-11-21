@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ComicDefinition
   title: "La Garza Gris Gigante"
   panels:
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
+  - image: {fileID: 21300000, guid: aa2b9fc349954daea54ff2c366a9424f, type: 3}
+    caption: "Entre la niebla, una sombra enorme planeaba sobre los juncos."
+  - image: {fileID: 21300000, guid: 7637312c89b74153a7789ab17d5b64c5, type: 3}
+    caption: "La Garza Gris Gigante: cada estocada de su pico levanta una ola."
+  - image: {fileID: 21300000, guid: 1441470cf9c54ec782da5eda04cc2aa6, type: 3}
+    caption: "Cuando se canse y baje la guardia, \u00A1disp\u00E1rale con todo!"

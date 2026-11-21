@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ComicDefinition
   title: "El Pel\u00EDcano Saco Sin Fondo"
   panels:
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
+  - image: {fileID: 21300000, guid: d7de9e8de4bc451d8f3715ff61ad8de4, type: 3}
+    caption: "Un pico enorme apareci\u00F3 en el horizonte."
+  - image: {fileID: 21300000, guid: eb5281408d4f4e1d8fbf31e6db1bbbdb, type: 3}
+    caption: "El Pel\u00EDcano Saco Sin Fondo quiere tragarse el cardumen de un bocado."
+  - image: {fileID: 21300000, guid: a9e039bd158a44b285023fb59d5f6800, type: 3}
+    caption: "Hay que vaciarle el saco... \u00A1a chorros de agua!"

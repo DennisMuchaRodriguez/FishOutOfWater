@@ -14,15 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ComicDefinition
   title: "El lago a salvo"
   panels:
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
-  - image: {fileID: 0}
-    caption: 
+  - image: {fileID: 21300000, guid: 5953f2ff2e1441968cc3a3f10defa6ba, type: 3}
+    caption: "La reina y su bandada se fueron lejos, muy lejos."
+  - image: {fileID: 21300000, guid: b6e3104cd0214eaaae7b99ccdc3275b8, type: 3}
+    caption: "El lago volvi\u00F3 a estar en calma."
+  - image: {fileID: 21300000, guid: 0ee0b18fe3a64c4a963914be7a50478f, type: 3}
+    caption: "Todo el cardumen nad\u00F3 alrededor del pez del traje."
+  - image: {fileID: 21300000, guid: facb0eaedd4547599560a279f9ff3a19, type: 3}
+    caption: "En el Taller, el bagre guard\u00F3 el traje en su vitrina, con mucho cuidado."
+  - image: {fileID: 21300000, guid: 2114982104454a41a5a1484a7e1e234f, type: 3}
+    caption: "Y el pez peque\u00F1o, por fin, pudo descansar."
+  - image: {fileID: 21300000, guid: 281c843563ae4466b82d729c0b0ff208, type: 3}
+    caption: "Pero si alg\u00FAn d\u00EDa vuelven las aves... el traje estar\u00E1 listo."
