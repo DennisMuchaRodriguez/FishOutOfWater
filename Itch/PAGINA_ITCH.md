@@ -2,6 +2,8 @@
 
 Todo lo necesario para publicar el juego en itch.io, campo por campo. Los nombres de los campos están en inglés, como aparecen en itch.io.
 
+**Lo más rápido:** abre `GUIA_PASO_A_PASO.html` en el navegador. Son los mismos pasos en orden (qué descargar, armar el ejecutable, crear la página, el tema, publicar y actualizar con butler), con botones para copiar cada dato y casillas para marcar tu avance.
+
 ## Archivos de esta carpeta
 
 | Archivo | Para qué | Dónde se sube |
@@ -14,7 +16,8 @@ Todo lo necesario para publicar el juego en itch.io, campo por campo. Los nombre
 | `arte_principal_1920x1080.png` | Arte con el título: devlogs, prensa, la primera imagen de la descripción | Descripción, devlogs, redes |
 | `tarjeta_redes_1200x630.png` | Para compartir el enlace en redes | YouTube, X, Instagram, TikTok… |
 | `logo.png` | El logo del juego (el pez en 3D saliendo de una salpicadura y el título), fondo transparente | Descripción, devlogs, prensa |
-| `descripcion.html` | La descripción con formato (español e inglés) | **Description** (copiar y pegar) |
+| `descripcion.html` | La descripción con formato (español e inglés). Pones los enlaces de tus redes y el botón **Copiar descripción** la copia lista para pegar | **Description** |
+| `GUIA_PASO_A_PASO.html` | La guía paso a paso con botones para copiar cada dato | Ábrela en el navegador |
 
 Las imágenes se hicieron con los modelos del juego: el pez con su traje, las texturas y las aves son las mismas del juego. Para rehacerlas, ver [Cómo se hicieron las imágenes](#cómo-se-hicieron-las-imágenes).
 
@@ -40,7 +43,7 @@ Las imágenes se hicieron con los modelos del juego: el pez con su traje, las te
 | **Release status** | In development |
 | **Pricing** | **No payments** (gratis), o **Donations** / **$0 or donate** si quieres aceptar apoyo voluntario |
 | **Uploads** | El `.zip` de Windows (ver punto 4). Marca la casilla **Windows** |
-| **Description** | Pega `descripcion.html` (abre el archivo en el navegador, selecciona desde «Un pez. Un traje…» hasta el final, copia y pega). Cambia los enlaces de las redes |
+| **Description** | Abre `descripcion.html` en el navegador, pon los enlaces de tus redes (las vacías no salen), toca **Copiar descripción** y pega con Ctrl+V |
 | **Genre** | Action |
 | **Tags** (máx. 10) | `action`, `shooter`, `3d`, `flying`, `co-op`, `multiplayer`, `survival`, `fish`, `birds`, `arcade` |
 | **AI generation disclosure** | itch.io pregunta si el proyecto tiene contenido hecho con IA generativa. Parte del código, la música, estas imágenes y los textos se hicieron con ayuda de IA, así que lo correcto es marcar **Yes** y las categorías que correspondan (código, sonido, gráficos, texto) |
@@ -112,7 +115,7 @@ Un GIF corto (5–8 s) de la salida del agua o de un combate funciona muy bien c
 
 Hay dos lugares:
 1. **En tu perfil** (Settings → Profile): los enlaces a tus redes salen en tu página de creador y en todas tus páginas.
-2. **En la descripción del juego**: la sección «Sigue a Kai Codex» de `descripcion.html`. Cambia `[ENLACE_YOUTUBE]`, `[ENLACE_TIKTOK]`, `[ENLACE_INSTAGRAM]`, `[ENLACE_X]` y `[ENLACE_DISCORD]` por tus enlaces, y borra los que no uses.
+2. **En la descripción del juego**: la sección «Sigue a Kai Codex». En `descripcion.html` escribe tus enlaces en los campos de arriba (YouTube, TikTok, Instagram, X, Discord); al copiar, las redes que dejes vacías no salen. Si no pones ninguna, la sección no aparece.
 
 ## 7. Antes de publicar
 

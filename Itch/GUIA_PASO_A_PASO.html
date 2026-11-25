@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fish Out Of Water en itch.io — paso a paso</title>
+<style>
+  :root {
+    --ink: #071224; --panel: #0b1a30; --panel2: #10233f; --line: #1f3d63;
+    --text: #e8f4ff; --dim: #96b2d6; --accent: #40b8ff; --orange: #ff7a2f; --green: #6be3a4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ink); color: var(--text); font: 16px/1.6 system-ui, "Segoe UI", sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+  header { padding: 8px 0 18px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+  h1 { margin: 0; font-size: 30px; letter-spacing: .5px; }
+  h1 .o { color: var(--orange); } h1 .b { color: var(--accent); }
+  header p { margin: 6px 0 0; color: var(--dim); }
+  .barra { height: 8px; background: var(--panel2); border-radius: 99px; margin-top: 14px; overflow: hidden; }
+  .barra i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--green)); transition: width .3s; }
+  .progreso { font-size: 14px; color: var(--dim); margin-top: 6px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin: 18px 0; }
+  section.hecho { border-color: #2d6b52; }
+  section > h2 { margin: 0 0 4px; font-size: 21px; display: flex; gap: 12px; align-items: center; }
+  .num { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--panel2); border: 2px solid var(--accent);
+         display: grid; place-items: center; font-size: 16px; color: var(--accent); }
+  section.hecho .num { border-color: var(--green); color: var(--green); }
+  .sub { color: var(--dim); margin: 0 0 12px; }
+  ol, ul { padding-left: 22px; } li { margin: 6px 0; }
+  code, .val { font-family: ui-monospace, Consolas, monospace; font-size: 14px; background: var(--ink); border: 1px solid var(--line);
+         border-radius: 6px; padding: 1px 6px; overflow-wrap: anywhere; }
+  b.ui { color: var(--accent); font-weight: 700; }
+  a { color: var(--accent); }
+  .tabla { display: grid; grid-template-columns: minmax(150px, 220px) 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .tabla > div { padding: 9px 12px; border-top: 1px solid var(--line); min-width: 0; }
+  .tabla > div:nth-child(-n+2) { border-top: 0; }
+  .tabla > .k { background: var(--panel2); font-weight: 700; color: var(--text); }
+  .copiable { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+  .copiable .val { flex: 1 1 220px; }
+  button.cp { flex: none; background: var(--panel2); color: var(--accent); border: 1px solid var(--accent); border-radius: 7px;
+              padding: 3px 10px; font: 600 13px system-ui, sans-serif; cursor: pointer; }
+  button.cp:hover { background: #163257; }
+  button.cp.ok { color: var(--green); border-color: var(--green); }
+  .nota { background: var(--panel2); border-left: 4px solid var(--orange); border-radius: 8px; padding: 10px 14px; margin: 12px 0; color: var(--text); }
+  .nota.azul { border-left-color: var(--accent); }
+  .imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin: 12px 0; }
+  figure { margin: 0; background: var(--ink); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  figure img { display: block; width: 100%; height: 120px; object-fit: cover; background: #050c18; }
+  figure figcaption { padding: 7px 10px; font-size: 13px; color: var(--dim); }
+  figure figcaption b { color: var(--text); display: block; font-size: 13px; overflow-wrap: anywhere; }
+  .colores { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+  .color { display: flex; align-items: center; gap: 10px; background: var(--panel2); border-radius: 10px; padding: 8px 10px; }
+  .muestra { width: 34px; height: 34px; border-radius: 8px; border: 1px solid #ffffff33; flex: none; }
+  .color div { min-width: 0; font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips button.cp { font-size: 14px; padding: 5px 12px; }
+  label.listo { display: flex; gap: 10px; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line);
+                font-weight: 700; cursor: pointer; }
+  label.listo input { width: 20px; height: 20px; accent-color: var(--green); }
+  input.usuario { background: var(--ink); color: var(--text); border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; font: inherit; width: 100%; max-width: 320px; }
+  pre { background: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; overflow-x: auto; margin: 6px 0; font-size: 14px; }
+  .cmd { display: flex; gap: 8px; align-items: center; }
+  .cmd pre { flex: 1; min-width: 0; }
+  @media (max-width: 560px) {
+    .tabla { grid-template-columns: 1fr; }
+    .tabla > .k { border-top: 1px solid var(--line); }
+    .tabla > div:nth-child(2) { border-top: 0; }
+    h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1><span class="o">Fish Out</span> <span class="b">Of Water</span> en itch.io</h1>
+  <p>Paso a paso para dejar la página lista y subir el juego. Abre itch.io en otra ventana, sigue los pasos en orden y
+  usa los botones <b>Copiar</b> para pegar cada dato. Marca cada paso al terminarlo: tu avance se guarda en este navegador.</p>
+  <div class="barra"><i id="barra"></i></div>
+  <div class="progreso" id="progreso"></div>
+</header>
+
+<!-- ============================ 0 ============================ -->
+<section data-paso="0">
+  <h2><span class="num">0</span>Qué descargar</h2>
+  <p class="sub">Una sola vez. Lo que ya tengas, sáltalo.</p>
+  <ol>
+    <li><b>Este kit</b> (ya lo tienes): esta guía, la descripción y todas las imágenes de la página. Descomprímelo en una
+      carpeta fija, por ejemplo <code>Documentos\FishOutOfWater_itch</code>.</li>
+    <li><b>Los últimos cambios del juego</b>: en la carpeta del proyecto, trae la rama <code>PEscadoRama</code> (con GitHub
+      Desktop: <b class="ui">Fetch origin</b> → <b class="ui">Pull</b>; o en la terminal):
+      <div class="cmd"><pre>git checkout PEscadoRama
+git pull</pre><button class="cp" data-copiar="git checkout PEscadoRama&#10;git pull">Copiar</button></div></li>
+    <li><b>Unity 6 versión <code>6000.3.1f1</code></b> (la del proyecto) desde <b>Unity Hub</b>:
+      <a href="https://unity.com/download" target="_blank" rel="noopener">unity.com/download</a>. En Windows, el editor ya
+      trae lo necesario para armar el juego para Windows. (Si usas Mac, agrega el módulo <b class="ui">Windows Build Support (Mono)</b>.)</li>
+    <li><b>Una cuenta de itch.io</b>: <a href="https://itch.io/register" target="_blank" rel="noopener">itch.io/register</a>.</li>
+    <li><i>Opcional, para las actualizaciones</i>: <b>butler</b>, la herramienta de itch.io para subir versiones nuevas
+      sin hacer el .zip: <a href="https://itchio.itch.io/butler" target="_blank" rel="noopener">itchio.itch.io/butler</a> (ver el paso 8).</li>
+  </ol>
+  <label class="listo"><input type="checkbox"> Listo: tengo todo descargado</label>
+</section>
+
+<!-- ============================ 1 ============================ -->
+<section data-paso="1">
+  <h2><span class="num">1</span>Cooperativo en línea (Unity Cloud)</h2>
+  <p class="sub">Una sola vez. Si lo saltas, el juego funciona igual y el cooperativo en <b>red local</b> también; solo
+  <b>CREAR SALA EN LÍNEA</b> avisará que falta esto.</p>
+  <ol>
+    <li>Abre el proyecto en Unity y ve a <b class="ui">Edit → Project Settings → Services</b>. Debe decir que está
+      vinculado al proyecto <code>Fish Out of Water</code>. Si no, vincúlalo ahí con tu cuenta de Unity.</li>
+    <li>Entra a <a href="https://cloud.unity.com" target="_blank" rel="noopener">cloud.unity.com</a> con la misma cuenta y
+      abre el proyecto <b>Fish Out of Water</b>.</li>
+    <li>Busca <b class="ui">Lobby</b> y actívalo. Haz lo mismo con <b class="ui">Relay</b>. Los dos son gratis hasta un
+      límite amplio.</li>
+  </ol>
+  <label class="listo"><input type="checkbox"> Listo: Lobby y Relay activados (o lo dejo para después)</label>
+</section>
+
+<!-- ============================ 2 ============================ -->
+<section data-paso="2">
+  <h2><span class="num">2</span>Armar el ejecutable en Unity</h2>
+  <p class="sub">Esto solo se puede hacer en tu computadora, con Unity.</p>
+  <ol>
+    <li>Abre el proyecto en Unity <code>6000.3.1f1</code> y espera a que termine de importar (la primera vez tarda).</li>
+    <li><b class="ui">Edit → Project Settings → Player</b>: revisa que <b>Product Name</b> sea <code>Fish Out of Water</code>
+      y <b>Version</b> <code>0.1.0</code>. El ícono ya está puesto (el pez 3D).</li>
+    <li><b class="ui">File → Build Profiles</b> → elige <b class="ui">Windows</b>. Si no es la plataforma activa, toca
+      <b class="ui">Switch Platform</b> y espera.</li>
+    <li>En <b class="ui">Scene List</b> deben estar marcadas, en este orden: <code>MainMenu</code>, <code>SampleScene</code>,
+      <code>Taller</code>.</li>
+    <li>Toca <b class="ui">Build</b> y elige una carpeta <b>nueva y vacía</b> fuera de <code>Assets</code>, por ejemplo
+      <code>Builds\FishOutOfWater_Windows</code> dentro del proyecto. Espera a que termine.</li>
+    <li>Prueba el juego desde esa carpeta (<code>Fish Out of Water.exe</code>): el menú, una partida, el Taller y crear una
+      sala cooperativa.</li>
+    <li>La primera build pinta el terreno del lago y deja modificados los archivos <code>TerrainData_*.asset</code> y
+      <code>New Terrain 1.asset</code>. Súbelos al repositorio (commit y push) para no repetirlo.</li>
+    <li>Si dentro de la carpeta aparece <code>..._BurstDebugInformation_DoNotShip</code>, bórrala (no se publica).</li>
+    <li>Comprime la carpeta: clic derecho sobre <code>FishOutOfWater_Windows</code> → <b class="ui">Comprimir en archivo ZIP</b>
+      (Windows 10: <b class="ui">Enviar a → Carpeta comprimida</b>). Ponle de nombre:
+      <div class="copiable"><span class="val">FishOutOfWater_Windows_v0.1.0.zip</span><button class="cp" data-copiar="FishOutOfWater_Windows_v0.1.0.zip">Copiar</button></div></li>
+  </ol>
+  <div class="nota azul">Si vas a usar <b>butler</b> (paso 8) no hace falta el .zip: butler sube la carpeta directamente.
+  Para la primera vez, el .zip por la web es lo más simple.</div>
+  <label class="listo"><input type="checkbox"> Listo: tengo el .zip y lo probé</label>
+</section>
+
+<!-- ============================ 3 ============================ -->
+<section data-paso="3">
+  <h2><span class="num">3</span>Crear el proyecto en itch.io</h2>
+  <p class="sub">En itch.io: <b class="ui">Dashboard → Create new project</b>. Llena los campos así (los nombres están
+  en inglés, como en itch.io).</p>
+  <div class="tabla">
+    <div class="k">Title</div><div class="copiable"><span class="val">Fish Out Of Water</span><button class="cp">Copiar</button></div>
+    <div class="k">Project URL</div><div class="copiable"><span class="val">fish-out-of-water</span><button class="cp">Copiar</button></div>
+    <div class="k">Short description or tagline</div><div class="copiable"><span class="val">Un pez. Un traje. Nada de agua. Defiende el lago de las aves con tu traje de combate.</span><button class="cp">Copiar</button></div>
+    <div class="k">Classification</div><div><b>Games</b></div>
+    <div class="k">Kind of project</div><div><b>Downloadable</b></div>
+    <div class="k">Release status</div><div><b>In development</b></div>
+    <div class="k">Pricing</div><div><b>No payments</b> (gratis) · o <b>$0 or donate</b> si quieres aceptar apoyo</div>
+    <div class="k">Uploads</div><div><b class="ui">Upload files</b> → tu <code>FishOutOfWater_Windows_v0.1.0.zip</code>.
+      Cuando termine de subir, marca la casilla <b>Windows</b> junto al archivo.</div>
+    <div class="k">Description</div><div>Abre <a href="descripcion.html" target="_blank">descripcion.html</a> (está en este
+      kit), pon los enlaces de tus redes, toca <b>Copiar descripción</b> y pega en este campo con Ctrl+V.</div>
+    <div class="k">Genre</div><div><b>Action</b></div>
+    <div class="k">Tags</div><div>
+      <p style="margin:0 0 8px">Escribe o pega una por una (máximo 10):</p>
+      <div class="chips">
+        <button class="cp">action</button><button class="cp">shooter</button><button class="cp">3d</button>
+        <button class="cp">flying</button><button class="cp">co-op</button><button class="cp">multiplayer</button>
+        <button class="cp">survival</button><button class="cp">fish</button><button class="cp">birds</button>
+        <button class="cp">arcade</button>
+      </div></div>
+    <div class="k">AI generation disclosure</div><div>Marca <b>Yes</b> y las categorías que apliquen (código, sonido,
+      gráficos, texto): parte del juego se hizo con ayuda de IA.</div>
+    <div class="k">App store links</div><div>Vacío</div>
+    <div class="k">Custom noun</div><div>Vacío</div>
+    <div class="k">Community</div><div><b>Comments</b></div>
+    <div class="k">Visibility &amp; access</div><div><b>Draft</b> (todavía no es pública)</div>
+  </div>
+  <p><b>Cover image</b> (a la derecha del formulario): sube <code>portada_630x500.png</code>.
+  <b>Screenshots</b>: tus capturas (paso 6; puedes volver después).</p>
+  <div class="imgs">
+    <figure><img src="portada_630x500.png" alt="Portada"><figcaption><b>portada_630x500.png</b>Cover image</figcaption></figure>
+  </div>
+  <p>Abajo de todo: <b class="ui">Save &amp; view page</b>.</p>
+  <label class="listo"><input type="checkbox"> Listo: proyecto creado en Draft, con el .zip y la portada</label>
+</section>
+
+<!-- ============================ 4 ============================ -->
+<section data-paso="4">
+  <h2><span class="num">4</span>Más detalles del juego</h2>
+  <p class="sub">En el mismo formulario (<b class="ui">Edit game</b>), sección <b class="ui">Details → More information</b>
+  si aparece.</p>
+  <div class="tabla">
+    <div class="k">Made with</div><div><b>Unity</b></div>
+    <div class="k">Inputs</div><div><b>Keyboard</b>, <b>Mouse</b></div>
+    <div class="k">Languages</div><div><b>Spanish</b></div>
+    <div class="k">Multiplayer</div><div><b>Server-based networked multiplayer</b> y <b>Ad-hoc networked multiplayer</b></div>
+    <div class="k">Player count</div><div><b>1</b> a <b>4</b></div>
+    <div class="k">Average session</div><div><b>About a half-hour</b></div>
+  </div>
+  <p><b class="ui">Save</b>.</p>
+  <label class="listo"><input type="checkbox"> Listo: detalles guardados</label>
+</section>
+
+<!-- ============================ 5 ============================ -->
+<section data-paso="5">
+  <h2><span class="num">5</span>El aspecto de la página (Edit theme)</h2>
+  <p class="sub">En la página del juego (<b class="ui">View page</b>), arriba: <b class="ui">Edit theme</b>.</p>
+  <ol>
+    <li><b class="ui">Banner</b> → sube <code>banner_960x300.png</code>, centrado.</li>
+    <li><b class="ui">Background</b> → imagen <code>fondo_1920x1080.jpg</code>, <b>No repeat</b>, posición <b>Top center</b>.</li>
+    <li>Los colores (los mismos de la interfaz del juego). Toca cada uno para copiar el código:</li>
+  </ol>
+  <div class="colores">
+    <div class="color"><span class="muestra" style="background:#071224"></span><div>Background<br><button class="cp">#071224</button></div></div>
+    <div class="color"><span class="muestra" style="background:#0B1A30"></span><div>BG2 / columna<br><button class="cp">#0B1A30</button></div></div>
+    <div class="color"><span class="muestra" style="background:#E8F4FF"></span><div>Text<br><button class="cp">#E8F4FF</button></div></div>
+    <div class="color"><span class="muestra" style="background:#40B8FF"></span><div>Link<br><button class="cp">#40B8FF</button></div></div>
+    <div class="color"><span class="muestra" style="background:#FF7A2F"></span><div>Button<br><button class="cp">#FF7A2F</button></div></div>
+  </div>
+  <ol start="4">
+    <li><b class="ui">Fonts</b>: para los títulos elige una gruesa y técnica (la más parecida a Oxanium que ofrezca la
+      lista); para el texto, una sin serifa limpia.</li>
+    <li><b class="ui">Save theme</b>.</li>
+  </ol>
+  <div class="imgs">
+    <figure><img src="banner_960x300.png" alt="Banner"><figcaption><b>banner_960x300.png</b>Banner</figcaption></figure>
+    <figure><img src="fondo_1920x1080.jpg" alt="Fondo"><figcaption><b>fondo_1920x1080.jpg</b>Background image</figcaption></figure>
+  </div>
+  <label class="listo"><input type="checkbox"> Listo: banner, fondo y colores puestos</label>
+</section>
+
+<!-- ============================ 6 ============================ -->
+<section data-paso="6">
+  <h2><span class="num">6</span>Capturas</h2>
+  <p class="sub">Son lo que más convence a la gente de descargar. Entre 3 y 6, a 1920 × 1080.</p>
+  <ol>
+    <li>Juega con la build (o en Unity con la vista <b class="ui">Game</b> a 1920 × 1080 y <b class="ui">Maximize On Play</b>)
+      y captura con <b>Win + Shift + S</b>.</li>
+    <li>Ideas: volando sobre el lago disparando a una bandada · un jefe a media pelea · bajo el agua con el cardumen ·
+      el Taller con los tres planos · la sala cooperativa con los 4 trajes · el menú con el logo.</li>
+    <li>En <b class="ui">Edit game → Screenshots</b>, súbelas y guarda.</li>
+  </ol>
+  <label class="listo"><input type="checkbox"> Listo: capturas subidas</label>
+</section>
+
+<!-- ============================ 7 ============================ -->
+<section data-paso="7">
+  <h2><span class="num">7</span>Revisar y publicar</h2>
+  <ol>
+    <li>Con la página en Draft, abre <b class="ui">View page</b> y revisa que todo se vea bien.</li>
+    <li>Descarga tu propio .zip desde la página, descomprímelo en otra carpeta y juega un rato: así confirmas que lo
+      que subiste funciona.</li>
+    <li>En <b class="ui">Edit game → Visibility &amp; access</b>, cambia a <b>Public</b> y guarda.</li>
+    <li>Escribe un primer <b>devlog</b> (<b class="ui">Devlog → Create new post</b>) con
+      <code>arte_principal_1920x1080.png</code>: qué es el juego y qué tiene esta versión.</li>
+    <li>Comparte el enlace en tus redes con <code>tarjeta_redes_1200x630.png</code>.</li>
+  </ol>
+  <div class="imgs">
+    <figure><img src="arte_principal_1920x1080.png" alt="Arte principal"><figcaption><b>arte_principal_1920x1080.png</b>Devlogs y prensa</figcaption></figure>
+    <figure><img src="tarjeta_redes_1200x630.png" alt="Tarjeta para redes"><figcaption><b>tarjeta_redes_1200x630.png</b>Redes sociales</figcaption></figure>
+    <figure><img src="logo.png" alt="Logo" style="object-fit:contain;background:#071224"><figcaption><b>logo.png</b>Logo con fondo transparente</figcaption></figure>
+  </div>
+  <label class="listo"><input type="checkbox"> Listo: ¡el juego está publicado!</label>
+</section>
+
+<!-- ============================ 8 ============================ -->
+<section data-paso="8">
+  <h2><span class="num">8</span>Subir versiones nuevas (con butler)</h2>
+  <p class="sub">Para cada actualización. También puedes reemplazar el .zip a mano en <b class="ui">Uploads</b>; butler es
+  más rápido porque solo sube lo que cambió.</p>
+  <ol>
+    <li>Descarga butler de <a href="https://itchio.itch.io/butler" target="_blank" rel="noopener">itchio.itch.io/butler</a>
+      y descomprímelo, por ejemplo en <code>C:\butler</code>.</li>
+    <li>Tu usuario de itch.io (el de <code>usuario.itch.io</code>):<br>
+      <input class="usuario" id="usuario" placeholder="tu-usuario" autocomplete="off"></li>
+    <li>Arma la build nueva en Unity (paso 2) y sube en <b>Version</b> el número (por ejemplo <code>0.1.1</code>).</li>
+    <li>Abre una terminal (PowerShell) en la carpeta del proyecto y ejecuta, la primera vez:
+      <div class="cmd"><pre id="c1">C:\butler\butler.exe login</pre><button class="cp" data-de="c1">Copiar</button></div>
+      Se abre el navegador para autorizarlo.</li>
+    <li>Para subir la versión (cambia el número de versión):
+      <div class="cmd"><pre id="c2"></pre><button class="cp" data-de="c2">Copiar</button></div></li>
+    <li>Para ver cómo va el procesamiento en itch.io:
+      <div class="cmd"><pre id="c3"></pre><button class="cp" data-de="c3">Copiar</button></div></li>
+  </ol>
+  <div class="nota">El canal se llama <code>windows</code>, así itch.io lo marca solo como descarga para Windows. Si antes
+  subiste un .zip a mano, después del primer push con butler borra ese .zip viejo en <b class="ui">Uploads</b> para que no
+  aparezcan dos descargas.</div>
+  <label class="listo"><input type="checkbox"> Listo: sé subir actualizaciones</label>
+</section>
+
+<p style="color:var(--dim);font-size:14px">Esta guía es la versión rápida de <code>PAGINA_ITCH.md</code>, que explica
+cada campo con más detalle y cómo se hicieron las imágenes.</p>
+</main>
+
+<script>
+(function () {
+  function guardar(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function leer(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  // Copiar al portapapeles (funciona también abriendo el archivo directo, sin servidor)
+  function copiar(texto, boton) {
+    var hecho = function () {
+      var antes = boton.dataset.texto || boton.textContent;
+      boton.dataset.texto = antes;
+      boton.textContent = '¡Copiado!';
+      boton.classList.add('ok');
+      setTimeout(function () { boton.textContent = antes; boton.classList.remove('ok'); }, 1300);
+    };
+    var t = document.createElement('textarea');
+    t.value = texto; t.style.position = 'fixed'; t.style.left = '-9999px';
+    document.body.appendChild(t); t.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    t.remove();
+    if (ok) { hecho(); return; }
+    if (navigator.clipboard) navigator.clipboard.writeText(texto).then(hecho, function () {});
+  }
+  document.querySelectorAll('button.cp').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var texto;
+      if (b.dataset.copiar) texto = b.dataset.copiar;
+      else if (b.dataset.de) texto = document.getElementById(b.dataset.de).textContent;
+      else if (b.previousElementSibling && b.previousElementSibling.classList.contains('val')) texto = b.previousElementSibling.textContent;
+      else texto = b.dataset.texto || b.textContent;
+      copiar(texto.trim(), b);
+    });
+  });
+
+  // Los comandos de butler con tu usuario
+  var u = document.getElementById('usuario');
+  function comandos() {
+    var user = (u.value.trim() || 'tu-usuario');
+    document.getElementById('c2').textContent =
+      'C:\\butler\\butler.exe push "Builds\\FishOutOfWater_Windows" ' + user + '/fish-out-of-water:windows --userversion 0.1.1';
+    document.getElementById('c3').textContent = 'C:\\butler\\butler.exe status ' + user + '/fish-out-of-water:windows';
+  }
+  u.value = leer('fow_usuario') || '';
+  u.addEventListener('input', function () { guardar('fow_usuario', u.value.trim()); comandos(); });
+  comandos();
+
+  // Avance: cada paso se marca y se recuerda
+  var pasos = document.querySelectorAll('section[data-paso]');
+  function avance() {
+    var n = 0;
+    pasos.forEach(function (s) { if (s.querySelector('label.listo input').checked) n++; });
+    document.getElementById('barra').style.width = (100 * n / pasos.length) + '%';
+    document.getElementById('progreso').textContent = n + ' de ' + pasos.length + ' pasos listos';
+  }
+  pasos.forEach(function (s) {
+    var c = s.querySelector('label.listo input');
+    var clave = 'fow_paso_' + s.dataset.paso;
+    c.checked = leer(clave) === '1';
+    s.classList.toggle('hecho', c.checked);
+    c.addEventListener('change', function () {
+      guardar(clave, c.checked ? '1' : '0');
+      s.classList.toggle('hecho', c.checked);
+      avance();
+    });
+  });
+  avance();
+})();
+</script>
+</body>
+</html>
