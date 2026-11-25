@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Guion de los cómics del modo Historia: cada cómic (Assets/Data/Comics/<Comic>.asset) y sus viñetas, con el texto
-del recuadro de narración. Lo usan render_vinetas.py (qué escena armar), vinetas.py (los bocetos) y
+del recuadro de narración. Lo usan escenas.py / dibujar_vinetas.py (qué se ve en cada viñeta y el dibujo a lápiz) y
 asignar_vinetas.py (pone dibujos y textos en los .asset).
 
 La historia: un pez pequeño se cansa de que las aves se lleven a su cardumen, se arma un traje con la chatarra del

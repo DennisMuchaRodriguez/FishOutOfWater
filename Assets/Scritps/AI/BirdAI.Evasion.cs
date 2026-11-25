@@ -112,7 +112,7 @@ public partial class BirdAI
         get
         {
             if (dead || arriving || stunTimer > 0f || submerged || lurking || diving || strikeCommitted) return false;
-            if (IsBoss && (bossAttacking || vulnerableTimer > 0f || phaseChangeTimer > 0f || harassDashing)) return false;
+            if (IsBoss && (bossAttacking || vulnerableTimer > 0f || phaseChangeTimer > 0f || passStep != PassStep.Turn)) return false;
             return true;
         }
     }

@@ -4,6 +4,9 @@ using UnityEngine;
 // Un nivel del modo Historia guardado como archivo de datos.
 // Crear: clic derecho en la carpeta > Create > Fish Out Of Water > Nivel,
 // y agregarlo a Assets/Resources/LevelCatalog (la lista ordenada del mapa de niveles).
+// Hora del día de un nivel de la Historia (el número es el que queda guardado en el archivo del nivel)
+public enum LevelTime { Dia = 0, Tarde = 1, Atardecer = 2, Noche = 3, Amanecer = 4 }
+
 [CreateAssetMenu(menuName = "Fish Out Of Water/Nivel", fileName = "Nivel_00", order = 0)]
 public class LevelDefinition : ScriptableObject
 {
@@ -22,6 +25,10 @@ public class LevelDefinition : ScriptableObject
     [Header("Oleadas (en orden)")]
     public List<WaveDefinition> waves = new List<WaveDefinition>();
 
+    [Header("Ambiente")]
+    [Tooltip("Hora del día en que se juega el nivel: cielo, luz, sol o luna (queda fija durante el nivel)")]
+    public LevelTime timeOfDay = LevelTime.Dia;
+
     [Header("Mapa de niveles")]
     [Tooltip("Marca el nivel como nivel de jefe en el mapa (calavera)")]
     public bool isBossLevel;
@@ -37,6 +44,31 @@ public class LevelDefinition : ScriptableObject
     [Header("Estrellas (porcentaje de peces salvados)")]
     [Range(0f, 1f)] public float twoStars = 0.6f;
     [Range(0f, 1f)] public float threeStars = 0.9f;
+
+    // Hora del ciclo de LakeAmbience (0 amanecer · 0,25 mediodía · 0,47 tarde · 0,55 atardecer · 0,8 noche)
+    public static float TimeValue(LevelTime t)
+    {
+        switch (t)
+        {
+            case LevelTime.Tarde: return 0.46f;
+            case LevelTime.Atardecer: return 0.56f;
+            case LevelTime.Noche: return 0.8f;
+            case LevelTime.Amanecer: return 0.015f;
+            default: return 0.22f;
+        }
+    }
+
+    public static string TimeName(LevelTime t)
+    {
+        switch (t)
+        {
+            case LevelTime.Tarde: return "TARDE";
+            case LevelTime.Atardecer: return "ATARDECER";
+            case LevelTime.Noche: return "NOCHE";
+            case LevelTime.Amanecer: return "AMANECER";
+            default: return "DÍA";
+        }
+    }
 
     // 1 estrella al ganar; 2 y 3 según los peces que quedaron a salvo
     public int StarsFor(float savedFraction)

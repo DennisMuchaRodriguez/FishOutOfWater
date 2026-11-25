@@ -1287,21 +1287,21 @@ public class MenuBackdrop : MonoBehaviour
             float e = Smooth01((t - TSuit) / (THelmet - TSuit));
             Vector3 center = StandTop + Vector3.up * 0.85f;
             Vector3 dir = Quaternion.Euler(0f, Mathf.Lerp(-50f, 30f, e), 0f) * front;
-            pos = center + dir * Mathf.Lerp(3.0f, 2.3f, e);
-            pos.y = Mathf.Lerp(2.5f, 2.15f, e);
+            pos = center + dir * Mathf.Lerp(3.5f, 3.0f, e);
+            pos.y = Mathf.Lerp(2.55f, 2.3f, e);
             look = center + Vector3.up * 0.1f;
-            fov = 40f;
+            fov = 42f;
         }
         else if (t < TLaunch)
         {
-            // 5. Primer plano del casco
+            // 5. El pez con el traje puesto: plano medio (de la cintura al casco; antes era un primer plano muy pegado)
             shot = 5;
             float e = Smooth01((t - THelmet) / (TLaunch - THelmet));
             Vector3 helmet = StandTop + Vector3.up * HelmetHeight;
             Vector3 dir = Quaternion.Euler(0f, -12f, 0f) * front;
-            pos = helmet + dir * Mathf.Lerp(1.55f, 1.15f, e) + Vector3.up * 0.06f;
-            look = helmet + Vector3.up * 0.02f;
-            fov = 34f;
+            pos = helmet + dir * Mathf.Lerp(2.9f, 2.45f, e) + Vector3.up * 0.12f;
+            look = helmet + Vector3.down * 0.28f;
+            fov = 40f;
         }
         else if (t < TExitShot)
         {

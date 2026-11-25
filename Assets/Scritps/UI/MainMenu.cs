@@ -37,6 +37,7 @@ public partial class MainMenu : MonoBehaviour
     Camera menuCamera;
 
     [Header("Textos")]
+    public const string LogoPath = "UI/Logo";
     public string titleLine1 = "FISH OUT";
     public string titleLine2 = "OF WATER";
     public string subtitle = "UN PEZ. UN TRAJE. NADA DE AGUA.";
@@ -357,8 +358,19 @@ public partial class MainMenu : MonoBehaviour
             shade.rectTransform.anchorMax = new Vector2(0.68f, 1f);
         }
 
-        MenuUI.Title("Linea1", s, titleLine1, 118f, new Vector2(0.5f, 0.5f), new Vector2(-300f, 222f), new Vector2(700f, 130f), MenuUI.Orange);
-        MenuUI.Title("Linea2", s, titleLine2, 118f, new Vector2(0.5f, 0.5f), new Vector2(-270f, 116f), new Vector2(700f, 130f), MenuUI.Blue);
+        // El logo (Resources/UI/Logo.png, hecho con Herramientas/Logo/logo.py); si no está, el título en texto
+        Sprite logo = Resources.Load<Sprite>(LogoPath);
+        if (logo != null)
+        {
+            Image logoImg = MenuUI.Img("Logo", s, logo, Color.white, new Vector2(0.5f, 0.5f), new Vector2(-300f, 172f),
+                                       new Vector2(720f, 238f));
+            logoImg.preserveAspect = true;
+        }
+        else
+        {
+            MenuUI.Title("Linea1", s, titleLine1, 118f, new Vector2(0.5f, 0.5f), new Vector2(-300f, 222f), new Vector2(700f, 130f), MenuUI.Orange);
+            MenuUI.Title("Linea2", s, titleLine2, 118f, new Vector2(0.5f, 0.5f), new Vector2(-270f, 116f), new Vector2(700f, 130f), MenuUI.Blue);
+        }
 
         RectTransform pill = MenuUI.ComicPanel("Subtitulo", s, new Vector2(0.5f, 0.5f), new Vector2(-300f, 32f), new Vector2(520f, 46f), MenuUI.Glass);
         MenuUI.Text("Texto", pill, subtitle, 22f, new Vector2(0.5f, 0.5f), new Vector2(0f, 1f), new Vector2(500f, 40f), MenuUI.Accent)
@@ -689,7 +701,8 @@ public partial class MainMenu : MonoBehaviour
 
         int fish = 0;
         foreach (FishSpawn f in level.fish) if (f != null && f.type != null) fish += f.count;
-        string details = level.waves.Count + " OLEADAS  ·  " + fish + " PECES\nPierdes si cazan el " + Mathf.RoundToInt(level.maxFishLossFraction * 100f) + " %";
+        string details = level.waves.Count + " OLEADAS  ·  " + fish + " PECES  ·  " + LevelDefinition.TimeName(level.timeOfDay) +
+                         "\nPierdes si cazan el " + Mathf.RoundToInt(level.maxFishLossFraction * 100f) + " %";
         MenuUI.Text("Detalles", infoContent, details, 18f, top, new Vector2(0f, -314f), new Vector2(320f, 56f), MenuUI.Accent);
 
         float tagY = -360f;

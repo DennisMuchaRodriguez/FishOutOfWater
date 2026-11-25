@@ -189,42 +189,46 @@ public static class BirdArchive
     static void FillBoss(Entry e)
     {
         string x = "x" + e.type.vulnerableDamageMultiplier.ToString("0.#");
-        e.tip = "Después de cada ataque fuerte queda vulnerable unos segundos y recibe " + x + " de daño: descarga todo ahí.";
+        e.tip = "Después de cada ataque fuerte (o de un combo, en las fases 2 y 3) queda agotado unos segundos y recibe " + x +
+                " de daño: descarga todo ahí. Si se llevó peces, cada impacto le hace soltar uno.";
         switch (e.type.boss)
         {
             case BossKind.GiantHeron:
                 e.role = "SEÑORA DE LA ORILLA";
                 e.hunt = "No caza como las demás: domina la orilla y convierte el agua en una trampa para el cardumen.";
-                e.fight = "La más rápida en el acoso: te rodea cambiando de sentido, esquiva tus disparos, te lanza dardos y encadena dos o tres embestidas seguidas.";
+                e.fight = "La más rápida: pasa a tu lado como un caza, te golpea de pasada, vira y vuelve por otro lado; esquiva tus disparos y te lanza dardos en el viraje.";
                 e.tags = new[] { "JEFE", "3 FASES", "BLINDADA" };
                 e.attacks = new[]
                 {
                     new Attack("ESTOCADA", "Un golpe de pico que levanta una ola y aturde a los peces."),
                     new Attack("PISOTÓN", "Golpea el agua y lanza peces fuera del lago, hacia la orilla."),
-                    new Attack("LLUVIA DE DARDOS", "Desde la fase 2: una lluvia de dardos desde lo alto.")
+                    new Attack("LLUVIA DE DARDOS", "Desde la fase 2: una lluvia de dardos mientras vuela a tu alrededor."),
+                    new Attack("BARRIDA", "Pasa rasante sobre el cardumen y se lleva varios peces de una vez.")
                 };
                 break;
             case BossKind.BottomlessPelican:
                 e.role = "BUCHE SIN FONDO";
                 e.hunt = "Traga grupos enteros de peces. Cada disparo que le aciertas le saca un pez del buche.";
-                e.fight = "Siempre cerca de ti, empujando con su cuerpo enorme entre ataque y ataque.";
+                e.fight = "Pasadas lentas pero pesadas: te embiste con su cuerpo enorme y escupe agua en cada viraje.";
                 e.tags = new[] { "JEFE", "3 FASES", "BLINDADA", "TRAGA PECES" };
                 e.attacks = new[]
                 {
                     new Attack("REMOLINO", "Arrastra a los peces hacia el centro y se traga a los que llegan."),
                     new Attack("CAÑONAZO DE AGUA", "Bolas de agua que explotan al caer y aturden a los peces."),
-                    new Attack("BOCADO AL CARDUMEN", "Desde la fase 2: se lanza sobre el cardumen con el pico abierto.")
+                    new Attack("BOCADO AL CARDUMEN", "Desde la fase 2: se lanza sobre el cardumen con el pico abierto."),
+                    new Attack("BARRIDA", "Rasante con el saco abierto: hasta 6 peces de una pasada.")
                 };
                 break;
             case BossKind.CormorantKing:
                 e.role = "REY DEL FONDO";
                 e.hunt = "Pelea arriba y abajo del agua: no hay lugar del lago donde los peces estén a salvo.";
-                e.fight = "Te rodea y embiste sin descanso, entrando y saliendo del agua.";
+                e.fight = "Pasadas veloces entrando y saliendo del agua: si te escondes en lo hondo, te sigue.";
                 e.tags = new[] { "JEFE", "3 FASES", "BLINDADA", "BUCEA" };
                 e.attacks = new[]
                 {
                     new Attack("TORPEDOS", "De dos a cuatro embestidas seguidas, por encima y por debajo del agua."),
-                    new Attack("ONDA EXPANSIVA", "Un estallido submarino que aturde a los peces cercanos y se los lleva.")
+                    new Attack("ONDA EXPANSIVA", "Un estallido submarino que aturde a los peces cercanos y se los lleva."),
+                    new Attack("BARRIDA", "Atraviesa el cardumen buceando y se lleva varios peces.")
                 };
                 break;
             case BossKind.EagleQueen:
@@ -236,7 +240,8 @@ public static class BirdArchive
                 {
                     new Attack("PICADAS", "De una a tres picadas seguidas desde el cielo."),
                     new Attack("RÁFAGA DE PLUMAS", "Lanza un abanico de plumas afiladas."),
-                    new Attack("VENDAVAL", "Desde la fase 2: te empuja y saca a los peces del agua.")
+                    new Attack("VENDAVAL", "Desde la fase 2: te empuja y saca a los peces del agua."),
+                    new Attack("BARRIDA", "Baja en picada sobre el cardumen y se lleva varios peces en las garras.")
                 };
                 break;
             default:

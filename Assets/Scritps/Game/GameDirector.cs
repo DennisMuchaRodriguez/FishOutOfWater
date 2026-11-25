@@ -227,7 +227,8 @@ public partial class GameDirector : MonoBehaviour
         // Mientras la pantalla de carga tapa el juego no empieza nada (el cartel del nivel sale al destaparse)
         while (LoadingScreen.IsLoading) yield return null;
         string calmTitle = "NIVEL " + LevelNumber + (string.IsNullOrEmpty(Level.displayName) ? "" : "  ·  " + Level.displayName.ToUpper());
-        Banner?.Invoke(calmTitle, "Protege a los peces  //  Recoge cápsulas de munición en el agua", Cyan);
+        string hora = Level.timeOfDay == LevelTime.Dia ? "" : LevelDefinition.TimeName(Level.timeOfDay) + "  //  ";
+        Banner?.Invoke(calmTitle, hora + "Protege a los peces  //  Recoge cápsulas de munición en el agua", Cyan);
         if (DefendersSpawned > 0)
             Toast?.Invoke(DefendersSpawned + " PECES DEFENSORES PATRULLAN EL LAGO", Cyan);
 

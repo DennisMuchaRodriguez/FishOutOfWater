@@ -509,6 +509,7 @@ Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel 
 | **Schools** | 3 | Número de cardúmenes |
 | **Max Fish Loss Fraction** | 0.7 | Pierdes si cazan este porcentaje de peces |
 | **Waves** | vacío | Oleadas, en orden. Cada una: **Delay Before** (segundos de calma antes), **Birds** (lista de **Type** = un archivo Ave + **Count**) y **Health Multiplier** |
+| **Time Of Day** | Día | Hora en que se juega: Día, Tarde, Atardecer, Noche o Amanecer (cielo, luz, sol o luna; fija todo el nivel) |
 | **Is Boss Level** | ✘ | Marca el nivel con "JEFE" en el mapa |
 | **Workshop After** | ✘ | Marca "TALLER" en el mapa y avisa al ganar (el Taller todavía no existe) |
 | **Comic Before** | vacío | Cómic que se ve antes de jugarlo la primera vez (se puede repetir con "VER CÓMIC") |
@@ -526,7 +527,7 @@ Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel 
 
 - La vida de las aves sube 5 % por nivel, y la tercera oleada lleva 15 % más.
 - Cada bloque suma especies nuevas (gaviota y martín pescador al principio; garza, cormorán y serreta en la orilla y bajo el agua; pelícano y águila pescadora en los cielos). En los niveles de jefe, la tercera oleada trae al jefe del bloque (ver [Jefes](#jefes-birdaibosscs)).
-- Cómics (dibujados a lápiz, 34 viñetas): origen antes del nivel 1; el Taller en la primera visita; antes y después de los jefes 5, 10 y 15; antes del jefe 20 y el final después del nivel 20.
+- Cómics (dibujos 2D de caricatura, 34 viñetas): origen antes del nivel 1; el Taller en la primera visita; antes y después de los jefes 5, 10 y 15; antes del jefe 20 y el final después del nivel 20.
 
 **Para agregar un nivel:** duplica uno (Ctrl+D), cámbiale los datos y súmalo al final de la lista **Levels** de `Resources/LevelCatalog`.
 **Para un ave nueva:** duplica una de `Data/Aves` (por ejemplo `Ave_Gaviota`), cambia el modelo y los valores, y úsala en las oleadas. Su **Ability** decide cómo pesca y cómo pelea.
@@ -1025,7 +1026,18 @@ Muestra los mensajes, la barra del jefe, las flechas a pájaros y cápsulas, y l
 | **Low Ammo For Arrow** | 8 | Con estas balas o menos, muestra la flecha a la cápsula más cercana |
 
 ### MainMenu (escena MainMenu)
-Construye todo por código: las pantallas Título, Modos, Mapa, Controles (`MainMenu.Controls.cs`), Cooperativo y Archivo de aves, y el fondo. Los niveles los lee de `Resources/LevelCatalog`; los bocetos del Archivo, de `Resources/Archivo`.
+Construye todo por código: las pantallas Título, Modos, Mapa, Controles (`MainMenu.Controls.cs`), Cooperativo y Archivo de aves, y el fondo. Los niveles los lee de `Resources/LevelCatalog`; los bocetos del Archivo, de `Resources/Archivo`; el **logo** del título, de `Resources/UI/Logo.png` (si falta, escribe el título con `Title Line 1` y `Title Line 2`).
+
+**Logo** (`Herramientas/Logo/logo.py`, solo numpy y Pillow): el pez protagonista dibujado como su **dibujo 2D de
+referencia** (el mismo estilo de las viñetas: contornos negros gruesos y colores planos; la cabeza en cúpula naranja con
+los ojos enojados, el casco y los auriculares, la armadura azul marino con la luz naranja del pecho y las aletas azules)
+sale volando de una ola con el propulsor encendido, junto al título **FISH OUT** (naranja) / **OF WATER** (azul) con la
+fuente del menú (Oxanium), relieve azul marino y borde claro. Usa las mismas medidas del protagonista que las viñetas
+(las constantes `H_*` de `Herramientas/Comics/personajes.py`), así logo y cómics siempre coinciden. Escribe
+`Assets/Resources/UI/Logo.png` (el título del menú), `Assets/Resources/UI/Icono.png` (1024 × 1024, el protagonista de
+frente sobre azul marino: es el **ícono de la aplicación**, en Project Settings > Player > Default Icon) e
+`Itch/logo.png` (para la página de itch.io).
+`python3 Herramientas/Logo/logo.py`
 
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
@@ -1046,7 +1058,7 @@ Estilo: el mismo del visor del casco (holograma azul eléctrico con destellos ca
   2. **El mecánico**: primer plano del bagre mientras el brazo robótico suelda en el soporte.
   3. **Llega el pez**, sin traje, nadando hasta el soporte (la cámara lo sigue).
   4. **El traje**: las piezas aparecen girando a su alrededor y se le encajan una a una, de los pies a la escafandra, con chispas, destello y golpe de metal; la cámara da la vuelta. Al final, un anillo de luz sube por el traje.
-  5. **El casco**: primer plano; un destello cruza el visor.
+  5. **El traje puesto**: plano medio del pez con el traje (de la cintura a la escafandra; antes era un primer plano muy pegado); un destello cruza el visor.
   6. **Despegue**: se agacha, enciende el propulsor (llama y burbujas), sube y se mete por **la salida de la cueva**: un hueco redondo en el centro del techo con un túnel de roca que sube hasta la superficie del lago (brilla arriba; por ahí entran la luz y los rayos y suben burbujas). Una cámara desde abajo lo ve alejarse por el túnel hacia la luz.
   7. **Afuera, en el lago donde se pelea**: un destello, rompe el agua (salpicadura y ola) y vuela hacia la bandada de aves que da vueltas sobre la orilla. El lago se ve como el del juego: su cielo (`Resources/Ambiente/Cielo_Lago`), y orillas con juncos, nenúfares, pradera y bosque con los mismos modelos de la decoración del lago (`Resources/Decoracion/Decoracion_Lago`). Las aves son las del juego (las que no son jefes, sacadas del catálogo de niveles).
 - **Las demás pantallas** (modos, mapa, controles, cooperativo, archivo): la guarida tranquila, con el pez ya con su traje en el soporte y la cámara moviéndose despacio; el fondo se oscurece un poco para que se lean los paneles.
@@ -1214,28 +1226,45 @@ Se crea solo y no tiene campos. Las armas del traje son de agua: cada impacto re
 - **Sonidos**: el golpe suena como agua que revienta (`GolpeAgua`, con el golpe sordo del ave más bajito) y el derribo como una explosión de agua (`ExplosionAgua`, con el grito del ave más bajito). Más graves cuanto más grande es el ave.
 - **Rendimiento**: todo sale de 5 sistemas de partículas que se crean una sola vez (no se instancia nada por golpe). Cuanto más lejos de la cámara, menos partículas (nada a más de 140 m; detrás de la cámara, casi nada), y hay un **tope de 240 partículas nuevas por cuadro**, así una ráfaga larga de la metralleta no dispara miles de golpe.
 
-#### Jefes (`BirdAI.Boss.cs`)
-Los jefes son más grandes y **no cazan como las demás aves**: te rodean a pocos metros con ataques rápidos y cada pocos segundos
-hacen un **ataque fuerte** (después quedan vulnerables). Sus ataques son una amenaza para todo el cardumen:
+#### Jefes (`BirdAI.Boss.cs` y `BirdAI.BossFlow.cs`)
+Los jefes son más grandes y **no cazan como las demás aves**: pelean siempre cerca del jugador y cada pocos segundos
+hacen un **ataque fuerte** (después quedan agotados y vulnerables). Sus ataques son una amenaza para todo el cardumen:
 
 | Jefe | Ataques fuertes |
 |---|---|
-| Garza Gris Gigante | Estocada (la ola aturde peces) · Pisotón en el agua (lanza peces fuera, a la orilla) · Lluvia de dardos (fase 2+) |
-| Pelícano Saco Sin Fondo | Remolino (arrastra peces y se traga el centro) · Cañonazo de agua (explota y aturde peces) · Bocado (fase 2+) |
-| Cormorán Rey | Torpedos (2 a 4 seguidos, arriba y abajo del agua) · Onda expansiva submarina (aturde y se lleva peces) |
-| Reina Águila Marina | Picadas (1 a 3) · Ráfaga de plumas · Vendaval (te empuja y saca peces del agua; fase 2+) |
+| Garza Gris Gigante | Estocada (la ola aturde peces; desde la fase 2 **ensarta** 1 o 2 peces aturdidos) · Pisotón en el agua (lanza peces fuera, a la orilla) · Lluvia de dardos (fase 2+) · **Barrida** |
+| Pelícano Saco Sin Fondo | Remolino (arrastra peces y se traga el centro) · Cañonazo de agua (explota y aturde peces) · Bocado (fase 2+) · **Barrida** (hasta 6 peces) |
+| Cormorán Rey | Torpedos (2 a 4 seguidos, arriba y abajo del agua) · Onda expansiva submarina (aturde y se lleva peces) · **Barrida** buceando |
+| Reina Águila Marina | Picadas (1 a 3) · Ráfaga de plumas · Vendaval (te empuja y saca peces del agua; fase 2+) · **Barrida** |
 
-**Entre ataques fuertes pelean como naves:**
-- Te rodean cambiando de sentido y de distancia.
-- Zigzaguean y esquivan tus disparos (menos que las aves comunes, y nunca durante un ataque fuerte ni en la pausa vulnerable).
-- La **Garza Gris** es la más rápida: ataca cada 1.1–1.8 s (más seguido en cada fase) y alterna:
-  - Dardos: 3 desde la fase 1 y 5 desde la fase 2.
-  - Una embestida rápida.
-  - Combos de 2 embestidas seguidas (3 en la fase 3).
-  - Su estocada fuerte avisa menos.
+**Movimiento fluido** (antes se notaban "mecánicos": giraban a distancia fija, frenaban en seco y repetían el orden):
+- **Pasadas como un caza** entre ataques fuertes: apuntan a un costado del jugador, cierran la curva y lo golpean al pasar,
+  siguen de largo con la inercia, viran en una curva amplia y vuelven por otro lado. El giro tiene un tope (grados por
+  segundo), así que nunca cambian de dirección de golpe. En el viraje lanzan su ataque a distancia (dardos de la garza,
+  escupitajos del pelícano, plumas de la reina). El cormorán hace las pasadas también bajo el agua.
 
-**Pausa vulnerable**: después de cada ataque fuerte baja cerca del agua jadeando, te mira y retrocede despacio (la Garza Gris, 2,2 s).
-Ningún ave se queda con la cabeza clavada hacia abajo salvo cuando de verdad se lanza en picada.
+  | Jefe | Velocidad de la pasada | Giro | Radio del viraje |
+  |---|---|---|---|
+  | Garza Gris | 1,75 × persecución | 150°/s | 12 m |
+  | Pelícano | 1,35 × | 85°/s | 16 m |
+  | Cormorán Rey | 1,8 × | 130°/s | 10 m |
+  | Reina Águila | 1,6 × | 110°/s | 18 m |
+
+  En cada fase van un 13 % más rápido y giran más.
+- **Las cargas no se frenan en seco**: la garza se encabrita deslizándose de lado antes de la estocada; el cormorán se
+  echa hacia atrás antes de cada torpedo; la lluvia de plumas y el cañonazo los lanzan dando vueltas a tu alrededor.
+- **Barrida sobre el cardumen** (todos): avisa ("¡... VA POR EL CARDUMEN!"), toma carrera en curva, el cardumen se
+  paraliza del susto y pasa rasante (el cormorán, buceando) dejando una estela de espuma. Se lleva **varios peces de una
+  pasada**: 2 en la fase 1, 3 en la 2 y 4 en la 3 (el pelícano, 4, 5 y 6).
+- **Elige el ataque según la situación** (ya no en orden fijo): si estás lejos (más de 40 m) o escondido en lo hondo, o
+  si hay un cardumen apretado, va por los peces. Nunca repite el mismo ataque seguido.
+- **Combos**: en la fase 2 a veces (50 %) y en la fase 3 siempre encadena 2 (o 3) ataques fuertes sin la pausa
+  vulnerable entre ellos. Si se llevó peces, el combo termina.
+- Esperan menos entre ataques fuertes: 3,2 s en la fase 1, 2,4 s en la 2 y 1,6 s en la 3.
+
+**Pausa vulnerable**: después de cada ataque fuerte (o al final del combo) baja cerca del agua jadeando, te mira y
+retrocede despacio. Si tiene peces en las garras, **cada impacto le hace soltar uno** (el pelícano los suelta siempre;
+los demás, fuera de la pausa, a veces). Si no los rescatas, se los lleva y se los come.
 
 Si te escondes en lo hondo y el jefe no bucea, ataca a los peces más seguido. Los peces **aturdidos** flotan panza arriba
 unos segundos (cualquier ave los atrapa fácil) y los **lanzados** pueden caer en la orilla: si no vuelven al agua, se asfixian.
@@ -1279,22 +1308,40 @@ El modelo del **Piquero** (piquero de patas azules con gafas de aviador en la fr
 cafés y pico largo) sale de `Herramientas/Modelado/aves/Ave_Piquero.py` con el kit de aves (`kit.py`, GUIDs en `guids.json`).
 **Para usar un dibujo propio**, reemplaza el `.png` con el mismo nombre que el archivo del Ave (por ejemplo `Ave_Gaviota.png`). Si un Ave no tiene dibujo, su ficha sale sin boceto.
 
-### Cómics de la Historia: bocetos (`Herramientas/Comics`)
-Las 34 viñetas de los 10 cómics (`Assets/Art/Comics/<viñeta>.jpg`, 1380×660) son **bocetos a lápiz con poco color**: grafito, sombreado a rayas, una aguada apagada sobre papel cálido; el pez protagonista conserva un poco de su naranja. Están hechas con los modelos del juego (el pez con y sin traje, los peces del lago, las aves y los 4 jefes, el bagre mecánico, el Taller, la vegetación y la chatarra), así se parecen al juego.
+### Cómics de la Historia: dibujos 2D de caricatura (`Herramientas/Comics`)
+Las 34 viñetas de los 10 cómics (`Assets/Art/Comics/<viñeta>.jpg`, 1380×660) siguen el **dibujo 2D de referencia del
+protagonista**: contornos negros gruesos, colores planos y vivos, una sola sombra plana por pieza y sin texturas. El
+protagonista se dibuja con las medidas tomadas de ese dibujo (las constantes `H_*` de `personajes.py`: cabeza en cúpula,
+borde del casco en dos tonos, auriculares de tres láminas, cuello en segmentos, armadura en placas con biseles, luz del
+pecho en trapecio, hombreras y aletas con nervios) y gira con el parámetro `vista` (0 = de frente, 1 = de costado), así
+se ve igual desde cualquier ángulo. Los peces del lago, las aves, los jefes y el bagre usan el mismo trazo. Cada viñeta cuenta **una sola acción** con el protagonista grande y al frente, fondo simple, onomatopeyas
+(¡TAC!, ¡SPLASH!, ¡POP!, ¡KRIIII!), globos ("¡BASTA!", "...") y rótulos cuando ayudan (escafandra, propulsor, pistola de
+agua). La esquina de arriba a la izquierda queda libre: ahí el juego pone el recuadro del texto.
 
 **La historia** (`guion.py`): un pez pequeño se cansa de que las aves se lleven a su cardumen, se arma un traje con la chatarra del fondo del lago (un frasco de escafandra, un propulsor y una pistola de agua) y sale volando a pelear. Después del nivel 3 conoce al viejo bagre mecánico del Taller, que le mejora el traje. Vence a la Garza Gris Gigante, al Pelícano Saco Sin Fondo (desde ahí otros peces se ponen traje: los defensores), al Cormorán Rey y a la Reina Águila Marina; el lago vuelve a la calma y el traje queda en la vitrina del Taller… "por si algún día vuelven las aves".
 
-Se hacen en tres pasos (desde la raíz del proyecto):
-1. `render_vinetas.py` (Blender como módulo `bpy`, Cycles en CPU): arma cada escena (abajo en el archivo, una función por viñeta) y la renderiza en 4 pasadas: luz, color, normales y clases. Con `borrador` sale a media resolución y rápido, para probar encuadres.
-   `python Herramientas/Comics/render_vinetas.py <carpeta> final [viñeta ...]`
-2. `vinetas.py` (numpy + Pillow): convierte las pasadas en el boceto y escribe `Assets/Art/Comics/<viñeta>.jpg` con su `.meta`.
-   `python3 Herramientas/Comics/vinetas.py <carpeta> [viñeta ...]`
-3. `asignar_vinetas.py`: pone los dibujos y los textos de `guion.py` en los cómics (`Assets/Data/Comics`).
-   `python3 Herramientas/Comics/asignar_vinetas.py`
+Cómo se hacen (solo numpy y Pillow, sin Blender):
+- `lapiz.py`: el lienzo de dibujo. La misma escena se dibuja en tres modos: **palito** (guion gráfico con monigotes,
+  flechas y notas), **caricatura** (el dibujo terminado, el que usa el juego) y **lápiz** (una versión a lápiz que se
+  conserva para bocetos).
+- `personajes.py`: el pez (con y sin traje, el traje vacío de la vitrina), los peces del lago, los defensores, las
+  gaviotas, los 4 jefes y el bagre mecánico.
+- `objetos.py`: el entorno y la utilería: nenúfares, juncos, algas, rocas, sol, nubes, orillas, el fondo del lago, la
+  chatarra (neumático, lata, frasco, motor viejo, engranajes), el Taller, gotas, burbujas, flechas y notas.
+- `escenas.py`: qué se ve en cada viñeta (una función por viñeta, con el mismo id que `guion.py`).
+- `dibujar_vinetas.py`:
+  1. **Guion gráfico** (las ideas con palitos): una hoja por cómic en `Herramientas/Comics/guion_grafico/<Cómic>.png`.
+     `python3 Herramientas/Comics/dibujar_vinetas.py guion`
+  2. **Las viñetas terminadas** en `Assets/Art/Comics/<viñeta>.jpg` (con su `.meta`; los existentes se conservan, así
+     los cómics no pierden la referencia). `python3 Herramientas/Comics/dibujar_vinetas.py vinetas [viñeta ...]`
+     Para revisar sin tocar el juego: `... prueba <carpeta> [viñeta ...]` (guarda el guion y el dibujo en PNG).
+     Las hojas con los dibujos terminados: `... hojas_lapiz [carpeta]`.
+- `asignar_vinetas.py`: pone los dibujos y los textos de `guion.py` en los cómics (`Assets/Data/Comics`); solo hace
+  falta si cambian los ids o los textos. `python3 Herramientas/Comics/asignar_vinetas.py`
 
-**Para usar un dibujo propio** (por ejemplo cuando tengas un artista), reemplaza el `.jpg` de la viñeta con otra imagen del mismo nombre (mejor del mismo tamaño o la misma proporción 2,1:1) o arrastra otro Sprite a **Image** en el cómic. **Para cambiar un texto**, edítalo en el cómic (Inspector) o en `guion.py` y vuelve a ejecutar el paso 3.
+**Para usar un dibujo propio** (por ejemplo cuando tengas un artista), reemplaza el `.jpg` de la viñeta con otra imagen del mismo nombre (mejor del mismo tamaño o la misma proporción 2,1:1) o arrastra otro Sprite a **Image** en el cómic. **Para cambiar un texto**, edítalo en el cómic (Inspector) o en `guion.py` y ejecuta `asignar_vinetas.py`.
 
-**Rendimiento**: se importan como Sprite sin mipmaps, con compresión normal y **crunch** (la build pesa poco) y un tope de 2048 px. Ocupan cerca de 0,5 MB cada una en memoria y unos 160 KB en el proyecto (JPG de calidad 92).
+**Rendimiento**: se importan como Sprite sin mipmaps, con compresión normal y **crunch** (la build pesa poco) y un tope de 2048 px. Ocupan cerca de 0,5 MB cada una en memoria y unos 150 KB en el proyecto (JPG de calidad 92).
 
 ### Vegetación y ambiente del lago
 Todo se agrega solo al darle Play en la escena del lago (`LakeDecorator` y `LakeAmbience`), sin tocar la escena.
@@ -1346,9 +1393,19 @@ Flores, Juncos, Totora, Nenufar y Pasto_Acuatico (más los del fondo). Cada uno 
 - **Luz ambiente** en degradado (cielo / horizonte / suelo) y un tono cálido de media mañana en el sol (no cambia su intensidad ni dirección).
 - **Viento con ráfagas**: cambia la fuerza del vaivén de las plantas, la velocidad de las nubes y la cantidad de hojas que caen. Su dirección gira un poco con el tiempo.
 - **Bajo el agua**: con la cámara bajo la superficie la niebla cambia al instante por una densa del color del agua (más oscura en lo hondo): de cerca se ve bien, a 10 m un 30 % borroso, a 20 m un 76 % y a 30 m casi nada. Al salir vuelve la niebla de aire en un instante. Se suma al filtro azul del `Underwater Volume`.
-- **Ciclo de día, tarde y noche** (en Supervivencia; en la historia solo si marcas `Day Cycle In Story`): un día completo
-  dura `Day Length Minutes` (10 min de juego) y en Supervivencia sigue donde quedó al volver del Taller (cada partida
-  empieza de mañana).
+- **Ciclo de día, tarde y noche**: en Supervivencia avanza (un día completo dura `Day Length Minutes`, 10 min de juego,
+  y sigue donde quedó al volver del Taller; cada partida empieza de mañana). En la **Historia cada nivel tiene su hora**
+  (campo **Time Of Day** del Nivel: Día, Tarde, Atardecer, Noche o Amanecer) y queda **fija** todo el nivel (sin avisos).
+  Sale en el mapa ("... PECES · NOCHE") y en el cartel del principio del nivel. Las horas de los 20 niveles:
+
+  | Hora | Niveles |
+  |---|---|
+  | Día | 1, 2, 4, 6, 10 (Pelícano), 15 (Cormorán Rey) |
+  | Tarde | 3, 7, 11, 16 |
+  | Atardecer | 8, 12, 20 (Reina Águila, cielo rojo) |
+  | Noche | 9, 13, 17, 18, 19 |
+  | Amanecer | 5 (Garza Gris, entre la niebla), 14 |
+
   - **Día** (lo de siempre) → **tarde** dorada → **atardecer** naranja y rosa (el sol se pone detrás del horizonte) →
     **anochecer** azul → **noche** con luna y estrellas que titilan → **amanecer**.
   - El sol cruza el cielo de verdad (la luz direccional gira y sus sombras también); de noche la luz es la de la luna,
@@ -1371,10 +1428,10 @@ Flores, Juncos, Totora, Nenufar y Pasto_Acuatico (más los del fondo). Cada uno 
 | Wind Direction / Wind Strength / Gust Strength / Gust Period / Cloud Drift | (0.94, 0, 0.34) / 1 / 0.6 / 9 s / 0.01 | Viento y ráfagas |
 | Underwater Fog / Water Fog Shallow, Deep / Water Dark Depth / Water Fog Density / Water Fog Fade Out | ✔ / verde azulado claro, oscuro / 8 m / 0.06 / 6 | Visibilidad bajo el agua |
 | Ambient Effects | ✔ | Hojas, polen, niebla baja y efectos bajo el agua (`AmbientParticles`) |
-| Day Cycle In Survival / Day Cycle In Story | ✔ / ✘ | Ciclo de día, tarde y noche en cada modo |
+| Day Cycle In Survival / Day Cycle In Story | ✔ / ✘ | Ciclo en Supervivencia. En la Historia la hora la pone cada nivel; marcado, además avanza |
 | Day Length Minutes | 10 | Minutos de juego de un día completo |
 | Night Brightness | 0.55 | Qué tan clara es la noche (1 = casi como el día) |
-| Story Start Time | 0.2 | Hora con la que empieza un nivel de la historia (si tiene ciclo) |
+| Story Start Time | 0.2 | Hora de la Historia si no hay nivel (por ejemplo, en pruebas) |
 | Preview Time Of Day | -1 | Fija la hora para probar (-1 = avanza sola) |
 
 **Efectos ambientales** (`AmbientParticles`, siguen a la cámara y no se emiten bajo el agua):

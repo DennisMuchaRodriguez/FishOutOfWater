@@ -13,6 +13,7 @@ Todo lo necesario para publicar el juego en itch.io, campo por campo. Los nombre
 | `fondo_1920x1080.jpg` | Fondo oscuro de la página (el lago, desenfocado) | **Edit theme → Background image** |
 | `arte_principal_1920x1080.png` | Arte con el título: devlogs, prensa, la primera imagen de la descripción | Descripción, devlogs, redes |
 | `tarjeta_redes_1200x630.png` | Para compartir el enlace en redes | YouTube, X, Instagram, TikTok… |
+| `logo.png` | El logo del juego (el pez saltando de la ola y el título), fondo transparente | Descripción, devlogs, prensa |
 | `descripcion.html` | La descripción con formato (español e inglés) | **Description** (copiar y pegar) |
 
 Las imágenes se hicieron con los modelos del juego: el pez con su traje, las texturas y las aves son las mismas del juego. Para rehacerlas, ver [Cómo se hicieron las imágenes](#cómo-se-hicieron-las-imágenes).

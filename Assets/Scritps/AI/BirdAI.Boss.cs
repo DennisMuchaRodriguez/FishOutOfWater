@@ -15,9 +15,11 @@ using FishGame.AI;
 //                             submarina (aturde a todos los peces cercanos y se los lleva)
 //  - Reina Águila Marina:     Picadas desde el cielo (1-3) · Ráfaga de plumas · Vendaval (te empuja y saca a los
 //                             peces del agua; desde la fase 2). Roba presas y llama refuerzos al cambiar de fase.
-// Si el jugador se esconde en lo hondo (y el jefe no bucea), el jefe ataca a los peces más seguido.
-// Entre ataques fuertes pelean como naves: cambian de sentido, zigzaguean, esquivan tus disparos
-// (BirdAI.Evasion.cs) y encadenan embestidas rápidas. La Garza Gris es la más rápida en el acoso.
+//  - Todos: BARRIDA rasante sobre el cardumen (se llevan varios peces de una pasada; BirdAI.BossFlow.cs).
+// Si el jugador se esconde en lo hondo (y el jefe no bucea), o está lejos, el jefe va por los peces.
+// Entre ataques fuertes hacen PASADAS como un caza (curvas con giro limitado, golpe al pasar, viraje amplio) y
+// esquivan tus disparos (BirdAI.Evasion.cs). En las fases 2 y 3 encadenan ataques fuertes (combos). Todo el
+// movimiento fluido está en BirdAI.BossFlow.cs. La Garza Gris es la más rápida en las pasadas.
 public partial class BirdAI
 {
     float phaseChangeTimer;
@@ -35,14 +37,6 @@ public partial class BirdAI
     Vector3 bossAttackPoint;
     AudioSource bossLoop;
 
-    // Acoso entre ataques fuertes
-    float harassTimer = 2f;
-    bool harassDashing;
-    float harassDashTimer;
-    Vector3 harassDir;
-    int harassCombo;             // embestidas encadenadas que faltan
-    float harassComboGap;        // pausa corta entre una embestida y la siguiente
-    float harassFlipTimer = 2f;  // cambia el sentido en que te rodea
 
     public bool IsBoss { get { return BossType != BossKind.None; } }
     public int BossPhase { get { return bossPhase; } }
@@ -62,7 +56,6 @@ public partial class BirdAI
         chaseSpeed *= 1.15f;
         patrolSpeed *= 1.1f;
         acceleration *= 1.2f;
-        harassTimer = 2.5f;
         if (BossType == BossKind.BottomlessPelican) carryTime = Mathf.Max(carryTime, 6f);
     }
 
@@ -111,9 +104,10 @@ public partial class BirdAI
         bossAttacking = false;
         vulnerableTimer = 0f;
         phaseChangeTimer = 0f;
-        harassDashing = false;
-        harassCombo = 0;
-        harassComboGap = 0f;
+        bossChainLeft = 0;
+        bossChaining = false;
+        passStep = PassStep.Turn;
+        passTimer = 0f;
         StopBossLoop();
     }
 
@@ -201,76 +195,19 @@ public partial class BirdAI
 
     float BossReach { get { return attackReach * Mathf.Max(1f, visualScale * 0.6f); } }
 
-    // Lo rodea de cerca, mirándolo, y cada poco lanza un ataque rápido
+    // Entre ataques fuertes: pasadas como un caza (BirdAI.BossFlow.cs)
     BTStatus BossHarass()
     {
         tree.MarkActive("Acosar al jugador");
         if (BossType == BossKind.EagleQueen && WantsSteal()) return StealFish();
 
-        float dt = Time.fixedDeltaTime;
         Vector3 p = PlayerTarget();
         Vector3 to = p - transform.position;
         bool chaseUnder = IsDiver && player.isInWater && p.y < lake.SurfaceY;
-
-        if (harassDashing)
-        {
-            harassDashTimer -= dt;
-            burst = true;
-            desiredVelocity = harassDir * chaseSpeed * 2.3f + AttackWeave(harassDir, to.magnitude, 5f);
-            if (chaseUnder || transform.position.y < lake.SurfaceY) KeepDiving();
-            if (attackTimer <= 0f && to.magnitude < BossReach) BumpPlayer(1f);
-            if (harassDashTimer <= 0f)
-            {
-                harassDashing = false;
-                // Combo: otra embestida casi enseguida, desde otro ángulo
-                if (harassCombo > 0) harassComboGap = 0.18f;
-            }
-            return BTStatus.Running;
-        }
-        if (harassComboGap > 0f)
-        {
-            harassComboGap -= dt;
-            desiredVelocity = BreakAway(harassDir, chaseSpeed * 1.2f);
-            lookOverride = to;
-            if (harassComboGap <= 0f && harassCombo > 0)
-            {
-                harassCombo--;
-                StartHarassDash(p);
-            }
-            return BTStatus.Running;
-        }
-
-        // Cambia el sentido en que te rodea y se acerca/aleja: nunca da el mismo blanco dos veces
-        harassFlipTimer -= dt;
-        if (harassFlipTimer <= 0f)
-        {
-            harassFlipTimer = Random.Range(1.4f, 2.8f);
-            orbitDirection = -orbitDirection;
-        }
-        orbitAngle += dt * (0.65f + 0.18f * bossPhase) * orbitDirection;
-        float r = HarassRadius * (0.85f + 0.25f * Mathf.Sin(Time.time * 1.3f + weaveSeed));
-        float baseY = Mathf.Max(p.y, lake.SurfaceY) + HarassHeight;
-        if (chaseUnder) baseY = p.y;
-        else if (PlayerHiddenDeep()) baseY = lake.SurfaceY + HarassHeight + 2f;
-        Vector3 goal = new Vector3(p.x + Mathf.Cos(orbitAngle) * r, baseY, p.z + Mathf.Sin(orbitAngle) * r);
-        Vector3 toGoal = goal - transform.position;
-        float speed = toGoal.magnitude > r * 2f ? chaseSpeed * 1.4f : chaseSpeed;
-        speed = Mathf.Min(speed, toGoal.magnitude * 3f);
-        desiredVelocity = toGoal.normalized * speed + (chaseUnder ? Vector3.zero : Weave(to.normalized, 4.5f, 3f));
-        lookOverride = BossType == BossKind.GiantHeron ? new Vector3(to.x, 0f, to.z) : to;
-        if (chaseUnder) KeepDiving();
-
-        harassTimer -= dt;
-        if (harassTimer <= 0f)
-        {
-            HarassStrike(p, to);
-            // La Garza Gris ataca más seguido que los demás jefes
-            harassTimer = (BossType == BossKind.GiantHeron ? Random.Range(1.1f, 1.8f) : Random.Range(1.8f, 2.8f))
-                          / (1f + 0.22f * (bossPhase - 1));
-        }
-        return BTStatus.Running;
+        return BossPasses(p, to, chaseUnder);
     }
 
+    // Ataque a distancia en el viraje de una pasada
     void HarassStrike(Vector3 p, Vector3 to)
     {
         bool hidden = PlayerHiddenDeep() && !IsDiver;
@@ -278,42 +215,16 @@ public partial class BirdAI
         switch (BossType)
         {
             case BossKind.GiantHeron:
-            {
-                // Dardos (desde la fase 1), embestida rápida o combo de 2-3 embestidas seguidas
-                float roll = Random.value;
-                if (roll < 0.35f) FeatherFan(bossPhase >= 2 ? 5 : 3, bossPhase >= 2 ? 36f : 24f, 34f, 0.4f);
-                else
-                {
-                    harassCombo = roll < 0.65f ? 0 : (bossPhase >= 3 ? 2 : 1);
-                    StartHarassDash(p);
-                }
+                if (Random.value < 0.5f) FeatherFan(bossPhase >= 2 ? 5 : 3, bossPhase >= 2 ? 36f : 24f, 34f, 0.4f);
                 break;
-            }
             case BossKind.BottomlessPelican:
-                if (to.magnitude < 7f) StartHarassDash(p);
-                else
-                {
-                    for (int i = 0; i < 3; i++) FireAtPlayer(EnemyProjectile.Kind.Escupitajo, 24f, damage * 0.4f, (i - 1) * 7f);
-                    Sfx.Play(Sonido.Escupitajo, transform.position, 1f, 0.7f, 10f);
-                }
-                break;
-            case BossKind.CormorantKing:
-                StartHarassDash(p);
+                for (int i = 0; i < 3; i++) FireAtPlayer(EnemyProjectile.Kind.Escupitajo, 24f, damage * 0.4f, (i - 1) * 7f);
+                Sfx.Play(Sonido.Escupitajo, transform.position, 1f, 0.7f, 10f);
                 break;
             case BossKind.EagleQueen:
-                if (Random.value < 0.55f) FeatherFan(3, 20f, 34f, 0.4f);
-                else StartHarassDash(p);
+                if (Random.value < 0.6f) FeatherFan(bossPhase >= 3 ? 5 : 3, 24f, 34f, 0.4f);
                 break;
         }
-    }
-
-    void StartHarassDash(Vector3 p)
-    {
-        NewBreakSide();
-        harassDashing = true;
-        harassDashTimer = BossType == BossKind.GiantHeron ? 0.42f : 0.5f;
-        harassDir = (p + player.Velocity * 0.2f - transform.position).normalized;
-        Sfx.Play(Sonido.Embestida, transform.position, 1f, 0.7f, 12f);
     }
 
     // Abanico de plumas afiladas hacia el jugador
@@ -342,9 +253,7 @@ public partial class BirdAI
         bossAttackTimer = 0f;
         bossAttackStep = 0;
         bossTick = 0f;
-        harassDashing = false;
-        harassCombo = 0;
-        harassComboGap = 0f;
+        PlanBossChain();
         bossAttackKind = ChooseBossAttack();
         bossDivesLeft = bossPhase;
         if (lurking) StopLurking();
@@ -352,29 +261,11 @@ public partial class BirdAI
         return true;
     }
 
-    // Rota entre sus ataques; si el jugador se esconde en lo hondo, va por los peces
-    int ChooseBossAttack()
-    {
-        int options = bossPhase >= 2 ? 3 : 2;
-        if (BossType == BossKind.CormorantKing) options = 2;
-        int kind = bossAttackCount % options;
-        bossAttackCount++;
-        if (PlayerHiddenDeep() && !IsDiver)
-        {
-            switch (BossType)
-            {
-                case BossKind.GiantHeron: kind = 1; break;                           // pisotón
-                case BossKind.BottomlessPelican: kind = 0; break;                    // remolino
-                case BossKind.EagleQueen: kind = bossPhase >= 2 ? 2 : 0; break;      // vendaval
-            }
-        }
-        return kind;
-    }
-
     BTStatus BossAttackAct()
     {
         tree.MarkActive("Ataque del jefe");
         bossAttackTimer += Time.fixedDeltaTime;
+        if (bossAttackKind == SweepKind) return BossSweep();
         switch (BossType)
         {
             case BossKind.GiantHeron:
@@ -402,8 +293,10 @@ public partial class BirdAI
         bossAttacking = false;
         diving = false;
         StopBossLoop();
+        // Combo: en vez de quedar agotado, encadena otro ataque fuerte casi enseguida
+        if (ContinueBossChain(tired)) return;
         if (tired && Type != null) vulnerableTimer = Mathf.Max(0.5f, Type.vulnerableTime);
-        bossAttackCooldown = bossPhase >= 3 ? 2.5f : (bossPhase == 2 ? 3.5f : 4.5f);
+        bossAttackCooldown = bossPhase >= 3 ? 1.6f : (bossPhase == 2 ? 2.4f : 3.2f);
     }
 
     void NextStep()
@@ -437,22 +330,23 @@ public partial class BirdAI
         Vector3 target = PlayerTarget();
         Vector3 to = target - transform.position;
         lookOverride = new Vector3(to.x, 0f, to.z);
+        Vector3 flat = new Vector3(to.x, 0f, to.z);
         if (bossAttackStep == 0)
         {
             lowFlight = true;
-            Vector3 flat = new Vector3(to.x, 0f, to.z);
             Vector3 goal = target - flat.normalized * 8f;
             goal.y = Mathf.Max(target.y + 1.5f, lake.SurfaceY + hoverHeight);
-            desiredVelocity = (goal - transform.position).normalized * chaseSpeed;
+            desiredVelocity = SteerBoss(goal - transform.position, chaseSpeed * 1.2f * BossRage, 140f);
             if (flat.magnitude < 10f || bossAttackTimer > 5f) NextStep();
         }
         else if (bossAttackStep == 1)
         {
-            // Carga: levanta el pico (aviso)
+            // Carga: se encabrita levantando el pico mientras se desliza de lado (no se frena en seco)
             windup = true;
-            desiredVelocity = Vector3.zero;
+            Vector3 side = Vector3.Cross(Vector3.up, flat.sqrMagnitude > 0.01f ? flat.normalized : transform.forward);
+            desiredVelocity = side * breakSide * 4f + Vector3.up * 1.2f;
             poseTarget = 35f;
-            if (bossAttackTimer > 0.55f)
+            if (bossAttackTimer > 0.45f)
             {
                 NextStep();
                 bossAttackPoint = target + player.Velocity * 0.2f;
@@ -470,7 +364,19 @@ public partial class BirdAI
             {
                 MakeWave(transform.position, 10f);
                 int n = StunFishAround(transform.position, 9f, 3.5f, 3.5f);
-                if (n >= 3) Toast("¡LA OLA DE LA GARZA ATURDIÓ A " + n + " PECES!");
+                // Desde la fase 2 ensarta en el pico a los peces aturdidos (1 o 2)
+                int speared = 0;
+                for (int k = 0; k < bossPhase - 1; k++)
+                {
+                    FishAI f = NearestStunnedFish(transform.position, 7f);
+                    if (f == null) break;
+                    if (f.Hunter != null && f.Hunter != this) f.Hunter = null;
+                    if (carried.Count == 0) Catch(f);
+                    else GrabFish(f);
+                    speared++;
+                }
+                if (speared > 0) Toast("¡LA GARZA ENSARTÓ " + speared + (speared == 1 ? " PEZ" : " PECES") + "!  DISPÁRALE");
+                else if (n >= 3) Toast("¡LA OLA DE LA GARZA ATURDIÓ A " + n + " PECES!");
                 EndBossAttack(true);
                 return BTStatus.Success;
             }
@@ -537,9 +443,7 @@ public partial class BirdAI
         Vector3 p = PlayerTarget();
         Vector3 to = p - transform.position;
         Vector3 flat = new Vector3(to.x, 0f, to.z);
-        Vector3 goal = p - (flat.sqrMagnitude > 0.01f ? flat.normalized : transform.forward) * 13f;
-        goal.y = Mathf.Max(p.y, lake.SurfaceY) + 5f;
-        desiredVelocity = (goal - transform.position).normalized * Mathf.Min(chaseSpeed, (goal - transform.position).magnitude * 3f);
+        desiredVelocity = StrafeAround(p, 13f, 5f);
         lookOverride = to;
         windup = true;
         if (bossAttackTimer - bossTick > 0.6f && bossAttackTimer > 0.5f)
@@ -643,9 +547,7 @@ public partial class BirdAI
         Vector3 p = PlayerTarget();
         Vector3 to = p - transform.position;
         Vector3 flat = new Vector3(to.x, 0f, to.z);
-        Vector3 goal = p - (flat.sqrMagnitude > 0.01f ? flat.normalized : transform.forward) * 14f;
-        goal.y = Mathf.Max(p.y, lake.SurfaceY) + 6f;
-        desiredVelocity = (goal - transform.position).normalized * Mathf.Min(chaseSpeed, (goal - transform.position).magnitude * 3f);
+        desiredVelocity = StrafeAround(p, 14f, 6f);
         lookOverride = to;
         windup = true;
         int shots = bossPhase >= 3 ? 5 : 3;
@@ -743,7 +645,7 @@ public partial class BirdAI
             Vector3 goal = p - (flat.sqrMagnitude > 0.01f ? flat.normalized : transform.forward) * 12f;
             goal.y = under ? p.y : Mathf.Max(p.y, lake.SurfaceY + 1.5f);
             if (under) KeepDiving();
-            desiredVelocity = (goal - transform.position).normalized * chaseSpeed;
+            desiredVelocity = SteerBoss(goal - transform.position, chaseSpeed * 1.2f * BossRage, 150f);
             lookOverride = to;
             if ((goal - transform.position).magnitude < 4f || bossAttackTimer > 2.5f) NextStep();
         }
@@ -751,9 +653,9 @@ public partial class BirdAI
         {
             windup = true;
             if (under) KeepDiving();
-            desiredVelocity = Vector3.zero;
+            desiredVelocity = -to.normalized * 4f;
             lookOverride = to;
-            if (bossAttackTimer > 0.35f)
+            if (bossAttackTimer > 0.3f)
             {
                 NextStep();
                 bossAttackPoint = (p + player.Velocity * 0.25f - transform.position).normalized;
@@ -1115,7 +1017,9 @@ public partial class BirdAI
             }
         }
 
-        // El saco del pelícano: cada impacto le saca un pez. Los demás jefes a veces sueltan uno
-        if (carried.Count > 0 && (BossType == BossKind.BottomlessPelican || Random.value < 0.35f)) DropOneFish();
+        // El saco del pelícano: cada impacto le saca un pez. Los demás jefes, agotados (después de la barrida o de
+        // ensartar peces), sueltan uno con cada impacto; si no, a veces
+        if (carried.Count > 0 && (BossType == BossKind.BottomlessPelican || vulnerableTimer > 0f || Random.value < 0.35f))
+            DropOneFish();
     }
 }

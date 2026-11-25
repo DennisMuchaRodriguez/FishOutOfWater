@@ -40,6 +40,7 @@ MonoBehaviour:
     - type: {fileID: 11400000, guid: 36ea308f488343b09967687145b10e0a, type: 2}
       count: 4
     healthMultiplier: 1.15
+  timeOfDay: 0
   isBossLevel: 0
   workshopAfter: 0
   comicBefore: {fileID: 11400000, guid: c3c1b92a811c4cd6aac2f2cc8c4a3a1f, type: 2}

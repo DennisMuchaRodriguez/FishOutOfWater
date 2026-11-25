@@ -88,7 +88,7 @@ public class LakeAmbience : MonoBehaviour
     [Header("Ciclo de día, tarde y noche")]
     [Tooltip("En Supervivencia el cielo pasa por día, tarde, atardecer, noche y amanecer")]
     public bool dayCycleInSurvival = true;
-    [Tooltip("También en el modo Historia (si no, la historia queda siempre de día, como antes)")]
+    [Tooltip("En la Historia la hora la pone cada nivel (Hora del día del Nivel) y queda fija. Marcado: además avanza")]
     public bool dayCycleInStory = false;
     [Tooltip("Minutos de juego que dura un día completo")]
     [Min(1f)] public float dayLengthMinutes = 10f;
@@ -125,6 +125,7 @@ public class LakeAmbience : MonoBehaviour
     const float SunPeak = 62f;       // altura máxima del sol (grados)
     const float MoonPeak = 48f;
     bool cycleOn;
+    bool fixedTime;          // Historia: la hora del nivel no avanza
     float timeOfDay;
     Material skyInstance;
     Light sunLight;
@@ -285,9 +286,24 @@ public class LakeAmbience : MonoBehaviour
 
     // ======================= CICLO DE DÍA, TARDE Y NOCHE =======================
 
+    // Historia: la hora del nivel que se juega (-1 si no hay nivel)
+    static float StoryLevelTime()
+    {
+        if (SurvivalRun.InSurvival) return -1f;
+        LevelDefinition level = null;
+        GameDirector gd = GameDirector.Instance != null ? GameDirector.Instance : FindFirstObjectByType<GameDirector>();
+        if (gd != null) level = gd.Level;
+        if (level == null) level = GameSession.CurrentLevel;
+        if (level == null && gd != null) level = gd.testLevel;
+        return level != null ? LevelDefinition.TimeValue(level.timeOfDay) : -1f;
+    }
+
     void SetupCycle(Material sky)
     {
-        bool want = SurvivalRun.InSurvival ? dayCycleInSurvival : dayCycleInStory;
+        // Historia: cada nivel tiene su hora (día, tarde, atardecer, noche o amanecer) y queda fija todo el nivel
+        float levelTime = StoryLevelTime();
+        fixedTime = !SurvivalRun.InSurvival && levelTime >= 0f && !dayCycleInStory;
+        bool want = SurvivalRun.InSurvival ? dayCycleInSurvival : (dayCycleInStory || levelTime >= 0f);
         if (!Application.isPlaying || !want || sky == null || !sky.HasProperty("_TopColor"))
         {
             if (cycleOn || !want) ResetCycleGlobals();
@@ -310,7 +326,7 @@ public class LakeAmbience : MonoBehaviour
         BuildKeys(sky);
 
         cycleOn = true;
-        timeOfDay = SurvivalRun.InSurvival ? SurvivalRun.TimeOfDay : storyStartTime;
+        timeOfDay = SurvivalRun.InSurvival ? SurvivalRun.TimeOfDay : (levelTime >= 0f ? levelTime : storyStartTime);
         lastPhase = PhaseIndex(timeOfDay);
         ApplyCycle(timeOfDay);
     }
@@ -480,7 +496,7 @@ public class LakeAmbience : MonoBehaviour
     {
         if (!cycleOn || keys == null) return;
         if (previewTimeOfDay >= 0f) timeOfDay = previewTimeOfDay;
-        else timeOfDay = Mathf.Repeat(timeOfDay + dt / (Mathf.Max(1f, dayLengthMinutes) * 60f), 1f);
+        else if (!fixedTime) timeOfDay = Mathf.Repeat(timeOfDay + dt / (Mathf.Max(1f, dayLengthMinutes) * 60f), 1f);
         if (syncedTime >= 0f && previewTimeOfDay < 0f)
         {
             float diff = Mathf.Repeat(syncedTime - timeOfDay + 0.5f, 1f) - 0.5f;
@@ -497,7 +513,7 @@ public class LakeAmbience : MonoBehaviour
         {
             lastPhase = phase;
             string msg = phase == 1 ? "ATARDECE SOBRE EL LAGO" : phase == 2 ? "CAE LA NOCHE" : phase == 3 ? "AMANECE" : "";
-            if (msg != "" && previewTimeOfDay < 0f && GameDirector.Instance != null)
+            if (msg != "" && previewTimeOfDay < 0f && !fixedTime && GameDirector.Instance != null)
                 GameDirector.Instance.ShowToast(msg, new Color(1f, 0.78f, 0.45f, 1f));
         }
     }
