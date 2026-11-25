@@ -1,33 +1,29 @@
 # -*- coding: utf-8 -*-
-"""Logo de Fish Out Of Water (solo numpy y Pillow).
+"""Logo de Fish Out Of Water (numpy y Pillow) con el protagonista en 3D.
 
-El protagonista igual a su dibujo 2D de referencia (el mismo estilo de las viñetas: contornos negros gruesos y colores
-planos): la cabeza en cúpula naranja con los ojos enojados, el borde del casco en dos tonos y los auriculares, el
-cuello en segmentos, la armadura azul marino en placas con la luz naranja del pecho, las hombreras y las aletas azules.
-Sale volando de una ola
-(el fuego del propulsor abajo). A su lado el título FISH OUT (naranja) / OF WATER (azul) con la fuente y los colores
-del menú (Oxanium, naranja, azul y azul marino) y el brillo azul eléctrico de la interfaz holográfica.
-Usa las mismas formas que los cómics (Herramientas/Comics/personajes.py, las constantes H_*).
+El protagonista es un render del modelo del juego (Assets/Models/Animations/PESCAO.fbx con sus texturas), hecho con
+render_pez_3d.py: sale volando de una salpicadura de agua con el fuego del propulsor encendido. Aquí se le pone el
+resplandor de lo que brilla (la luz del pecho y el fuego) y un halo azul eléctrico detrás, y a su lado el título
+FISH OUT (naranja) / OF WATER (azul) con la fuente y los colores del menú (Oxanium, naranja, azul y azul marino) y el
+brillo azul de la interfaz holográfica.
 
-    python3 Herramientas/Logo/logo.py
+    python Herramientas/Logo/render_pez_3d.py      (solo si cambia el modelo o la pose: necesita bpy)
+    python3 Herramientas/Logo/logo.py              (desde cualquier carpeta)
 
-Escribe:
+Lee Herramientas/Logo/renders/pez_logo.png, pez_icono.png y sus *_brillo.png. Escribe:
   - Assets/Resources/UI/Logo.png    el logo completo (el menú principal lo usa como título)
-  - Assets/Resources/UI/Icono.png   ícono cuadrado 1024 (el protagonista de frente sobre azul marino): ícono de la app
+  - Assets/Resources/UI/Icono.png   ícono cuadrado 1024 (el protagonista 3D de frente sobre azul marino): ícono de la app
   - Itch/logo.png                   el logo para la página de itch.io
 """
-import os, sys, uuid
+import os
+import uuid
+
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(AQUI, '..', '..'))
-sys.path.insert(0, os.path.join(REPO, 'Herramientas', 'Comics'))
-from lapiz import spline, elipse, banda, T  # noqa: E402
-from personajes import (H_CABEZA, H_CABEZA_PTS, H_CASCO, H_CASCO_LINEA, H_OREJERA, H_ARMADURA, H_CUELLO,  # noqa: E402
-                        H_CUELLO_SEP, H_HOMBRERA, H_HOMBRERA_TAPA, H_ALETA, H_ALETA_TAPA, H_ALETA_NERVIOS, H_COLA,
-                        H_COLA_NERVIOS, H_COLA_INT, H_LUZ_MARCO, H_LUZ, H_PLACAS, H_BISELES, H_RECTANGULO)
-
+RENDERS = os.path.join(AQUI, 'renders')
 FUENTE = os.path.join(REPO, 'Assets', 'Resources', 'Fonts', 'Oxanium-ExtraBold.ttf')
 SS = 2                                    # se dibuja al doble y se reduce (bordes suaves)
 
@@ -37,18 +33,7 @@ MARINO_HONDO = (4, 9, 24)
 GLOW_AZUL = (64, 156, 255)
 NARANJA_ARRIBA, NARANJA_ABAJO = (255, 190, 96), (255, 106, 36)
 AZUL_ARRIBA, AZUL_ABAJO = (160, 228, 255), (52, 140, 255)
-AGUA_ARRIBA, AGUA_ABAJO = (120, 214, 255), (26, 108, 220)
-# Colores del protagonista (del dibujo 2D de referencia): contornos negros, colores planos
-TINTA = (14, 14, 20)
-NAVY = ((44, 64, 122), (30, 44, 92))
-NAVY_CLARO = ((60, 90, 164), (50, 76, 142))
-NAVY_OSC = ((30, 44, 92), (24, 34, 74))
-CARA = ((210, 94, 60), (198, 84, 52))
-OJO = (248, 234, 202)
-ALETA = ((50, 102, 214), (38, 82, 186))
-ALETA_OSC = ((34, 70, 160), (28, 58, 136))
-LUZ_MARCO = (206, 52, 32)
-LUZ = ((255, 132, 76), (255, 96, 52))
+FONDO_ICONO = ((22, 34, 66), (10, 16, 36))
 
 
 # ======================= AYUDANTES =======================
@@ -79,50 +64,28 @@ class Lienzo:
         col[..., 3] = a * 255
         self.img = Image.alpha_composite(self.img, Image.fromarray(col.astype(np.uint8), 'RGBA'))
 
-    def forma(self, pts, arriba, abajo=None, borde=MARINO, grosor=7, alpha=255, suave=True):
-        P = spline(pts, cerrado=True, n=10) if (len(pts) > 3 and suave) else np.asarray(pts, float)
-        m = self.mascara(P)
-        self.pintar(m, arriba, abajo, alpha)
-        if grosor > 0:
-            self.linea(P, borde, grosor, cerrada=True)
-        return m
-
-    def linea(self, pts, color, grosor, cerrada=False, alpha=255):
-        d = ImageDraw.Draw(self.img)
-        P = [(float(x) * SS, float(y) * SS) for x, y in pts]
-        if cerrada:
-            P = P + [P[0]]
-        d.line(P, fill=color + (alpha,), width=max(1, int(grosor * SS)), joint='curve')
-        r = grosor * SS / 2
-        for (x, y) in (P[0], P[-1]):
-            d.ellipse([x - r, y - r, x + r, y + r], fill=color + (alpha,))
-
-    def circulo(self, cx, cy, r, arriba, abajo=None, borde=MARINO, grosor=7, alpha=255, ry=None):
-        return self.forma(elipse(cx, cy, r, ry if ry is not None else r, n=64), arriba, abajo, borde, grosor, alpha)
-
-    def brillo(self, m, color, radio, fuerza=1.0):
-        """Brillo suave (luz) con la forma de la máscara."""
+    def halo(self, m, color, radio, fuerza=1.0, ancho=0):
+        """Luz suave con la forma de la máscara (ancho > 0 la engorda antes de difuminarla)."""
+        if ancho > 0:
+            m = m.filter(ImageFilter.MaxFilter(int(ancho * SS) * 2 + 1))
         g = m.filter(ImageFilter.GaussianBlur(radio * SS))
         capa = Image.new('RGBA', self.img.size, color + (0,))
         capa.putalpha(g.point(lambda v: int(min(255, v * fuerza))))
         self.img = Image.alpha_composite(self.img, capa)
 
-    def encima(self, otro, glow=None, radio=10, ancho=6):
-        """Pone otro lienzo encima; con glow, primero un borde de luz alrededor de su silueta."""
-        if glow is not None:
-            a = otro.img.split()[3]
-            k = int(ancho * SS) * 2 + 1
-            gr = a.filter(ImageFilter.MaxFilter(k)).filter(ImageFilter.GaussianBlur(radio * SS))
-            capa = Image.new('RGBA', self.img.size, glow + (0,))
-            capa.putalpha(gr)
-            self.img = Image.alpha_composite(self.img, capa)
-        self.img = Image.alpha_composite(self.img, otro.img)
+    def pegar(self, img, x, y):
+        """Pega una imagen RGBA (ya a la escala del lienzo final) con su esquina de arriba a la izquierda en x, y."""
+        img = img.resize((img.width * SS, img.height * SS), Image.LANCZOS)
+        capa = Image.new('RGBA', self.img.size, (0, 0, 0, 0))
+        capa.paste(img, (int(x * SS), int(y * SS)))
+        self.img = Image.alpha_composite(self.img, capa)
+        return capa.split()[3]
 
-    def resultado(self, glow=0):
+    def resultado(self, glow=0, solo=None):
+        """Con glow: el brillo azul eléctrico de la interfaz holográfica alrededor de 'solo' (una máscara) o de todo."""
         img = self.img
         if glow > 0:
-            # Brillo azul eléctrico alrededor de todo (como la interfaz holográfica del juego)
-            a = img.split()[3]
+            a = solo if solo is not None else img.split()[3]
             k = int(glow * SS) * 2 + 1
             gr = a.filter(ImageFilter.MaxFilter(k)).filter(ImageFilter.GaussianBlur(glow * SS * 1.2))
             base = Image.new('RGBA', img.size, GLOW_AZUL + (0,))
@@ -134,145 +97,34 @@ class Lienzo:
         return img.resize((self.w // SS, self.h // SS), Image.LANCZOS)
 
 
-# ======================= LA OLA =======================
+# ======================= EL PROTAGONISTA 3D =======================
 
-def ola(c, x, y, s):
-    """Ola que se levanta y rompe (x, y = base al centro; s = ancho)."""
-    cuerpo = [(x - s * 0.55, y), (x - s * 0.42, y - s * 0.16), (x - s * 0.20, y - s * 0.30), (x + s * 0.02, y - s * 0.42),
-              (x + s * 0.20, y - s * 0.40), (x + s * 0.30, y - s * 0.30), (x + s * 0.22, y - s * 0.24),
-              (x + s * 0.12, y - s * 0.26), (x + s * 0.18, y - s * 0.14), (x + s * 0.40, y - s * 0.06),
-              (x + s * 0.55, y)]
-    c.forma(cuerpo, AGUA_ARRIBA, AGUA_ABAJO, grosor=7)
-    espuma = [(x - s * 0.18, y - s * 0.29), (x + s * 0.02, y - s * 0.41), (x + s * 0.20, y - s * 0.39),
-              (x + s * 0.29, y - s * 0.30), (x + s * 0.20, y - s * 0.33), (x + s * 0.05, y - s * 0.33),
-              (x - s * 0.08, y - s * 0.27)]
-    c.forma(espuma, (255, 255, 255), (214, 244, 255), grosor=0)
-    for f in (0.25, 0.5):
-        P = spline([(x - s * (0.45 - f * 0.2), y - s * 0.05), (x - s * (0.2 - f * 0.3), y - s * (0.16 + f * 0.05)),
-                    (x + s * (f * 0.15), y - s * (0.2 + f * 0.06))], n=8)
-        c.linea(P, (210, 242, 255), 4)
-    base = [(x - s * 0.62, y - s * 0.02), (x + s * 0.62, y - s * 0.02), (x + s * 0.56, y + s * 0.07),
-            (x - s * 0.56, y + s * 0.07)]
-    c.forma(base, AGUA_ABAJO, (18, 70, 170), grosor=7)
+def _desenfocar(rgb, radio):
+    return np.asarray(Image.fromarray((np.clip(rgb, 0, 1) * 255).astype(np.uint8)).filter(
+        ImageFilter.GaussianBlur(radio)), np.float32) / 255
 
 
-def gotas(c, lista):
-    for (x, y, r) in lista:
-        P = [(x, y - r * 1.9), (x + r, y), (x + r * 0.7, y + r * 0.75), (x, y + r), (x - r * 0.7, y + r * 0.75),
-             (x - r, y)]
-        c.forma(P, (200, 240, 255), AGUA_ABAJO, grosor=4)
+def pez_3d(nombre, resplandor=1.0):
+    """El render del pez con el resplandor de lo que brilla (la luz del pecho y el fuego), recortado a su contenido."""
+    img = Image.open(os.path.join(RENDERS, nombre + '.png')).convert('RGBA')
+    v = np.asarray(img, np.float32) / 255
+    a = v[..., 3:4]
+    p = v[..., :3] * a                                            # color premultiplicado
+    ruta_brillo = os.path.join(RENDERS, nombre + '_brillo.png')
+    if os.path.exists(ruta_brillo):
+        b = np.asarray(Image.open(ruta_brillo).convert('RGB'), np.float32) / 255
+        r = img.width / 140.0
+        luz = (_desenfocar(b, r) * 0.9 + _desenfocar(b, r * 3.5) * 0.8) * resplandor
+        p = 1 - (1 - p) * (1 - luz)
+        a = 1 - (1 - a) * (1 - luz.max(axis=2, keepdims=True))
+    rgb = np.where(a > 1e-4, p / np.maximum(a, 1e-4), 0)
+    out = Image.fromarray((np.clip(np.concatenate([rgb, a], axis=2), 0, 1) * 255).astype(np.uint8), 'RGBA')
+    bb = out.split()[3].point(lambda x: 255 if x > 6 else 0).getbbox()
+    return out.crop(bb)
 
 
-# ======================= EL PROTAGONISTA (como el modelo) =======================
-
-def _esp(pts, m):
-    return [(m * x, y) for x, y in pts]
-
-
-def heroe(c, x, y, s, rot=0.0, fuego=True):
-    """El protagonista de frente, igual a su dibujo 2D de referencia (x, y = centro; s = alto)."""
-    t = T(x, y, s, rot)
-    g = 0.0105 * s                       # contorno negro grueso
-    gi = g * 0.55                        # líneas de adentro
-    hx, hy, hr, hry = H_CABEZA
-    if fuego:
-        tf = t.hijo(0.0, 0.36, 1.0, 90)
-        llama = [(0.0, -0.10), (0.25, -0.14), (0.5, -0.07), (0.72, 0.0), (0.5, 0.07), (0.25, 0.14), (0.0, 0.10)]
-        c.brillo(c.mascara(tf(llama)), (255, 150, 60), 16, 1.3)
-        c.forma(tf(llama), (255, 222, 110), (255, 120, 36), borde=TINTA, grosor=g)
-        c.forma(tf([(0.0, -0.06), (0.2, -0.07), (0.42, 0.0), (0.2, 0.07), (0.0, 0.06)]), (255, 250, 214),
-                (255, 214, 110), grosor=0)
-    # aletas de abajo (las de atrás más oscuras) y de los costados
-    for m in (-1, 1):
-        c.forma(t(_esp(H_COLA_INT, m)), *ALETA_OSC, borde=TINTA, grosor=g)
-    for m in (-1, 1):
-        c.forma(t(_esp(H_COLA, m)), *ALETA, borde=TINTA, grosor=g)
-        for (a0, a1) in H_COLA_NERVIOS:
-            c.linea(t([(m * a0[0], a0[1]), (m * a1[0], a1[1])]), TINTA, gi)
-    for m in (-1, 1):
-        tf = T(*t.p(m * 0.276, -0.03), s * 1.15, t.rot, m < 0)
-        c.forma(tf(H_ALETA), *ALETA, borde=TINTA, grosor=g)
-        for (a0, a1) in H_ALETA_NERVIOS:
-            c.linea(tf([a0, a1]), TINTA, gi)
-        c.forma(tf(H_ALETA_TAPA), *NAVY, borde=TINTA, grosor=g, suave=False)
-    # armadura con biseles, placas y rectangulitos
-    c.forma(t(H_ARMADURA), *NAVY, borde=TINTA, grosor=g * 1.1)
-    for linea in H_BISELES:
-        for m in (-1, 1):
-            c.linea(t([(m * px, py) for px, py in linea]), NAVY_CLARO[0], g * 1.1)
-    for linea in H_PLACAS:
-        for m in (-1, 1):
-            c.linea(t([(m * px, py) for px, py in linea]), TINTA, gi)
-    for m in (-1, 1):
-        c.forma(t(_esp(H_RECTANGULO, m)), *NAVY_OSC, borde=TINTA, grosor=gi, suave=False)
-    # la luz del pecho
-    q = t.p(0.0, -0.003)
-    c.brillo(c.mascara(elipse(q[0], q[1], 0.15 * s, 0.085 * s, n=40)), (255, 90, 40), 12, 1.1)
-    c.forma(t(H_LUZ_MARCO), LUZ_MARCO, borde=TINTA, grosor=g * 0.9, suave=False)
-    c.forma(t(H_LUZ), *LUZ, borde=TINTA, grosor=gi, suave=False)
-    c.brillo(c.mascara(elipse(q[0], q[1], 0.05 * s, 0.016 * s, n=30)), (255, 210, 160), 3, 1.4)
-    # hombreras
-    for m in (-1, 1):
-        c.forma(t(_esp(H_HOMBRERA, m)), *NAVY, borde=TINTA, grosor=g)
-        c.forma(t(_esp(H_HOMBRERA_TAPA, m)), *NAVY_CLARO, borde=TINTA, grosor=gi)
-    # la cabeza naranja, los ojos (crema, pupila negra, párpado negro y ceño) y la boca fruncida
-    c.forma(t(H_CABEZA_PTS), *CARA, borde=TINTA, grosor=g)
-    R = hr
-    for lado in (-1, 1):
-        qq = t.p(hx + lado * 0.475 * R, hy - 0.14 * R)
-        rx, ry = 0.29 * R * s, 0.25 * R * s
-        c.circulo(qq[0], qq[1], rx, OJO, borde=TINTA, grosor=gi * 1.2, ry=ry)
-        hacia = -lado
-        pr = ry * 0.64
-        px, py = qq[0] + hacia * rx * 0.18, qq[1] + ry * 0.05
-        c.circulo(px, py, pr, (10, 10, 14), grosor=0)
-        c.circulo(px + pr * 0.38, py - pr * 0.38, pr * 0.26, (255, 255, 255), grosor=0)
-        a = (qq[0] + hacia * rx * 1.12, qq[1] - ry * 0.02)
-        b = (qq[0] - hacia * rx * 1.12, qq[1] - ry * 0.80)
-        tapa = c.mascara([a, b, (b[0], qq[1] - ry * 1.5), (a[0], qq[1] - ry * 1.5)])
-        ojo = c.mascara(elipse(qq[0], qq[1], rx * 1.07, ry * 1.07, n=40))
-        mm = Image.fromarray((np.asarray(tapa, np.float32) * np.asarray(ojo, np.float32) / 255).astype(np.uint8))
-        c.pintar(mm, CARA[0])
-        c.linea([a, b], TINTA, g * 1.25)
-        c.linea([(a[0] + hacia * rx * 0.1, a[1] - ry * 0.45), (b[0] - hacia * rx * 0.1, b[1] - ry * 0.4)], TINTA,
-                gi * 0.8)
-    mq = t.p(hx - 0.02 * R, hy + 0.36 * R)
-    w = 0.36 * R * s
-    c.linea(spline([(mq[0] - w, mq[1] + w * 0.16), (mq[0] - w * 0.1, mq[1] - w * 0.14), (mq[0] + w, mq[1] + w * 0.16)],
-                   n=10), TINTA, g)
-    # el cuello en segmentos
-    c.forma(t(H_CUELLO), *NAVY, borde=TINTA, grosor=g)
-    for sep in H_CUELLO_SEP:
-        for m in (-1, 1):
-            c.linea(t([(m * px, py) for px, py in sep]), TINTA, gi)
-    # el borde del casco (dos tonos) y los auriculares de tres láminas
-    c.forma(t(H_CASCO), *NAVY_CLARO, borde=TINTA, grosor=g, suave=False)
-    c.linea(spline(t(H_CASCO_LINEA), n=8), TINTA, gi)
-    ox, oy, ow, oh = H_OREJERA
-
-    def caja(x0, x1, y0, y1, r=0.015):
-        return [(x0 + r, y0), (x1 - r, y0), (x1, y0 + r), (x1, y1 - r), (x1 - r, y1), (x0 + r, y1), (x0, y1 - r),
-                (x0, y0 + r)]
-    for m in (-1, 1):
-        cx = hx + m * ox
-        c.forma(t(caja(cx - ow / 2, cx + ow / 2, oy - oh / 2, oy + oh / 2)), *NAVY_CLARO, borde=TINTA, grosor=g,
-                suave=False)
-        afuera = cx + m * ow / 2
-        x0, x1 = sorted((afuera, afuera - m * ow * 0.28))
-        c.forma(t(caja(x0, x1, oy - oh * 0.42, oy + oh * 0.42, 0.01)), *NAVY, borde=TINTA, grosor=gi, suave=False)
-        c.linea(t([(cx - m * ow * 0.12, oy - oh * 0.45), (cx - m * ow * 0.12, oy + oh * 0.45)]), TINTA, gi)
-    return t
-
-
-def emblema(c, x, y, s):
-    """La ola, el protagonista saliendo del agua (con su borde de luz azul) y las gotas (x, y = base de la ola)."""
-    ola(c, x, y, s * 1.25)
-    h = Lienzo(c.w // SS, c.h // SS)
-    heroe(h, x + s * 0.02, y - s * 0.78, s * 1.08, rot=8)
-    c.encima(h, glow=GLOW_AZUL, radio=9, ancho=5)
-    gotas(c, [(x - s * 0.62, y - s * 0.50, s * 0.035), (x - s * 0.46, y - s * 0.78, s * 0.026),
-              (x + s * 0.66, y - s * 0.56, s * 0.032), (x + s * 0.78, y - s * 0.32, s * 0.022),
-              (x - s * 0.78, y - s * 0.26, s * 0.024)])
+def a_alto(img, alto):
+    return img.resize((max(1, round(img.width * alto / img.height)), alto), Image.LANCZOS)
 
 
 # ======================= EL TÍTULO =======================
@@ -324,24 +176,47 @@ def logo_completo():
     alto = 270
     f = ImageFont.truetype(FUENTE, alto)
     ancho = max(f.getbbox('FISH OUT')[2], f.getbbox('OF WATER')[2] + 60)
-    x_texto = 1160
-    c = Lienzo(x_texto + ancho + 120, 1020)
-    emblema(c, 620, 930, 560)
-    x1, y1 = titulo(c, x_texto, 170, 'FISH OUT', alto, NARANJA_ARRIBA, NARANJA_ABAJO)
-    titulo(c, x_texto + 60, y1 + 36, 'OF WATER', alto, AZUL_ARRIBA, AZUL_ABAJO)
-    img = c.resultado(glow=12)
-    bb = img.getbbox()
+    pez = a_alto(pez_3d('pez_logo'), 870)
+    x_pez, y_pez = 40, 30
+    x_texto = x_pez + pez.width + 40
+    c = Lienzo(x_texto + ancho + 120, 940)
+    # halo azul detrás del pez (como la luz de la interfaz) y el pez encima
+    mascara = Image.new('L', (c.w, c.h), 0)
+    mascara.paste(a_alto(pez.split()[3], pez.height * SS), (x_pez * SS, y_pez * SS))
+    c.halo(mascara.point(lambda v: 255 if v > 90 else 0), GLOW_AZUL, 26, 0.55, ancho=8)
+    c.pegar(pez, x_pez, y_pez)
+    # el título, con el mismo estilo de siempre y su borde de luz azul
+    t = Lienzo(c.w // SS, c.h // SS)
+    x1, y1 = titulo(t, x_texto, 150, 'FISH OUT', alto, NARANJA_ARRIBA, NARANJA_ABAJO)
+    titulo(t, x_texto + 60, y1 + 36, 'OF WATER', alto, AZUL_ARRIBA, AZUL_ABAJO)
+    titulo_img = t.resultado(glow=12)
+    img = c.resultado()
+    img.alpha_composite(titulo_img)
+    bb = img.split()[3].point(lambda v: 255 if v > 4 else 0).getbbox()
     m = 24
     return img.crop((max(0, bb[0] - m), max(0, bb[1] - m), min(img.width, bb[2] + m), min(img.height, bb[3] + m)))
 
 
 def icono():
-    """El protagonista de frente sobre azul marino, como su dibujo 2D de referencia."""
+    """El protagonista 3D de frente sobre azul marino, con un halo azul detrás de la cabeza."""
     c = Lienzo(1024, 1024)
     fondo = [(90, 0), (934, 0), (1024, 90), (1024, 934), (934, 1024), (90, 1024), (0, 934), (0, 90)]
-    c.forma(fondo, (20, 30, 58), (14, 22, 44), grosor=0, suave=False)
-    heroe(c, 512, 522, 900, fuego=False)
-    return c.resultado(glow=0)
+    forma = c.mascara(fondo)
+    c.pintar(forma, *FONDO_ICONO)
+    luz = Image.new('L', (c.w, c.h), 0)
+    ImageDraw.Draw(luz).ellipse([270 * SS, 150 * SS, 754 * SS, 640 * SS], fill=255)
+    c.halo(luz, GLOW_AZUL, 90, 0.75)
+    pez = a_alto(pez_3d('pez_icono', 0.8), 930)
+    if pez.width > 1000:
+        pez = pez.resize((1000, round(pez.height * 1000 / pez.width)), Image.LANCZOS)
+    c.pegar(pez, (1024 - pez.width) / 2, 1024 - pez.height)
+    # recorta todo a la forma del ícono y le pone un borde fino azul
+    v = np.asarray(c.img, np.float32)
+    v[..., 3] *= np.asarray(forma, np.float32) / 255
+    c.img = Image.fromarray(v.astype(np.uint8), 'RGBA')
+    d = ImageDraw.Draw(c.img)
+    d.line([(x * SS, y * SS) for x, y in fondo + fondo[:1]], fill=GLOW_AZUL + (200,), width=6 * SS, joint='curve')
+    return c.resultado()
 
 
 def main():

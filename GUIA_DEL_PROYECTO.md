@@ -1028,16 +1028,17 @@ Muestra los mensajes, la barra del jefe, las flechas a pájaros y cápsulas, y l
 ### MainMenu (escena MainMenu)
 Construye todo por código: las pantallas Título, Modos, Mapa, Controles (`MainMenu.Controls.cs`), Cooperativo y Archivo de aves, y el fondo. Los niveles los lee de `Resources/LevelCatalog`; los bocetos del Archivo, de `Resources/Archivo`; el **logo** del título, de `Resources/UI/Logo.png` (si falta, escribe el título con `Title Line 1` y `Title Line 2`).
 
-**Logo** (`Herramientas/Logo/logo.py`, solo numpy y Pillow): el pez protagonista dibujado como su **dibujo 2D de
-referencia** (el mismo estilo de las viñetas: contornos negros gruesos y colores planos; la cabeza en cúpula naranja con
-los ojos enojados, el casco y los auriculares, la armadura azul marino con la luz naranja del pecho y las aletas azules)
-sale volando de una ola con el propulsor encendido, junto al título **FISH OUT** (naranja) / **OF WATER** (azul) con la
-fuente del menú (Oxanium), relieve azul marino y borde claro. Usa las mismas medidas del protagonista que las viñetas
-(las constantes `H_*` de `Herramientas/Comics/personajes.py`), así logo y cómics siempre coinciden. Escribe
-`Assets/Resources/UI/Logo.png` (el título del menú), `Assets/Resources/UI/Icono.png` (1024 × 1024, el protagonista de
-frente sobre azul marino: es el **ícono de la aplicación**, en Project Settings > Player > Default Icon) e
-`Itch/logo.png` (para la página de itch.io).
-`python3 Herramientas/Logo/logo.py`
+**Logo** (`Herramientas/Logo`): el protagonista es un **render 3D del modelo del juego** (`PESCAO.fbx` con sus
+texturas, la luz del pecho encendida y la luz azul marino del menú) que sale volando de una salpicadura de agua con el
+fuego del propulsor, junto al título **FISH OUT** (naranja) / **OF WATER** (azul) con la fuente del menú (Oxanium),
+relieve azul marino y borde de luz azul. Dos pasos:
+1. `render_pez_3d.py` (Blender como módulo, `pip install bpy`; Cycles en CPU) hace los renders con fondo transparente en
+   `Herramientas/Logo/renders/` (el del logo, el del ícono y una toma de solo lo que brilla, para el resplandor). Solo
+   hace falta si cambia el modelo o la pose. `python Herramientas/Logo/render_pez_3d.py` (desde la raíz del proyecto)
+2. `logo.py` (numpy y Pillow) les pone el resplandor y el halo azul y compone `Assets/Resources/UI/Logo.png` (el título
+   del menú), `Assets/Resources/UI/Icono.png` (1024 × 1024, el pez 3D de frente sobre azul marino: es el **ícono de la
+   aplicación**, en Project Settings > Player > Default Icon) e `Itch/logo.png` (para la página de itch.io).
+   `python3 Herramientas/Logo/logo.py`
 
 | Campo | Defecto | En escena | Qué hace |
 |---|---|---|---|
