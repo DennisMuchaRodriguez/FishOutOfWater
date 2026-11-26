@@ -942,14 +942,19 @@ MonoBehaviour:
   flyForce: 15
   maxFlySpeed: 8
   airControl: 0.7
+  airGrip: 3
+  highSpeedTurnFactor: 0.7
+  airTurnResponse: 6
   modeloPez: {fileID: 375174990}
   cameraHolder: {fileID: 330585546}
   cameraTiltAmount: 3
   cameraBobSpeed: 8
   cameraBobAmount: 0.05
   isThirdPerson: 0
+  isReverseView: 0
   toggleCameraKey: 114
   thirdPersonOffset: {x: 0, y: 1.7, z: -5}
+  reverseCameraOffset: {x: 0, y: 1.7, z: 5}
   firstPersonOffset: {x: 0, y: 1.7, z: 0}
   fallMultiplier: 2.5
   groundCheckDistance: 0.2
@@ -1012,6 +1017,15 @@ MonoBehaviour:
   shakeDuration: 0.5
   shakeMagnitude: 20
   isDead: 0
+  dodgeLeftKey: 113
+  dodgeRightKey: 101
+  dodgeOnDoubleTap: 0
+  doubleTapTime: 0.28
+  dodgeDistance: 20
+  dodgeDuration: 0.5
+  dodgeCooldown: 0.6
+  dodgeInvulnerable: 0.4
+  dodgeEnergyCost: 4
   safeImpactSpeed: 13
   severeImpactSpeed: 38
   maxImpactDamage: 0.6
@@ -1128,6 +1142,9 @@ MonoBehaviour:
   bubbleSpeedMultiplier: 1.35
   bubbleScale: 0.55
   bubblesPerAmmo: 3
+  bubbleCapacity: 240
+  bubbleWaterRefill: 30
+  bubblesPerPickupAmmo: 8
   pistolKey: 49
   bubbleKey: 50
   chargedPierce: 0
@@ -1765,6 +1782,9 @@ MonoBehaviour:
   armorLowColor: {r: 1, g: 0, b: 0, a: 0.56078434}
   armorLowThreshold: 25
   redFilterIntensity: 0.3
+  lowBlinkTime: 2.5
+  lowSteadyFactor: 0.35
+  useOldCrack: 0
   uiPanelRect: {fileID: 1477706645}
   uiShakeDuration: 0.5
   uiShakeMagnitude: 18.5
@@ -2245,6 +2265,10 @@ MonoBehaviour:
   reflectionOpacity: 0.07
   underwaterTintOpacity: 0.45
   dropletsOnExit: 14
+  crackOpacity: 0.9
+  crackColor: {r: 0.86, g: 0.96, b: 1, a: 1}
+  lowHealthBlinkTime: 2.5
+  lowHealthSteadyRed: 0.35
   swayFromTurn: 0.12
   swayFromVertical: 1.8
   maxSway: 28
@@ -2361,6 +2385,11 @@ MonoBehaviour:
   birdHitPrefab: {fileID: 6042243990886550057, guid: af44cbf49172b8d42b452221c9638892, type: 3}
   birdDeathPrefab: {fileID: 8294947810415399850, guid: 7a16f43b4abbc0846a15aa17f7ba39bd, type: 3}
   pickupCollectPrefab: {fileID: 5056385361940353899, guid: 5831d4dc964245b4d935906496064f8f, type: 3}
+  testSurvival: 0
+  survivalFish: 28
+  survivalLossFraction: 0.75
+  survivalFishPerBoss: 3
+  survivalCalm: 10
 --- !u!114 &900000204
 MonoBehaviour:
   m_ObjectHideFlags: 0
