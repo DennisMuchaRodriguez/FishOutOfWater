@@ -62,7 +62,14 @@ namespace FishGame.AI
     {
         readonly System.Func<BTStatus> action;
         public BTAction(string name, System.Func<BTStatus> action) { Name = name; this.action = action; }
-        public override BTStatus Tick() { return action(); }
+        public override BTStatus Tick()
+        {
+            BTStatus s = action();
+            // La primera acción que no falla es la que el ave está haciendo (para depurar: BehaviorTree.ActiveAction)
+            BehaviorTree t = BehaviorTree.Current;
+            if (s != BTStatus.Failure && t != null && t.ActiveAction == null) t.MarkActive(Name);
+            return s;
+        }
     }
 
     public class BTInverter : BTNode
@@ -86,10 +93,16 @@ namespace FishGame.AI
 
         public BehaviorTree(BTNode root) { Root = root; }
 
+        // El árbol que se está recorriendo ahora (las acciones lo usan para anotar cuál quedó activa)
+        public static BehaviorTree Current { get; private set; }
+
         public BTStatus Tick()
         {
             ActiveAction = null;
-            return Root.Tick();
+            BehaviorTree previous = Current;
+            Current = this;
+            try { return Root.Tick(); }
+            finally { Current = previous; }
         }
 
         public void MarkActive(string action) { ActiveAction = action; }
