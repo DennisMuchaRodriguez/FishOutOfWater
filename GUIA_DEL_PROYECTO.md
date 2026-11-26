@@ -279,20 +279,20 @@ la cantidad sube más despacio y la oleada 4 de cada tramo es la más dura antes
 
 | Oleada | Aves | Vida | Qué llega |
 |---|---|---|---|
-| 1 | 9–11 | ×1,05 | Gaviotas y martines pescadores: muchas desde la primera |
-| 2–4 | 11–14 | ×1,09–1,17 | + garzas (2), charranes (3), pelícanos (4) |
-| **5** | jefe + 7–8 | ×1,21 | **La Garza Gris Gigante** → Taller (1.ª mejora) |
-| 6–9 | 15–19 | ×1,25–1,37 | + cormoranes (6), serretas (8) |
-| **10** | jefe + 10 | ×1,41 | **El Pelícano Saco Sin Fondo** → Taller |
-| 11–14 | 21–24 | ×1,45–1,57 | + águilas pescadoras (11): ya están todas las especies |
-| **15** | jefe + 13 | ×1,61 | **El Cormorán Rey** → Taller |
-| 16–19 | 26–30 | ×1,65–1,77 | más aves fuertes en la mezcla |
-| **20** | jefe + 16 | ×1,81 | **La Reina Águila Marina** → Taller |
-| 21–28 | 32–40 | +7 % por oleada | 40 aves a la vez es el tope |
+| 1 | 14–16 | ×1,05 | Gaviotas y martines pescadores: muchas desde la primera |
+| 2–4 | 15–19 | ×1,09–1,17 | + garzas (2), charranes (3), pelícanos (4) |
+| **5** | jefe + 9–10 | ×1,21 | **La Garza Gris Gigante** → Taller (1.ª mejora) |
+| 6–9 | 19–24 | ×1,25–1,37 | + cormoranes (6), serretas (8) |
+| **10** | jefe + 12 | ×1,41 | **El Pelícano Saco Sin Fondo** → Taller |
+| 11–14 | 24–29 | ×1,45–1,57 | + águilas pescadoras (11): ya están todas las especies |
+| **15** | jefe + 14 | ×1,61 | **El Cormorán Rey** → Taller |
+| 16–19 | 29–34 | ×1,65–1,77 | más aves fuertes en la mezcla |
+| **20** | jefe + 17 | ×1,81 | **La Reina Águila Marina** → Taller |
+| 21–26 | 34–40 | +7 % por oleada | 40 aves a la vez es el tope |
 | **25, 30, 35, 40** | **2 jefes** + escolta | | dos jefes distintos al azar, cada uno por su lado; +15 % de vida por vuelta |
 | **45 en adelante** | **3 jefes** + escolta | | tres jefes distintos a la vez |
 
-- La cantidad: 9 + 1,1 por oleada (± 1), entre 9 y 40 (las oleadas grandes llegan en bandadas de 8 por lados
+- La cantidad: 14 + 1 por oleada (± 1), entre 14 y 40 (las oleadas grandes llegan en bandadas de 8 por lados
   distintos). La oleada que sigue a un jefe (la primera después del Taller)
   trae un 15 % menos.
 - Cada especie tiene un **tope por oleada** (lo máximo que llega junto en la historia: 5 gaviotas, 3 charranes, 1
@@ -446,6 +446,8 @@ El GameDirector ya **no tiene listas de peces, aves ni oleadas**: todo eso vive 
 | **Bird Count Multiplier** | 2.5 | 2.5 | Las oleadas de la Historia traen esta cantidad de veces más aves que las del nivel (los jefes no se multiplican) |
 | **Extra Birds Per Wave** | 3 | 3 | Aves extra en cada oleada de la Historia, además del multiplicador |
 | **Max Birds Per Wave** | 40 | 40 | Tope de aves en una oleada de la Historia |
+| **Early Level Extra Birds** | 10 | 10 | Refuerzo de los primeros niveles: aves extra por oleada en el nivel 1 (baja hasta 0) |
+| **Early Levels** | 8 | 8 | Nivel en el que el refuerzo de los primeros niveles llega a 0 |
 | **Ammo Pickup Scale** | 1.6 | 1.6 | Cápsulas de munición en el lago = Ammo Pickups × esto |
 | **Pickup Respawn Scale** | 0.65 | 0.65 | Las cápsulas vuelven en Pickup Respawn Time × esto |
 
@@ -556,8 +558,10 @@ Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel 
 | 4 · Los cielos | 16–20 | 28 | 55 % | de 7/9/10 a 8/10/12 | Nivel 20 | 18 |
 
 - **Dificultad (GameDirector > Dificultad)**: cada oleada de la Historia trae **2,5 veces** las aves del nivel **+ 3**
-  (tope 40 por oleada; los jefes no se multiplican y las extra son de las mismas especies de la oleada). Así el nivel 1
-  tiene 8, 11 y 13 aves; el 4, 11, 15 y 23; el 19, 23, 28 y 40. Las oleadas grandes llegan en **varias bandadas de 8**
+  (tope 40 por oleada; los jefes no se multiplican y las extra son de las mismas especies de la oleada), y los
+  **primeros niveles** tienen un refuerzo: **+10 aves por oleada en el nivel 1**, que baja de a poco hasta 0 en el nivel
+  8 (**Early Level Extra Birds** y **Early Levels**). Así el nivel 1 tiene 18, 21 y 23 aves; el 2, 17, 20 y 24; el 4, 17,
+  21 y 29; el 19, 23, 28 y 40. Las oleadas grandes llegan en **varias bandadas de 8**
   por lados distintos (0°, +40°, -40°, +80°...). Con tantas aves hay **1,6 veces más cápsulas** de munición y vuelven más
   rápido (×0,65 del tiempo). Para bajarla o subirla: **Bird Count Multiplier**, **Extra Birds Per Wave** y **Max Birds
   Per Wave** (1 / 0 = como dicen los niveles).

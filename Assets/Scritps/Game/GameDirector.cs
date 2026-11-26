@@ -48,6 +48,11 @@ public partial class GameDirector : MonoBehaviour
     public int extraBirdsPerWave = 3;
     [Tooltip("Tope de aves en una oleada de la Historia (rendimiento)")]
     public int maxBirdsPerWave = 40;
+    [Tooltip("Refuerzo de los PRIMEROS niveles: el nivel 1 suma estas aves en cada oleada, y el refuerzo baja de a poco " +
+             "hasta 0 en el nivel 'Early Levels'")]
+    public int earlyLevelExtraBirds = 10;
+    [Tooltip("Nivel en el que el refuerzo de los primeros niveles llega a 0")]
+    public int earlyLevels = 8;
     [Tooltip("Con más aves hace falta más munición: cápsulas en el lago = Ammo Pickups x esto")]
     public float ammoPickupScale = 1.6f;
     [Tooltip("...y vuelven más rápido: Pickup Respawn Time x esto")]
@@ -461,9 +466,18 @@ public partial class GameDirector : MonoBehaviour
     {
         List<BirdType> normal = wave.FindAll(b => b != null && b.boss == BossKind.None);
         if (normal.Count == 0) return;
-        int target = Mathf.RoundToInt(normal.Count * Mathf.Max(1f, birdCountMultiplier)) + Mathf.Max(0, extraBirdsPerWave);
+        int target = Mathf.RoundToInt(normal.Count * Mathf.Max(1f, birdCountMultiplier)) + Mathf.Max(0, extraBirdsPerWave)
+                     + EarlyLevelBonus();
         target = Mathf.Max(normal.Count, Mathf.Min(target, Mathf.Max(1, maxBirdsPerWave)));
         for (int k = 0; normal.Count + k < target; k++) wave.Add(normal[k % normal.Count]);
+    }
+
+    // Aves extra de los primeros niveles: el máximo en el nivel 1, bajando hasta 0 en el nivel 'earlyLevels'
+    int EarlyLevelBonus()
+    {
+        if (earlyLevelExtraBirds <= 0 || earlyLevels <= 1) return 0;
+        float k = 1f - (LevelNumber - 1) / (float)(earlyLevels - 1);
+        return Mathf.Max(0, Mathf.RoundToInt(earlyLevelExtraBirds * Mathf.Clamp01(k)));
     }
 
     // Cinemática de inicio (Historia y Supervivencia de un jugador)

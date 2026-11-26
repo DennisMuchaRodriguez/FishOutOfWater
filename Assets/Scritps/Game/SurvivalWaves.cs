@@ -53,9 +53,9 @@ public static class SurvivalWaves
 
     // ---- Ajustes ----
     public const int BossEvery = 5;
-    const float BaseBirds = 9f;            // aves = BaseBirds + BirdsPerWave · oleada (± 1): muchas desde la primera
-    const float BirdsPerWave = 1.1f;
-    const int MinBirds = 9;
+    const float BaseBirds = 14f;           // aves = BaseBirds + BirdsPerWave · oleada (± 1): muchas desde la primera
+    const float BirdsPerWave = 1.0f;
+    const int MinBirds = 14;
     const int MaxBirds = 40;               // tope de aves a la vez (por rendimiento)
     const float BaseHealth = 1.05f;        // vida de la oleada 1
     const float HealthPerWave = 0.04f;
