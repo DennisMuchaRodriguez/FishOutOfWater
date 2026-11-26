@@ -115,6 +115,8 @@ public partial class GameDirector
         yield return null;
         // Mientras la pantalla de carga tapa el juego no empieza nada
         while (LoadingScreen.IsLoading) yield return null;
+        // El pez sale disparado del fondo del lago (no en cooperativo)
+        yield return LaunchIntro();
 
         // Cooperativo: se espera a que todos terminen de cargar el lago (como mucho 30 s)
         if (IsCoop)

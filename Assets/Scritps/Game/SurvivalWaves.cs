@@ -53,10 +53,10 @@ public static class SurvivalWaves
 
     // ---- Ajustes ----
     public const int BossEvery = 5;
-    const float BaseBirds = 3.8f;          // aves = BaseBirds + BirdsPerWave · oleada (± 1)
-    const float BirdsPerWave = 0.6f;
-    const int MinBirds = 4;
-    const int MaxBirds = 18;               // tope de aves a la vez (por rendimiento y para que se pueda jugar)
+    const float BaseBirds = 9f;            // aves = BaseBirds + BirdsPerWave · oleada (± 1): muchas desde la primera
+    const float BirdsPerWave = 1.1f;
+    const int MinBirds = 9;
+    const int MaxBirds = 40;               // tope de aves a la vez (por rendimiento)
     const float BaseHealth = 1.05f;        // vida de la oleada 1
     const float HealthPerWave = 0.04f;
     const int LateWave = 20;               // desde aquí la vida sube más rápido (ya no suben las aves)
@@ -72,13 +72,13 @@ public static class SurvivalWaves
     const float RampPerPlayer = 0.25f;     // las aves por oleada crecen un 25 % más rápido por jugador extra
     const float HealthPerPlayer = 0.10f;
     const float BossHealthPerPlayer = 0.35f;
-    const int MaxBirdsPerPlayer = 7;       // tope de aves: 18 + 7 por jugador extra (39 con 4 jugadores)
+    const int MaxBirdsPerPlayer = 8;       // tope de aves: 40 + 8 por jugador extra (64 con 4 jugadores)
 
     // Piqueros kamikaze: van aparte de las demás especies (vienen siempre, más en cada oleada y con cada jugador)
-    const float KamikazeBase = 1f;
-    const float KamikazePerWave = 0.3f;
+    const float KamikazeBase = 2f;
+    const float KamikazePerWave = 0.45f;
     const float KamikazePerPlayer = 0.7f;  // +70 % por jugador extra
-    const int KamikazeMax = 4;             // tope: 4 + 4 por jugador extra
+    const int KamikazeMax = 8;             // tope: 8 + 8 por jugador extra
 
     class Species
     {

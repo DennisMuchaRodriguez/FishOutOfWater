@@ -4,8 +4,10 @@ using TMPro;
 
 // Créditos del final: al vencer al jefe final (último nivel de la Historia), después del cómic final.
 // Una cinemática sobre el lago con los nombres subiendo y la música "El lago a salvo" (Music.Credits):
-//   1. La cámara deja la vista del jugador y queda a ras del agua junto al pez, girando despacio a su alrededor.
-//   2. Se aleja y sube mientras sigue girando, hasta ver todo el lago en calma (el cardumen nada, el agua se mueve).
+//   1. El pez está bajo el agua; enciende el propulsor y sale volando del lago (salpicadura), con la cámara a ras del
+//      agua mirándolo subir.
+//   2. Vuela en círculos alrededor del lago, inclinándose en la curva; la cámara lo sigue (por detrás, de costado y,
+//      al final, desde lo alto con todo el lago en calma).
 //   3. Al final mira al horizonte; fundido a negro con "GRACIAS POR JUGAR".
 // Como WaveCinematic, NO toca cámaras: calcula una pose y la cámara del jugador la mezcla (PlayerController_Base).
 // Mientras dura, GameDirector.InCinematic es true (el HUD se esconde) y el pez queda quieto (SetCinematicLock).
@@ -15,7 +17,6 @@ public class CreditsRoll : MonoBehaviour
 {
     public const string CreditsPath = "Creditos";
     const float Speed = 46f;          // unidades de la interfaz por segundo (lienzo de 1280 x 720)
-    const float BlendIn = 1.6f;
     const float EndCard = 4f;         // "Gracias por jugar"
     const float SkipDelay = 1f;
 
@@ -68,17 +69,28 @@ public class CreditsRoll : MonoBehaviour
     bool finished;
     float savedTimeScale = 1f;
 
-    // Cámara
-    float t, weight;
+    // Cámara y vuelo del pez
+    float t, weight;          // t: tiempo real (interfaz y cámara)
+    float ft;                 // tiempo del vuelo del pez (FixedUpdate)
     float duration = 60f;
-    Vector3 hero, center;
-    float radius = 60f, surface;
-    float startAngle;
+    Vector3 center;
+    float radius = 30f, surface, cruise;
+    float angle0;
+    Vector3 startPos;
+    Rigidbody rb;
+    bool jetOn, splashed;
     LakeVolume lake;
     Vector3 posePos;
     Quaternion poseRot = Quaternion.identity;
     float poseFov = 50f;
 
+    const float Under = 1.0f;     // bajo el agua
+    const float Rise = 0.8f;      // hasta romper la superficie
+    const float Climb = 1.6f;     // subiendo hasta la altura de vuelo
+    const float FlySpeed = 13f;   // m/s dando vueltas
+    const float Depth = 3f;
+    float T2 { get { return Under + Rise; } }
+    float T3 { get { return Under + Rise + Climb; } }
     // Interfaz
     RectTransform roll;
     float rollHeight;
@@ -101,56 +113,177 @@ public class CreditsRoll : MonoBehaviour
         Cursor.lockState = CursorLockMode.None;
 
         lake = LakeVolume.Instance;
-        hero = player != null ? player.transform.position : Vector3.zero;
-        if (lake != null && lake.IsValid)
+        Vector3 hero = player != null ? player.transform.position : Vector3.zero;
+        bool valid = lake != null && lake.IsValid;
+        center = valid ? lake.Center : hero;
+        surface = valid ? lake.SurfaceY : hero.y;
+        radius = valid ? Mathf.Clamp(lake.Radius * 0.5f, 14f, 70f) : 25f;
+        cruise = surface + 10f;
+
+        // El pez sale del agua en el círculo, del lado donde estaba (con agua honda para salir disparado)
+        Vector3 from = hero - center;
+        from.y = 0f;
+        if (from.sqrMagnitude < 1f) from = Vector3.forward;
+        float a = Mathf.Atan2(from.x, from.z);
+        Vector3 p = center + new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * radius;
+        if (valid && lake.WaterDepthAt(p.x, p.z) < Depth + 1f)
         {
-            center = lake.Center;
-            radius = Mathf.Max(25f, lake.Radius);
-            surface = lake.SurfaceY;
+            Vector3 q;
+            if (lake.TryGetSwimPoint(p, 25f, Depth + 1f, 80f, 1.2f, out q, 20)) p = q;
         }
-        else
-        {
-            center = hero;
-            surface = hero.y;
-        }
-        // Empieza detrás de donde miraba la cámara del jugador (sin salto)
-        Camera cam = Camera.main;
-        Vector3 from = cam != null ? cam.transform.position - hero : -Vector3.forward;
-        startAngle = Mathf.Atan2(from.x, from.z) * Mathf.Rad2Deg;
+        Vector3 d = p - center;
+        d.y = 0f;
+        radius = Mathf.Max(10f, d.magnitude);
+        angle0 = Mathf.Atan2(d.x, d.z);
+        float ground = valid ? lake.GroundHeight(p.x, p.z) : surface - 10f;
+        startPos = new Vector3(p.x, Mathf.Max(ground + 1.2f, surface - Depth), p.z);
+
+        rb = player != null ? player.GetComponent<Rigidbody>() : null;
+        PlaceFish(startPos, FacingAt(0f));
 
         BuildUI();
         duration = Mathf.Max(30f, (rollHeight + 760f) / Speed);
-        UpdatePose(0f);
+        UpdatePose();
+    }
+
+    // ======================= EL VUELO DEL PEZ =======================
+
+    static float Smooth(float x) { x = Mathf.Clamp01(x); return x * x * (3f - 2f * x); }
+
+    // Ángulo en el círculo: quieto hasta salir del agua, acelera y después da vueltas a velocidad constante
+    float AngleAt(float time)
+    {
+        float w = FlySpeed / radius;
+        float x = time - T2;
+        if (x <= 0f) return angle0;
+        if (x < Climb) return angle0 + w * x * x / (2f * Climb);
+        return angle0 + w * (Climb * 0.5f + (x - Climb));
+    }
+
+    float HeightAt(float time)
+    {
+        if (time < Under) return startPos.y + 0.35f * Smooth(time / Under);
+        if (time < T2)
+        {
+            float k = (time - Under) / Rise;
+            return Mathf.Lerp(startPos.y + 0.35f, surface + 0.6f, k * k);
+        }
+        if (time < T3)
+        {
+            float k = (time - T2) / Climb;
+            return Mathf.Lerp(surface + 0.6f, cruise, 1f - (1f - k) * (1f - k));
+        }
+        return cruise + 1.5f * Mathf.Sin((time - T3) * 0.6f);
+    }
+
+    Vector3 FishAt(float time)
+    {
+        float a = AngleAt(time);
+        float r = radius * (1f + 0.12f * Mathf.Sin(0.21f * Mathf.Max(0f, time - T3)));
+        Vector3 pos = center + new Vector3(Mathf.Sin(a), 0f, Mathf.Cos(a)) * r;
+        pos.y = HeightAt(time);
+        if (time > T3 && lake != null) pos.y = Mathf.Max(pos.y, lake.GroundHeight(pos.x, pos.z) + 5f);
+        return pos;
+    }
+
+    // Hacia dónde vuela (tangente al círculo, sentido de las agujas del reloj visto desde arriba)
+    Vector3 TangentAt(float time)
+    {
+        float a = AngleAt(time);
+        return new Vector3(Mathf.Cos(a), 0f, -Mathf.Sin(a));
+    }
+
+    Quaternion FacingAt(float time)
+    {
+        // Se inclina hacia el centro del círculo en la curva
+        float bank = Smooth((time - T2) / Climb) * 20f;
+        return Quaternion.LookRotation(TangentAt(time), Vector3.up) * Quaternion.Euler(0f, 0f, -bank);
+    }
+
+    void PlaceFish(Vector3 pos, Quaternion rot)
+    {
+        if (player == null) return;
+        if (rb != null)
+        {
+            rb.position = pos;
+            rb.rotation = rot;
+        }
+        player.transform.SetPositionAndRotation(pos, rot);
+    }
+
+    void FixedUpdate()
+    {
+        if (finished || player == null) return;
+        ft += Time.fixedDeltaTime;
+        Vector3 pos = FishAt(ft);
+        Quaternion rot = FacingAt(ft);
+        if (rb != null)
+        {
+            rb.MovePosition(pos);
+            rb.MoveRotation(rot);
+        }
+        else player.transform.SetPositionAndRotation(pos, rot);
+
+        if (!jetOn && ft >= Under - 0.1f)
+        {
+            jetOn = true;
+            player.SetCinematicJet(true, 1f);
+        }
+        if (!splashed && pos.y >= surface)
+        {
+            splashed = true;
+            LakeWater.Splash(new Vector3(pos.x, surface, pos.z), 1f, false);
+            Sfx.Play(Sonido.SalidaAgua, pos, 1f);
+        }
     }
 
     // ======================= LA CÁMARA =======================
 
-    static float Smooth(float x) { x = Mathf.Clamp01(x); return x * x * (3f - 2f * x); }
-
-    void UpdatePose(float time)
+    void UpdatePose()
     {
-        float u = Mathf.Clamp01(time / duration);
-        // Centro de la órbita: del pez al centro del lago
-        Vector3 pivot = Vector3.Lerp(hero, center, Smooth(u / 0.55f));
-        float angle = (startAngle + u * 200f) * Mathf.Deg2Rad;
-        float r = Mathf.Lerp(7f, radius * 0.85f, Smooth(u / 0.6f));
-        float h = Mathf.Lerp(1.8f, Mathf.Clamp(radius * 0.3f, 12f, 45f), Smooth(u));
-        Vector3 pos = new Vector3(pivot.x + Mathf.Sin(angle) * r, surface + h, pivot.z + Mathf.Cos(angle) * r);
-        if (lake != null) pos.y = Mathf.Max(pos.y, lake.GroundHeight(pos.x, pos.z) + 3f);
+        Vector3 fish = player != null ? player.transform.position : FishAt(ft);
+        Vector3 tangent = TangentAt(ft);
+        Vector3 outward = fish - center;
+        outward.y = 0f;
+        outward = outward.sqrMagnitude > 0.01f ? outward.normalized : Vector3.forward;
+        float u = Mathf.Clamp01(t / duration);
 
-        // Mira al pez, después al lago y al final al horizonte
-        Vector3 look = Vector3.Lerp(hero + Vector3.up * 0.6f, new Vector3(center.x, surface, center.z), Smooth((u - 0.1f) / 0.5f));
+        // 1. La salida: al costado (afuera del círculo), bajo el agua y después a ras del agua mirándolo subir
+        Vector3 side = (outward * 0.8f + tangent * 0.5f).normalized;
+        float dist = Mathf.Lerp(6f, 11f, Smooth((ft - Under) / (T3 - Under)));
+        float camY = ft < T2 ? Mathf.Min(fish.y - 0.3f, surface - 0.9f)
+                             : Mathf.Lerp(surface - 0.9f, surface + 0.9f, Smooth((ft - T2) / 0.35f));
+        Vector3 launchPos = new Vector3(fish.x, camY, fish.z) + side * dist;
+        Vector3 launchLook = fish + Vector3.up * 0.8f;
+
+        // 2. Dando vueltas: por detrás y de costado (va y viene); 3. al final, desde lo alto con todo el lago
+        Vector3 behind = fish - tangent * 11f + Vector3.up * 3.5f + outward * 2f;
+        Vector3 beside = fish + outward * 13f + Vector3.up * 1.5f + tangent * 2f;
+        float m = 0.5f + 0.5f * Mathf.Sin((ft - T3) * 0.16f);
+        Vector3 followPos = Vector3.Lerp(behind, beside, m);
+        Vector3 followLook = fish + tangent * 3f + Vector3.up * 0.5f;
+        Vector3 highPos = center + outward * radius * 1.6f + Vector3.up * (cruise - surface + 24f);
+        float high = Smooth((u - 0.7f) / 0.2f);
+        followPos = Vector3.Lerp(followPos, highPos, high);
+        followLook = Vector3.Lerp(followLook, fish, high);
+
+        float k = Smooth((ft - T3) / 1.8f);
+        Vector3 pos = Vector3.Lerp(launchPos, followPos, k);
+        Vector3 look = Vector3.Lerp(launchLook, followLook, k);
+        if (lake != null) pos.y = Mathf.Max(pos.y, lake.GroundHeight(pos.x, pos.z) + (ft < T2 ? 1f : 1.5f));
+
+        // Al final mira al horizonte
         Vector3 dir = look - pos;
         Vector3 flat = new Vector3(dir.x, 0f, dir.z);
         if (flat.sqrMagnitude < 0.01f) flat = Vector3.forward;
-        dir = Vector3.Slerp(dir.normalized, (flat.normalized + Vector3.up * 0.08f).normalized, Smooth((u - 0.78f) / 0.22f));
+        dir = Vector3.Slerp(dir.normalized, (flat.normalized + Vector3.up * 0.08f).normalized, Smooth((u - 0.9f) / 0.1f));
 
         // Un poco de cámara en mano
-        float n1 = Mathf.PerlinNoise(time * 0.23f, 3.1f) - 0.5f;
-        float n2 = Mathf.PerlinNoise(7.7f, time * 0.19f) - 0.5f;
+        float n1 = Mathf.PerlinNoise(t * 0.23f, 3.1f) - 0.5f;
+        float n2 = Mathf.PerlinNoise(7.7f, t * 0.19f) - 0.5f;
         posePos = pos;
         poseRot = Quaternion.LookRotation(dir, Vector3.up) * Quaternion.Euler(n1 * 0.8f, n2 * 0.8f, n1 * 1.2f);
-        poseFov = Mathf.Lerp(48f, 56f, Smooth(u));
+        poseFov = Mathf.Lerp(52f, 58f, k);
     }
 
     // ======================= LA INTERFAZ =======================
@@ -283,8 +416,8 @@ public class CreditsRoll : MonoBehaviour
         if (finished) return;
         float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
         t += dt;
-        weight = Smooth(t / BlendIn);
-        UpdatePose(t);
+        weight = 1f;   // corte directo: antes de los créditos estaba el cómic a pantalla completa
+        UpdatePose();
 
         float bars = Smooth(t / 1.2f) * 58f;
         barTop.sizeDelta = new Vector2(0f, bars);
@@ -315,7 +448,11 @@ public class CreditsRoll : MonoBehaviour
         finished = true;
         if (active == this) active = null;
         Time.timeScale = savedTimeScale;
-        if (player != null) player.SetCinematicLock(false);
+        if (player != null)
+        {
+            player.SetCinematicJet(false);
+            player.SetCinematicLock(false);
+        }
         System.Action done = onDone;
         onDone = null;
         Destroy(gameObject);
@@ -329,5 +466,10 @@ public class CreditsRoll : MonoBehaviour
         finished = true;
         if (active == this) active = null;
         Time.timeScale = savedTimeScale;
+        if (player != null)
+        {
+            player.SetCinematicJet(false);
+            player.SetCinematicLock(false);
+        }
     }
 }

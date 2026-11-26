@@ -811,6 +811,14 @@ public partial class PlayerController_Base : MonoBehaviour
         }
     }
 
+    // Cinemáticas (salida del agua, créditos): enciende el propulsor solo como efecto (llamas y sonido; no gasta ni
+    // empuja). Solo hace algo con el pez bloqueado por la cinemática (SetCinematicLock)
+    public void SetCinematicJet(bool on, float thrust01 = 1f)
+    {
+        if (!InputLocked && on) return;
+        SetJetting(on, thrust01);
+    }
+
     void LateUpdate()
     {
         if (IsNetworkProxy || cameraHolder == null) return;
@@ -890,7 +898,8 @@ public partial class PlayerController_Base : MonoBehaviour
         Quaternion cineRot;
         float cineFov, cineWeight;
         if (WaveCinematic.TryGetPose(out cinePos, out cineRot, out cineFov, out cineWeight) ||
-            CreditsRoll.TryGetPose(out cinePos, out cineRot, out cineFov, out cineWeight))
+            CreditsRoll.TryGetPose(out cinePos, out cineRot, out cineFov, out cineWeight) ||
+            LaunchCinematic.TryGetPose(out cinePos, out cineRot, out cineFov, out cineWeight))
         {
             pos = Vector3.Lerp(pos, cinePos, cineWeight);
             rot = Quaternion.Slerp(rot, cineRot, cineWeight);

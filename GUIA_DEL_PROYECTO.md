@@ -223,7 +223,7 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 - **Música de cada cómic** (campo **Music** del cómic): vacío = "Historia" (Cuentos del lago); los de antes de un jefe usan "Amenaza"; el final usa "Creditos" con **Keep Music** marcado (sigue sonando en los créditos). Al cerrar el cómic vuelve la música que sonaba antes (o el silencio después de la fanfarria de victoria).
 - **Volver a verlos**: en la ficha de cada nivel del mapa, **VER CÓMIC** abre el de antes; cuando ya ganaste el nivel aparece también el de después (con los dos, los botones dicen **CÓMIC: ANTES** y **DESPUÉS**).
 
-**Créditos del final** (`CreditsRoll`, nombres en `Assets/Resources/Creditos.txt`): al ganar el **último nivel** del catálogo en la Historia (de un jugador), después del cómic final. Es una cinemática sobre el lago: la cámara deja la vista del jugador, gira a ras del agua alrededor del pez y se aleja subiendo hasta ver todo el lago en calma, mientras los nombres suben por el centro con franjas de cine y suena "El lago a salvo"; al final, fundido a negro con **GRACIAS POR JUGAR** y aparece el resultado del nivel. El tiempo corre normal durante los créditos (el cardumen nada, el agua se mueve) y el pez se queda quieto. Esc o **SALTAR** los terminan. Como la cinemática de oleada, no cambia de cámara: la del jugador mezcla la pose que calcula `CreditsRoll` (`GameDirector.InCinematic` es true y el HUD se esconde).
+**Créditos del final** (`CreditsRoll`, nombres en `Assets/Resources/Creditos.txt`): al ganar el **último nivel** del catálogo en la Historia (de un jugador), después del cómic final. Es una cinemática sobre el lago: el pez está bajo el agua, enciende el propulsor y **sale volando del lago** (salpicadura), y después **vuela en círculos alrededor del lago** inclinándose en la curva; la cámara lo mira salir desde casi a ras del agua y luego lo sigue (por detrás, de costado y al final desde lo alto, con todo el lago en calma), mientras los nombres suben por el centro con franjas de cine y suena "El lago a salvo"; al final, fundido a negro con **GRACIAS POR JUGAR** y aparece el resultado del nivel. El tiempo corre normal durante los créditos (el cardumen nada, el agua se mueve). Esc o **SALTAR** los terminan. Como la cinemática de oleada, no cambia de cámara: la del jugador mezcla la pose que calcula `CreditsRoll` (`GameDirector.InCinematic` es true y el HUD se esconde).
 - **Para cambiar los nombres**: edita `Creditos.txt` (`[LOGO]` el título del juego, `# ` título grande, `## ` sección, una línea sola = un nombre, `### ` texto chico, línea vacía = espacio, `//` = comentario).
 
 **Progreso guardado** (`SaveSystem`): se guarda solo en el archivo `progreso.json`, en `Application.persistentDataPath` (en Windows: `C:\Users\<tú>\AppData\LocalLow\<Company>\<Product>`). Guarda:
@@ -279,26 +279,27 @@ la cantidad sube más despacio y la oleada 4 de cada tramo es la más dura antes
 
 | Oleada | Aves | Vida | Qué llega |
 |---|---|---|---|
-| 1 | 4–5 | ×1,05 | Gaviotas y martines pescadores (no empieza suave: como el final del nivel 2 de la historia) |
-| 2–4 | 5–6 | ×1,09–1,17 | + garzas (2), charranes (3), pelícanos (4) |
-| **5** | jefe + 3–4 | ×1,21 | **La Garza Gris Gigante** → Taller (1.ª mejora) |
-| 6–9 | 6–9 | ×1,25–1,37 | + cormoranes (6), serretas (8) |
-| **10** | jefe + 5 | ×1,41 | **El Pelícano Saco Sin Fondo** → Taller |
-| 11–14 | 8–12 | ×1,45–1,57 | + águilas pescadoras (11): ya están todas las especies |
-| **15** | jefe + 6 | ×1,61 | **El Cormorán Rey** → Taller |
-| 16–19 | 11–15 | ×1,65–1,77 | más aves fuertes en la mezcla |
-| **20** | jefe + 8 | ×1,81 | **La Reina Águila Marina** → Taller |
-| 21–24 | 14–18 | +7 % por oleada | 18 aves a la vez es el tope (desde la 24) |
+| 1 | 9–11 | ×1,05 | Gaviotas y martines pescadores: muchas desde la primera |
+| 2–4 | 11–14 | ×1,09–1,17 | + garzas (2), charranes (3), pelícanos (4) |
+| **5** | jefe + 7–8 | ×1,21 | **La Garza Gris Gigante** → Taller (1.ª mejora) |
+| 6–9 | 15–19 | ×1,25–1,37 | + cormoranes (6), serretas (8) |
+| **10** | jefe + 10 | ×1,41 | **El Pelícano Saco Sin Fondo** → Taller |
+| 11–14 | 21–24 | ×1,45–1,57 | + águilas pescadoras (11): ya están todas las especies |
+| **15** | jefe + 13 | ×1,61 | **El Cormorán Rey** → Taller |
+| 16–19 | 26–30 | ×1,65–1,77 | más aves fuertes en la mezcla |
+| **20** | jefe + 16 | ×1,81 | **La Reina Águila Marina** → Taller |
+| 21–28 | 32–40 | +7 % por oleada | 40 aves a la vez es el tope |
 | **25, 30, 35, 40** | **2 jefes** + escolta | | dos jefes distintos al azar, cada uno por su lado; +15 % de vida por vuelta |
 | **45 en adelante** | **3 jefes** + escolta | | tres jefes distintos a la vez |
 
-- La cantidad: 3,8 + 0,6 por oleada (± 1), entre 4 y 18. La oleada que sigue a un jefe (la primera después del Taller)
+- La cantidad: 9 + 1,1 por oleada (± 1), entre 9 y 40 (las oleadas grandes llegan en bandadas de 8 por lados
+  distintos). La oleada que sigue a un jefe (la primera después del Taller)
   trae un 15 % menos.
 - Cada especie tiene un **tope por oleada** (lo máximo que llega junto en la historia: 5 gaviotas, 3 charranes, 1
   pelícano...) que sube cada 8 oleadas. Las recién llegadas salen más seguido; las gaviotas, cada vez menos; las pesadas
   (garza, pelícano, cormorán, águila), un poco menos.
 - Las oleadas salen de la **semilla de la partida**: la misma partida siempre arma las mismas oleadas.
-- **Piqueros kamikaze** (aparte de esa cantidad, desde la oleada 1): 1 + 0,3 por oleada (1 al principio, 4 como
+- **Piqueros kamikaze** (aparte de esa cantidad, desde la oleada 1): 2 + 0,45 por oleada (2 al principio, 8 como
   mucho jugando solo). En la oleada de respiro, un 15 % menos; en las de jefe, la mitad.
 
 **Grupos por distintos lados** (desde la oleada 2; cada vez más seguido, hasta 3 de cada 4 oleadas):
@@ -367,7 +368,7 @@ Usa **Netcode for GameObjects 2.14** y **Multiplayer Services 2.5** (Lobby + Rel
 **Más jugadores, más difícil** (`SurvivalWaves.Build(n, semilla, jugadores)`, constantes `...PerPlayer` al principio
 de `SurvivalWaves.cs`; cuenta los jugadores de la sala al armar cada oleada). Por cada jugador extra:
 - **+55 % de aves** y la cantidad **crece un 25 % más rápido** de oleada en oleada (el tope sube 7 aves por jugador).
-- **+70 % de piqueros kamikaze** (tope: 4 por jugador).
+- **+70 % de piqueros kamikaze** (tope: 8 por jugador).
 - Aves con **+10 % de vida** y jefes con **+35 %** (si no, cuatro trajes los bajan en segundos).
 
 | Jugadores | Aves oleada 1 | Oleada 4 | Oleada 9 | Tope | Kamikazes (oleada 1 → 9) | Vida aves / jefes |
@@ -437,6 +438,30 @@ El GameDirector ya **no tiene listas de peces, aves ni oleadas**: todo eso vive 
 | **Arrival Distance** | 120 | 120 | A cuántos metros del centro del lago aparecen |
 | **Arrival Height** | 45 | 45 | Altura a la que aparecen |
 | **Arrival Yaw** | -1 | -1 | Dirección de llegada en grados (0 = desde +Z). -1 = aleatoria |
+| **Flock Size** | 8 | 8 | Las oleadas grandes llegan en bandadas de este tamaño, cada una por otro lado |
+
+### Dificultad
+| Campo | Defecto | En escena | Qué hace |
+|---|---|---|---|
+| **Bird Count Multiplier** | 2.5 | 2.5 | Las oleadas de la Historia traen esta cantidad de veces más aves que las del nivel (los jefes no se multiplican) |
+| **Extra Birds Per Wave** | 3 | 3 | Aves extra en cada oleada de la Historia, además del multiplicador |
+| **Max Birds Per Wave** | 40 | 40 | Tope de aves en una oleada de la Historia |
+| **Ammo Pickup Scale** | 1.6 | 1.6 | Cápsulas de munición en el lago = Ammo Pickups × esto |
+| **Pickup Respawn Scale** | 0.65 | 0.65 | Las cápsulas vuelven en Pickup Respawn Time × esto |
+
+### Cinemática de inicio (`LaunchCinematic`)
+Al empezar un nivel de la Historia o la Supervivencia (de un jugador; en cooperativo no), el pez está en el fondo del
+lago y sale disparado hacia el cielo con el propulsor: la cámara empieza bajo el agua a su lado, cruza la superficie con
+él (salpicadura) y lo mira subir desde casi a ras del agua; arriba se le devuelve el control, en el aire y todavía
+subiendo. Dura unos 4 s; Espacio o Enter la saltan. Como las demás cinemáticas, no cambia de cámara (la del jugador mezcla
+la pose) y el HUD se esconde mientras tanto.
+
+| Campo | Defecto | Qué hace |
+|---|---|---|
+| **Play Launch Intro** | ✔ | La cinemática al empezar |
+| **Launch Intro > Depth / Height** | 3.5 / 9 | Metros bajo el agua donde empieza y sobre el agua hasta donde sube |
+| **Launch Intro > Underwater / Rise / Climb Time** | 1.1 / 0.8 / 1.4 | Segundos bajo el agua, hasta romper la superficie y subiendo |
+| **Launch Intro > Blend Out / Exit Speed** | 0.9 / 3 | Vuelta a la vista del jugador (s) y velocidad hacia arriba con la que recibe el control (m/s) |
 
 ### Cinemática de llegada
 | Campo | Defecto | En escena | Qué hace |
@@ -530,6 +555,12 @@ Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel 
 | 3 · Bajo el agua | 11–15 | 24 | 60 % | de 5/7/8 a 6/8/10 | Nivel 15 | 12 y 15 |
 | 4 · Los cielos | 16–20 | 28 | 55 % | de 7/9/10 a 8/10/12 | Nivel 20 | 18 |
 
+- **Dificultad (GameDirector > Dificultad)**: cada oleada de la Historia trae **2,5 veces** las aves del nivel **+ 3**
+  (tope 40 por oleada; los jefes no se multiplican y las extra son de las mismas especies de la oleada). Así el nivel 1
+  tiene 8, 11 y 13 aves; el 4, 11, 15 y 23; el 19, 23, 28 y 40. Las oleadas grandes llegan en **varias bandadas de 8**
+  por lados distintos (0°, +40°, -40°, +80°...). Con tantas aves hay **1,6 veces más cápsulas** de munición y vuelven más
+  rápido (×0,65 del tiempo). Para bajarla o subirla: **Bird Count Multiplier**, **Extra Birds Per Wave** y **Max Birds
+  Per Wave** (1 / 0 = como dicen los niveles).
 - La vida de las aves sube 5 % por nivel, y la tercera oleada lleva 15 % más.
 - Cada bloque suma especies nuevas (gaviota y martín pescador al principio; garza, cormorán y serreta en la orilla y bajo el agua; pelícano y águila pescadora en los cielos). En los niveles de jefe, la tercera oleada trae al jefe del bloque (ver [Jefes](#jefes-birdaibosscs)).
 - Cómics (dibujos 2D de caricatura, 34 viñetas): origen antes del nivel 1; el Taller en la primera visita; antes y después de los jefes 5, 10 y 15; antes del jefe 20 y el final después del nivel 20.

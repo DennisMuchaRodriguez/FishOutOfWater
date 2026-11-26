@@ -18,7 +18,7 @@ public partial class GameDirector : MonoBehaviour
 {
     public static GameDirector Instance { get; private set; }
     // Cinemática de oleada o créditos del final: el HUD se esconde y el jugador no se mueve ni dispara
-    public static bool InCinematic { get { return WaveCinematic.IsPlaying || CreditsRoll.IsPlaying; } }
+    public static bool InCinematic { get { return WaveCinematic.IsPlaying || CreditsRoll.IsPlaying || LaunchCinematic.IsPlaying; } }
 
     public enum GameState { Calm, WaveIncoming, WaveActive, Intermission, Victory, Defeat }
 
@@ -37,6 +37,21 @@ public partial class GameDirector : MonoBehaviour
     public float arrivalHeight = 45f;
     [Tooltip("Dirección (grados) desde la que llegan. -1 = aleatoria")]
     public float arrivalYaw = -1f;
+    [Tooltip("Las oleadas grandes llegan en varias bandadas de este tamaño, cada una por un lado distinto")]
+    public int flockSize = 8;
+
+    [Header("Dificultad")]
+    [Tooltip("Las oleadas de la HISTORIA traen esta cantidad de veces más aves que las del nivel (los jefes no se " +
+             "multiplican; las aves extra son de las mismas especies de la oleada). 1 = como en el nivel")]
+    public float birdCountMultiplier = 2.5f;
+    [Tooltip("Aves extra en cada oleada de la Historia (además del multiplicador): así desde el nivel 1 hay muchas")]
+    public int extraBirdsPerWave = 3;
+    [Tooltip("Tope de aves en una oleada de la Historia (rendimiento)")]
+    public int maxBirdsPerWave = 40;
+    [Tooltip("Con más aves hace falta más munición: cápsulas en el lago = Ammo Pickups x esto")]
+    public float ammoPickupScale = 1.6f;
+    [Tooltip("...y vuelven más rápido: Pickup Respawn Time x esto")]
+    [Range(0.1f, 1f)] public float pickupRespawnScale = 0.65f;
 
     [Header("Cinemática de llegada")]
     public bool playArrivalCinematic = true;
@@ -47,6 +62,12 @@ public partial class GameDirector : MonoBehaviour
     [Tooltip("Encuadre de cada plano. Con el GameDirector seleccionado se ven las tres cámaras en la escena; " +
              "el menú ⋮ del componente tiene \"Cinemática: ver plano ...\" para mirar por cada una")]
     public WaveCinematic.Settings cinematicShots = new WaveCinematic.Settings();
+
+    [Header("Cinemática de inicio")]
+    [Tooltip("Al empezar el nivel, el pez sale disparado del fondo del lago hacia el cielo con el propulsor " +
+             "(Historia y Supervivencia de un jugador; Espacio o Enter la saltan)")]
+    public bool playLaunchIntro = true;
+    public LaunchCinematic.Settings launchIntro = new LaunchCinematic.Settings();
 
     [Header("Peces defensores")]
     [Tooltip("Nivel desde el que aparecen los peces defensores (con traje, disparan a las aves)")]
@@ -197,7 +218,8 @@ public partial class GameDirector : MonoBehaviour
 
         SpawnFish();
         if (IsSurvival) RestoreSurvivalTotals();
-        for (int i = 0; i < ammoPickups; i++) SpawnPickup();
+        int pickupCount = Mathf.Max(ammoPickups, Mathf.RoundToInt(ammoPickups * Mathf.Max(1f, ammoPickupScale)));
+        for (int i = 0; i < pickupCount; i++) SpawnPickup();
 
         StartCoroutine(IsSurvival ? SurvivalFlow() : GameFlow());
     }
@@ -227,6 +249,8 @@ public partial class GameDirector : MonoBehaviour
         yield return null;
         // Mientras la pantalla de carga tapa el juego no empieza nada (el cartel del nivel sale al destaparse)
         while (LoadingScreen.IsLoading) yield return null;
+        // El pez sale disparado del fondo del lago (cinemática de inicio)
+        yield return LaunchIntro();
         string calmTitle = "NIVEL " + LevelNumber + (string.IsNullOrEmpty(Level.displayName) ? "" : "  ·  " + Level.displayName.ToUpper());
         string hora = Level.timeOfDay == LevelTime.Dia ? "" : LevelDefinition.TimeName(Level.timeOfDay) + "  //  ";
         Banner?.Invoke(calmTitle, hora + "Protege a los peces  //  Recoge cápsulas de munición en el agua", Cyan);
@@ -418,6 +442,7 @@ public partial class GameDirector : MonoBehaviour
                 if (bs == null || bs.type == null || bs.type.bird == null) continue;
                 for (int i = 0; i < bs.count; i++) rw.birds.Add(bs.type.bird);
             }
+            MultiplyWave(rw.birds);
             if (rw.birds.Count > 0) plan.Add(rw);
         }
 
@@ -428,6 +453,30 @@ public partial class GameDirector : MonoBehaviour
             return false;
         }
         return true;
+    }
+
+    // Dificultad: más aves en cada oleada de la Historia. Los jefes quedan igual; las aves extra repiten las especies
+    // de la oleada en el mismo orden (la mezcla se mantiene)
+    void MultiplyWave(List<BirdType> wave)
+    {
+        List<BirdType> normal = wave.FindAll(b => b != null && b.boss == BossKind.None);
+        if (normal.Count == 0) return;
+        int target = Mathf.RoundToInt(normal.Count * Mathf.Max(1f, birdCountMultiplier)) + Mathf.Max(0, extraBirdsPerWave);
+        target = Mathf.Max(normal.Count, Mathf.Min(target, Mathf.Max(1, maxBirdsPerWave)));
+        for (int k = 0; normal.Count + k < target; k++) wave.Add(normal[k % normal.Count]);
+    }
+
+    // Cinemática de inicio (Historia y Supervivencia de un jugador)
+    IEnumerator LaunchIntro()
+    {
+        if (!playLaunchIntro || IsCoop || player == null || player.isDead || lake == null || !lake.IsValid) yield break;
+        LaunchCinematic c = LaunchCinematic.Play(player, lake, launchIntro);
+        float guard = 0f;
+        while (c != null && !c.Done && guard < 15f)
+        {
+            if (!PauseMenu.IsPaused) guard += Time.unscaledDeltaTime;
+            yield return null;
+        }
     }
 
     // ======================= PECES =======================
@@ -613,17 +662,22 @@ public partial class GameDirector : MonoBehaviour
     List<BirdAI> SpawnGroup(List<BirdType> flock, float yaw, float healthMultiplier, float bossHealthMultiplier, string tag)
     {
         List<BirdAI> list = new List<BirdAI>();
-        Vector3 fromDir = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
-        Vector3 right = Vector3.Cross(Vector3.up, fromDir);
         Vector3 center = lake.Center;
+        int size = Mathf.Max(3, flockSize);
 
         for (int i = 0; i < flock.Count; i++)
         {
+            // Una oleada grande llega en varias bandadas (de 'flockSize'), cada una por otro lado: 0°, +40°, -40°, +80°...
+            int sub = i / size;
+            int idx = i % size;
+            float subYaw = yaw + (sub == 0 ? 0f : ((sub + 1) / 2) * 40f * (sub % 2 == 1 ? 1f : -1f));
+            Vector3 fromDir = Quaternion.Euler(0f, subYaw, 0f) * Vector3.forward;
+            Vector3 right = Vector3.Cross(Vector3.up, fromDir);
             // Formación en V
-            int row = (i + 1) / 2;
-            float side = i == 0 ? 0f : (i % 2 == 1 ? -1f : 1f);
+            int row = (idx + 1) / 2;
+            float side = idx == 0 ? 0f : (idx % 2 == 1 ? -1f : 1f);
             Vector3 offset = right * side * row * 7f + fromDir * row * 6f + Vector3.up * row * 2f;
-            Vector3 spawn = center + fromDir * arrivalDistance + Vector3.up * arrivalHeight + offset;
+            Vector3 spawn = center + fromDir * (arrivalDistance + sub * 12f) + Vector3.up * arrivalHeight + offset;
             Vector3 arrive = center + Vector3.up * Random.Range(14f, 20f) + right * side * row * 6f;
 
             BirdType type = flock[i];
@@ -810,7 +864,7 @@ public partial class GameDirector : MonoBehaviour
 
     IEnumerator RespawnPickup()
     {
-        yield return new WaitForSeconds(pickupRespawnTime);
+        yield return new WaitForSeconds(pickupRespawnTime * Mathf.Clamp(pickupRespawnScale, 0.1f, 1f));
         if (!ended) SpawnPickup();
     }
 
