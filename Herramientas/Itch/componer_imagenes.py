@@ -12,6 +12,9 @@ Escribe en Itch/:
     portada_630x500.png        Portada (la que sale en las listas de itch.io). También portada_1260x1000.png (2x)
     banner_960x300.png         Banner de la página (tema). También banner_1920x600.png (2x)
     fondo_1920x1080.jpg        Fondo de la página (oscuro y desenfocado, para que el texto se lea)
+    fondo_pagina_2560x1800.jpg El mismo fondo, más grande y fundido con el color de la página (#071224) abajo y a los
+                               lados, con burbujas y la rejilla hexagonal de la interfaz: la página no se ve cortada.
+                               Solo este: python3 Herramientas/Itch/componer_imagenes.py --fondo
     arte_principal_1920x1080.png  Arte con el título (redes, devlogs, prensa)
     tarjeta_redes_1200x630.png    Para compartir el enlace en redes
 Requisitos: pip install pillow numpy
@@ -222,9 +225,78 @@ def key_art(src):
     dark = Image.new('RGB', f.size, INK)
     f = Image.blend(f, dark, 0.66)
     f.save(os.path.join(OUT, 'fondo_1920x1080.jpg'), quality=88)
+    page_background(f)
+
+
+PAGE_BG = (7, 18, 36)      # el color de fondo de la página de itch.io (Edit theme > Background)
+
+
+def page_background(base):
+    """Fondo de la página: el lago desenfocado arriba y, hacia abajo y a los lados, se funde con el color de la página
+    (así no se ve el corte donde termina la imagen). Burbujas que suben por los costados y la rejilla hexagonal de la
+    interfaz, muy suaves, para que la parte de abajo no quede vacía. El centro (la columna del texto) queda limpio."""
+    import math
+    import random
+    W, H = 2560, 1800
+    top = base.convert('RGB').resize((W, round(W * base.height / base.width)), Image.LANCZOS)
+    a = np.zeros((H, W, 3), np.float32)
+    a[:] = np.array(PAGE_BG, np.float32) / 255
+    t = np.asarray(top, np.float32) / 255
+    a[:t.shape[0]] = t
+    ys = np.arange(H, dtype=np.float32)[:, None] / H
+    xs = np.arange(W, dtype=np.float32)[None, :] / W
+    # se funde hacia abajo (desde el 30 % del alto) y en los bordes de los lados
+    k = np.clip((ys - 0.30) / 0.42, 0, 1)
+    k = k * k * (3 - 2 * k)
+    side = np.clip((np.abs(xs - 0.5) - 0.40) / 0.10, 0, 1)
+    k = np.maximum(k, side * side * (3 - 2 * side))
+    bg = np.array(PAGE_BG, np.float32) / 255
+    a = a * (1 - k[..., None]) + bg * k[..., None]
+    img = Image.fromarray((np.clip(a, 0, 1) * 255).astype(np.uint8)).convert('RGBA')
+
+    # rejilla hexagonal (como el mapa de niveles), solo en los costados y abajo
+    hexes = Image.new('L', (W, H), 0)
+    d = ImageDraw.Draw(hexes)
+    r = 46
+    for row in range(int(H / (r * 1.5)) + 2):
+        for col in range(int(W / (r * 1.732)) + 2):
+            cx = col * r * 1.732 + (r * 0.866 if row % 2 else 0)
+            cy = row * r * 1.5
+            pts = [(cx + r * math.cos(math.radians(60 * i + 30)), cy + r * math.sin(math.radians(60 * i + 30))) for i in range(7)]
+            d.line(pts, fill=255, width=2)
+    m = np.asarray(hexes, np.float32) / 255
+    centro = np.clip((np.abs(xs - 0.5) - 0.20) / 0.12, 0, 1)            # nada detrás de la columna del texto
+    abajo = np.clip((ys - 0.25) / 0.3, 0, 1) * np.clip((1.02 - ys) / 0.3, 0, 1)
+    alpha = m * centro * abajo * 0.08
+    capa = np.zeros((H, W, 4), np.float32)
+    capa[..., :3] = np.array(ACCENT, np.float32)
+    capa[..., 3] = alpha * 255
+    img = Image.alpha_composite(img, Image.fromarray(capa.astype(np.uint8), 'RGBA'))
+
+    # burbujas que suben por los costados
+    rng = random.Random(4)
+    bub = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    db = ImageDraw.Draw(bub)
+    for _ in range(170):
+        lado = rng.choice((-1, 1))
+        x = W / 2 + lado * rng.uniform(560, 1250)
+        y = rng.uniform(260, H - 40)
+        rad = rng.choice((3, 4, 5, 6, 8, 10, 14, 18, 24)) * rng.uniform(0.8, 1.2)
+        fuerza = rng.uniform(0.35, 1.0) * min(1.0, (y - 200) / 500) * min(1.0, (H - y) / 300)
+        al = int(70 * fuerza)
+        db.ellipse([x - rad, y - rad, x + rad, y + rad], outline=(160, 228, 255, al), width=max(1, int(rad / 7)))
+        db.ellipse([x - rad * 0.45, y - rad * 0.6, x - rad * 0.05, y - rad * 0.25], fill=(220, 245, 255, int(al * 0.9)))
+    bub = bub.filter(ImageFilter.GaussianBlur(0.6))
+    img = Image.alpha_composite(img, bub)
+    img.convert('RGB').save(os.path.join(OUT, 'fondo_pagina_2560x1800.jpg'), quality=90, optimize=True)
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == '--fondo':
+        # Solo el fondo de la página, desde el fondo ya hecho (no hacen falta los renders)
+        page_background(Image.open(os.path.join(OUT, 'fondo_1920x1080.jpg')))
+        print('fondo_pagina_2560x1800.jpg')
+        return
     renders = sys.argv[1] if len(sys.argv) > 1 else 'render'
     os.makedirs(OUT, exist_ok=True)
     cover(os.path.join(renders, 'arte_portada.png'))

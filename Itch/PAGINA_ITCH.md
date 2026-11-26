@@ -12,7 +12,8 @@ Todo lo necesario para publicar el juego en itch.io, campo por campo. Los nombre
 | `portada_1260x1000.png` | La misma portada al doble de tamaño (por si quieres más nitidez) | — |
 | `banner_960x300.png` | Banner con el título, arriba de la página | **Edit theme → Banner** |
 | `banner_1920x600.png` | El mismo banner al doble de tamaño (pantallas grandes) | **Edit theme → Banner** (si usas la página ancha) |
-| `fondo_1920x1080.jpg` | Fondo oscuro de la página (el lago, desenfocado) | **Edit theme → Background image** |
+| `fondo_pagina_2560x1800.jpg` | Fondo de la página: el lago desenfocado que se funde con el color de la página abajo y a los lados (burbujas y la rejilla de la interfaz en los costados), así no se ve cortado | **Edit theme → Background image** |
+| `fondo_1920x1080.jpg` | El fondo anterior, más chico y sin fundido (por si lo quieres para otra cosa) | — |
 | `arte_principal_1920x1080.png` | Arte con el título: devlogs, prensa, la primera imagen de la descripción | Descripción, devlogs, redes |
 | `tarjeta_redes_1200x630.png` | Para compartir el enlace en redes | YouTube, X, Instagram, TikTok… |
 | `logo.png` | El logo del juego (el pez en 3D saliendo de una salpicadura y el título), fondo transparente | Descripción, devlogs, prensa |
@@ -73,7 +74,7 @@ En la página del juego, arriba: **Edit theme**.
 |---|---|
 | **Layout** | La columna del juego centrada (o a la derecha, con la descripción a la izquierda) |
 | **Banner** | `banner_960x300.png` (posición: centro) |
-| **Background image** | `fondo_1920x1080.jpg` · Repeat: **No repeat** · Position: **Top center** (o "Cover" si aparece) |
+| **Background image** | `fondo_pagina_2560x1800.jpg` · Repeat: **No repeat** · Position: **Top center** (no uses "Cover": la imagen ya se funde con el color de fondo) |
 | **Background** (color) | `#071224` |
 | **Inner column / BG2** (el fondo de la columna) | `#0B1A30` (si deja opacidad, al 90 %) |
 | **Text** | `#E8F4FF` |

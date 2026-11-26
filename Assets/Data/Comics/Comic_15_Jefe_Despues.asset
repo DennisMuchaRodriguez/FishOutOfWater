@@ -18,3 +18,5 @@ MonoBehaviour:
     caption: "El rey sali\u00F3 volando, empapado y sin ganas de pescar."
   - image: {fileID: 21300000, guid: 845ecafcb87e47cbaf2cdaa789596c2b, type: 3}
     caption: "El bagre revis\u00F3 el traje: \u00ABLo que viene es m\u00E1s grande. Prep\u00E1rate\u00BB."
+  music: 
+  keepMusic: 0

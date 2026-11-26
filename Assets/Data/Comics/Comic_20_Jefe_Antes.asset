@@ -22,3 +22,5 @@ MonoBehaviour:
     caption: "Con un grito llam\u00F3 a sus gaviotas: el cielo se llen\u00F3 de alas."
   - image: {fileID: 21300000, guid: fce6d6b3bc3f4bbf968d92881b225007, type: 3}
     caption: "La \u00FAltima batalla. \u00A1Por el lago y por el cardumen!"
+  music: Amenaza
+  keepMusic: 0

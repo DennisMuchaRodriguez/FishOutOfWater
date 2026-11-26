@@ -13,12 +13,18 @@ colección FluidR3_GM, licencia MIT) usando FluidSynth. Resultado: archivos OGG 
     Carga     "Bajo la superficie"  Re menor, 76 pulsos, 8 compases (25 s, en bucle). Tranquila: pads, cristal y arpa.
     Derrota   (unos 10 s, una vez)  Lamento: cuerdas y trompa que bajan, coro y un golpe de timbal.
     Victoria  (unos 6 s, una vez)   Fanfarria en Re mayor.
+    Historia  "Cuentos del lago"    Fa mayor, 84 pulsos, 16 compases (46 s, en bucle). Para los cómics: arpa,
+                                    pizzicato, flauta con el tema en mayor y clarinete; tierna y con ganas de aventura.
+    Amenaza   "Sombra en el cielo"  Re menor, 100 pulsos, 16 compases (38 s, en bucle). Para los cómics de antes de un
+                                    jefe: chelos en semicorcheas, pedal grave, taikos, trompas con el tema y coro.
+    Creditos  "El lago a salvo"     Re mayor, 80 pulsos, 32 compases (96 s, en bucle). El final y los créditos: el tema
+                                    en mayor, de la trompa sola a toda la orquesta con coro, y vuelve a la calma.
 
 Los bucles se tocan tres veces seguidas y se queda la del medio: así el principio ya trae la cola (reverb, notas
 largas) del final y el bucle no se corta al repetirse.
 
 Requisitos (Ubuntu): apt install fluidsynth fluid-soundfont-gm ffmpeg  ·  pip install mido numpy
-Uso: python3 Herramientas/Musica/componer_musica.py [Menu Juego Carga Derrota Victoria]   (desde la raíz del proyecto)
+Uso: python3 Herramientas/Musica/componer_musica.py [Menu Juego Carga Derrota Victoria Historia Amenaza Creditos]   (desde la raíz del proyecto)
 """
 import os
 import random
@@ -50,6 +56,7 @@ CHORDS = {
     'Dm': ['D', 'F', 'A'], 'Bb': ['Bb', 'D', 'F'], 'F': ['F', 'A', 'C'], 'C': ['C', 'E', 'G'],
     'Gm': ['G', 'Bb', 'D'], 'A': ['A', 'C#', 'E'], 'Am': ['A', 'C', 'E'], 'D': ['D', 'F#', 'A'],
     'Em': ['E', 'G', 'B'], 'G': ['G', 'B', 'D'], 'B': ['B', 'D#', 'F#'],
+    'Bm': ['B', 'D', 'F#'], 'F#m': ['F#', 'A', 'C#'], 'E': ['E', 'G#', 'B'],
 }
 
 
@@ -614,6 +621,237 @@ def build_victory():
     return s, compose_victory, None
 
 
+# ================================================================ HISTORIA: "Cuentos del lago" (los cómics)
+
+
+def compose_story(song, off):
+    A = ['F', 'C', 'Dm', 'C', 'F', 'Bb', 'Gm', 'C']
+    B = ['Dm', 'Bb', 'F', 'C', 'Bb', 'F', 'Gm', 'C']
+    T = song.T
+    a, b = off, off + 32
+
+    # ---- A: la flauta cuenta el tema (en mayor), arpa y pizzicato debajo
+    theme = [('C5', 1.5), ('F5', 0.5), ('F5', 1), ('G5', 0.5), ('A5', 0.5),
+             ('A5', 1.5), ('G5', 0.5), ('F5', 1), ('E5', 1),
+             ('F5', 1.5), ('E5', 0.5), ('D5', 1), ('Bb4', 1),
+             ('C5', 3), (None, 1),
+             ('C5', 1.5), ('F5', 0.5), ('F5', 1), ('G5', 0.5), ('A5', 0.5),
+             ('Bb5', 1.5), ('A5', 0.5), ('G5', 1), ('F5', 1),
+             ('D5', 1), ('E5', 1), ('F5', 1.5), ('G5', 0.5),
+             ('E5', 2), ('C5', 2)]
+    melody(T['flute'], a, theme, 84)
+    arp(T['harp'], a, A, n('F3'), n('C5'), 56, step=0.5, shape=(0, 2, 4, 2, 1, 3, 5, 3))
+    for i, ch in enumerate(A):
+        r = root(ch, 2)
+        T['pizz'].note(a + i * 4, 0.5, r, 74)
+        T['pizz'].chord(a + i * 4 + 1, 0.4, tones(ch, n('A3'), n('F4')), 58)
+        T['pizz'].note(a + i * 4 + 2, 0.5, r + 7, 66)
+        T['pizz'].chord(a + i * 4 + 3, 0.4, tones(ch, n('A3'), n('F4')), 54)
+        T['bass'].note(a + i * 4, 3.9, root(ch, 2), 58)
+    pad(T['strings'], a, 8, A, n('F3'), n('A4'), 44)
+    T['strings'].expr(a, a + 32, 70, 96)
+    for k, p in enumerate(('C6', 'F6', 'A6', 'C7')):
+        T['celesta'].note(a + 16 + k * 0.5, 1.5, n(p), 44)
+    T['timp'].note(a, 1.5, n('F2'), 54)
+
+    # ---- B: el clarinete sigue la historia, la flauta responde arriba; las cuerdas crecen
+    line = [('A4', 2), ('F4', 1), ('G4', 1), ('F4', 2), ('D4', 2),
+            ('C4', 1), ('F4', 1), ('A4', 1), ('C5', 1), ('G4', 3), (None, 1),
+            ('D5', 2), ('C5', 1), ('Bb4', 1), ('A4', 2), ('F4', 2),
+            ('Bb4', 1), ('A4', 1), ('G4', 1), ('F4', 1), ('E4', 2), ('G4', 2)]
+    melody(T['clarinet'], b, line, 86)
+    melody(T['flute'], b + 2, [('F5', 2), (None, 6), ('E5', 2), (None, 6), ('F5', 2), (None, 6), ('C6', 2), ('Bb5', 2), ('G5', 2)], 60)
+    pad(T['strings'], b, 8, B, n('D3'), n('A4'), 60)
+    T['strings'].expr(b, b + 24, 80, 116)
+    T['strings'].expr(b + 24, b + 32, 116, 80)
+    arp(T['harp'], b, B, n('D3'), n('F5'), 52, step=0.5)
+    for i, ch in enumerate(B):
+        T['bass'].note(b + i * 4, 3.9, root(ch, 2), 64)
+        T['pizz'].note(b + i * 4, 0.5, root(ch, 2), 70)
+        T['pizz'].note(b + i * 4 + 2, 0.5, root(ch, 2) + 7, 62)
+    T['timp'].note(b, 1.5, n('D2'), 58)
+    roll(T['timp'], b + 28, 4, n('C2'), 20, 60)
+    melody(T['celesta'], b + 24, [('G5', 1), ('A5', 1), ('Bb5', 1), ('C6', 1), ('E6', 2), ('G6', 2)], 40)
+
+
+def build_story():
+    s = Song(84, seed=21)
+    s.T = {
+        'flute': s.track('Flauta', 0, 73, vol=100, pan=70, rev=75),
+        'clarinet': s.track('Clarinete', 1, 71, vol=98, pan=54, rev=70),
+        'harp': s.track('Arpa', 2, 46, vol=92, pan=44, rev=80),
+        'pizz': s.track('Pizzicato', 3, 45, vol=90, pan=66, rev=60),
+        'strings': s.track('Cuerdas', 4, 49, vol=88, pan=62, rev=80),
+        'bass': s.track('Contrabajo', 5, 43, vol=86, pan=60, rev=55),
+        'celesta': s.track('Celesta', 6, 8, vol=80, pan=82, rev=90),
+        'timp': s.track('Timbal', 7, 47, vol=90, pan=60, rev=65),
+    }
+    return s, compose_story, 16
+
+
+# ================================================================ AMENAZA: "Sombra en el cielo" (antes de un jefe)
+
+
+def compose_threat(song, off):
+    P = ['Dm', 'Dm', 'Bb', 'Bb', 'Gm', 'Gm', 'A', 'A']
+    T = song.T
+    a, b = off, off + 32
+
+    # ---- A: el pulso (chelos en semicorcheas, pedal grave, taikos lejanos)
+    ostinato16(T['cello'], a, P, 2, 70)
+    T['cello'].expr(a, a + 32, 80, 110)
+    for i, ch in enumerate(P):
+        T['bass'].note(a + i * 4, 3.9, n('D2') if i < 6 else n('A1'), 78)
+        T['taiko'].note(a + i * 4, 1, n('C3'), 84)
+        if i % 2 == 1:
+            T['taiko'].note(a + i * 4 + 2.5, 0.5, n('C3'), 66)
+            T['taiko'].note(a + i * 4 + 3, 1, n('C3'), 76)
+    pad(T['choir'], a + 16, 4, P[4:], n('D3'), n('A3'), 56)
+    T['choir'].expr(a + 16, a + 32, 60, 100)
+    roll(T['timp'], a + 28, 4, n('A2'), 25, 90)
+    T['drums'].note(a, 4, CHINA, 46)
+
+    # ---- B: las trompas con el tema en menor, cuerdas en trémolo arriba y el coro más fuerte
+    motif = [('A3', 1.5), ('D4', 0.5), ('D4', 1), ('E4', 0.5), ('F4', 0.5), ('E4', 2), ('D4', 2),
+             ('D4', 1.5), ('F4', 0.5), ('F4', 1), ('G4', 0.5), ('Bb4', 0.5), ('A4', 4),
+             ('Bb4', 1.5), ('A4', 0.5), ('G4', 1), ('F4', 1), ('G4', 2), ('E4', 2),
+             ('E4', 1.5), ('F4', 0.5), ('E4', 1), ('C#4', 1), ('A3', 4)]
+    melody(T['horns'], b, motif, 92)
+    melody(T['horns'], b, motif, 70, shift=-12)
+    ostinato16(T['cello'], b, P, 2, 82)
+    for i, ch in enumerate(P):
+        T['trem'].chord(b + i * 4, 3.9, tones(ch, n('D5'), n('A5')), 52)
+        T['bass'].note(b + i * 4, 3.9, n('D2') if i < 6 else n('A1'), 84)
+        for (bb, v) in ((0, 98), (1.5, 74), (2, 88), (3, 70), (3.5, 82)):
+            T['taiko'].note(b + i * 4 + bb, 0.5, n('C3'), v)
+        T['timp'].note(b + i * 4, 1, low_root(ch), 86)
+    T['trem'].expr(b, b + 32, 70, 115)
+    pad(T['choir'], b, 8, P, n('D3'), n('D4'), 74)
+    T['drums'].note(b, 4, CRASH2, 90)
+    roll(T['drums'], b + 30, 2, SNARE, 30, 100, rate=0.125)
+
+
+def build_threat():
+    s = Song(100, seed=31)
+    s.T = {
+        'cello': s.track('Chelos', 0, 42, vol=100, pan=56, rev=55),
+        'bass': s.track('Contrabajos', 1, 43, vol=98, pan=60, rev=50),
+        'horns': s.track('Trompas', 2, 60, vol=106, pan=50, rev=70),
+        'trem': s.track('Trémolo', 3, 44, vol=84, pan=70, rev=75),
+        'choir': s.track('Coro', 4, 52, vol=90, pan=64, rev=85),
+        'timp': s.track('Timbales', 5, 47, vol=104, pan=60, rev=60),
+        'taiko': s.track('Taikos', 6, 116, vol=100, pan=64, rev=50),
+        'drums': s.track('Platillos', 9, 48, vol=90, pan=64, rev=70),
+    }
+    return s, compose_threat, 16
+
+
+# ================================================================ CRÉDITOS: "El lago a salvo"
+
+
+def compose_credits(song, off):
+    A = ['D', 'Bm', 'G', 'A', 'D', 'Em', 'A', 'D']
+    C = ['Bm', 'G', 'D', 'A', 'Bm', 'G', 'Em', 'A']
+    D = ['G', 'A', 'Bm', 'G', 'D', 'G', 'Em', 'A']
+    T = song.T
+    a, b, c, d = off, off + 32, off + 64, off + 96
+    theme = [('A3', 1.5), ('D4', 0.5), ('D4', 1), ('E4', 0.5), ('F#4', 0.5),
+             ('F#4', 1.5), ('E4', 0.5), ('D4', 1), ('B3', 1),
+             ('D4', 1.5), ('C#4', 0.5), ('B3', 1), ('G3', 1),
+             ('A3', 3), (None, 1),
+             ('A3', 1.5), ('D4', 0.5), ('D4', 1), ('E4', 0.5), ('F#4', 0.5),
+             ('G4', 1.5), ('F#4', 0.5), ('E4', 1), ('D4', 1),
+             ('B3', 1), ('C#4', 1), ('D4', 1.5), ('E4', 0.5),
+             ('D4', 4)]
+
+    # ---- A: la trompa sola con el tema, arpa y piano; cuerdas suaves
+    melody(T['horn'], a, theme, 84)
+    arp(T['harp'], a, A, n('D3'), n('A4'), 52, step=0.5, shape=(0, 1, 2, 3, 4, 3, 2, 1))
+    for i, ch in enumerate(A):
+        T['piano'].chord(a + i * 4, 1.9, tones(ch, n('F#3'), n('D4')), 48)
+        T['piano'].note(a + i * 4, 3.9, root(ch, 2), 56)
+        T['bass'].note(a + i * 4, 3.9, root(ch, 2), 56)
+    pad(T['slow'], a, 8, A, n('D3'), n('A4'), 46)
+    T['slow'].expr(a, a + 32, 60, 100)
+    for k, p in enumerate(tones('D', n('D5'), n('D7'))):
+        T['celesta'].note(a + 28 + k * 0.25, 1.5, p, 40 + k * 2)
+
+    # ---- B: toda la orquesta (trompetas y trompas con el tema arriba, coro, timbales)
+    melody(T['trumpet'], b, theme, 96, shift=12)
+    melody(T['horn'], b, theme, 88)
+    melody(T['glock'], b, theme, 36, shift=24)
+    ostinato8(T['strings'], b, A, 3, 72)
+    T['strings'].expr(b, b + 32, 96, 120)
+    pad(T['choir'], b, 8, A, n('D4'), n('A4'), 72)
+    for i, ch in enumerate(A):
+        T['brass'].chord(b + i * 4, 1.9, tones(ch, n('D3'), n('D4')), 76)
+        T['brass'].chord(b + i * 4 + 2, 1.9, tones(ch, n('D3'), n('D4')), 66)
+        T['bass'].note(b + i * 4, 3.9, root(ch, 1), 74)
+        T['timp'].note(b + i * 4, 1, low_root(ch), 84)
+    T['drums'].note(b, 4, CRASH, 100)
+    roll(T['drums'], b + 30, 2, CRASH2, 20, 80, rate=0.1)
+
+    # ---- C: el recuerdo (oboe y celesta, cuerdas cantando bajo; respira)
+    line = [('F#5', 2), ('D5', 1), ('E5', 1), ('D5', 2), ('B4', 2),
+            ('A4', 1), ('D5', 1), ('F#5', 1), ('A5', 1), ('E5', 4),
+            ('F#5', 2), ('D5', 1), ('E5', 1), ('D5', 2), ('B4', 2),
+            ('G4', 1), ('A4', 1), ('B4', 1), ('C#5', 1), ('E5', 2), ('A4', 2)]
+    melody(T['oboe'], c, line, 84)
+    melody(T['slow'], c, [('B3', 4), ('G3', 4), ('A3', 4), ('A3', 4), ('B3', 4), ('B3', 4), ('G3', 4), ('C#4', 4)], 66)
+    pad(T['slow'], c, 8, C, n('D3'), n('F#4'), 50)
+    arp(T['harp'], c, C, n('B2'), n('F#4'), 50, step=0.5)
+    arp(T['celesta'], c + 16, C[4:], n('B4'), n('F#6'), 38, step=1.0, shape=(0, 2, 1, 3))
+    for i, ch in enumerate(C):
+        T['bass'].note(c + i * 4, 3.9, root(ch, 2), 58)
+
+    # ---- D: el último gran tema (coro y trompetas) y vuelve a la calma para empezar otra vez
+    big = [('B4', 1.5), ('A4', 0.5), ('G4', 1), ('B4', 1), ('C#5', 1.5), ('D5', 0.5), ('E5', 2),
+           ('F#5', 1.5), ('E5', 0.5), ('D5', 1), ('B4', 1), ('D5', 4)]
+    melody(T['trumpet'], d, big, 98)
+    melody(T['horn'], d, big, 86, shift=-12)
+    pad(T['choir'], d, 4, D[:4], n('D4'), n('B4'), 84)
+    ostinato16(T['strings'], d, D[:4], 3, 78)
+    for i in range(4):
+        ch = D[i]
+        T['brass'].chord(d + i * 4, 3.8, tones(ch, n('D3'), n('D4')), 80)
+        T['bass'].note(d + i * 4, 3.9, root(ch, 1), 80)
+        for (bb, v) in ((0, 96), (1.5, 70), (2, 86), (3, 66)):
+            T['taiko'].note(d + i * 4 + bb, 0.5, n('C3'), v)
+        T['timp'].note(d + i * 4, 1.5, low_root(ch), 92)
+    T['drums'].note(d, 4, CRASH, 106)
+    T['drums'].note(d + 12, 4, CRASH2, 96)
+    # Últimos 4 compases: arpa, piano y cuerdas suaves; el La lleva otra vez al principio
+    for i, ch in enumerate(D[4:]):
+        T['piano'].chord(d + 16 + i * 4, 3.8, tones(ch, n('F#3'), n('D4')), 46)
+        T['bass'].note(d + 16 + i * 4, 3.9, root(ch, 2), 52)
+    arp(T['harp'], d + 16, D[4:], n('D3'), n('A4'), 48, step=0.5)
+    pad(T['slow'], d + 16, 4, D[4:], n('D3'), n('A4'), 44)
+    T['slow'].expr(d + 16, d + 32, 100, 60)
+    T['choir'].expr(d, d + 16, 120, 70)
+
+
+def build_credits():
+    s = Song(80, seed=41)
+    s.T = {
+        'horn': s.track('Trompa', 0, 60, vol=104, pan=52, rev=75),
+        'trumpet': s.track('Trompetas', 1, 56, vol=96, pan=74, rev=70),
+        'brass': s.track('Metales', 2, 61, vol=84, pan=64, rev=70),
+        'strings': s.track('Cuerdas', 3, 48, vol=96, pan=68, rev=65),
+        'slow': s.track('Cuerdas lentas', 4, 49, vol=94, pan=58, rev=80),
+        'oboe': s.track('Oboe', 5, 68, vol=96, pan=70, rev=80),
+        'harp': s.track('Arpa', 6, 46, vol=90, pan=44, rev=85),
+        'piano': s.track('Piano', 7, 0, vol=80, pan=60, rev=80),
+        'choir': s.track('Coro', 8, 52, vol=90, pan=64, rev=90),
+        'drums': s.track('Platillos', 9, 48, vol=92, pan=64, rev=70),
+        'timp': s.track('Timbales', 10, 47, vol=100, pan=60, rev=65),
+        'taiko': s.track('Taikos', 11, 116, vol=90, pan=64, rev=55),
+        'bass': s.track('Contrabajos', 12, 43, vol=90, pan=60, rev=55),
+        'celesta': s.track('Celesta', 13, 8, vol=78, pan=82, rev=90),
+        'glock': s.track('Glockenspiel', 14, 9, vol=64, pan=86, rev=85),
+    }
+    return s, compose_credits, 32
+
+
 # ---------------------------------------------------------------- render y mezcla
 
 def render(mid, wav):
@@ -733,7 +971,9 @@ def main():
         sys.exit('Falta ' + SF2 + ' (apt install fluid-soundfont-gm)')
     only = set(sys.argv[1:])
     jobs = [('Menu', build_menu, -17.0, 0, 0), ('Juego', build_game, -18.0, 0, 0), ('Carga', build_loading, -21.0, 0, 0),
-            ('Derrota', build_defeat, -18.0, 3.5, 2.0), ('Victoria', build_victory, -17.0, 3.0, 1.5)]
+            ('Derrota', build_defeat, -18.0, 3.5, 2.0), ('Victoria', build_victory, -17.0, 3.0, 1.5),
+            ('Historia', build_story, -20.0, 0, 0), ('Amenaza', build_threat, -19.0, 0, 0),
+            ('Creditos', build_credits, -18.0, 0, 0)]
     for (name, b, db, tail, fade) in jobs:
         if only and name not in only:
             continue

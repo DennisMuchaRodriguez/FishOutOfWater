@@ -26,3 +26,5 @@ MonoBehaviour:
     caption: "Con todo eso se arm\u00F3 un traje: escafandra, propulsor y una pistola de agua."
   - image: {fileID: 21300000, guid: 0ab41d2d22f4478b819dc37ff7165012, type: 3}
     caption: "Los peces no saben volar... \u00A1hasta ahora!"
+  music: 
+  keepMusic: 0

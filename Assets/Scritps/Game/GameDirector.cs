@@ -17,7 +17,8 @@ using UnityEngine.Serialization;
 public partial class GameDirector : MonoBehaviour
 {
     public static GameDirector Instance { get; private set; }
-    public static bool InCinematic { get { return WaveCinematic.IsPlaying; } }
+    // Cinemática de oleada o créditos del final: el HUD se esconde y el jugador no se mueve ni dispara
+    public static bool InCinematic { get { return WaveCinematic.IsPlaying || CreditsRoll.IsPlaying; } }
 
     public enum GameState { Calm, WaveIncoming, WaveActive, Intermission, Victory, Defeat }
 

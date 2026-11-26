@@ -26,3 +26,5 @@ MonoBehaviour:
     caption: "Y el pez peque\u00F1o, por fin, pudo descansar."
   - image: {fileID: 21300000, guid: 281c843563ae4466b82d729c0b0ff208, type: 3}
     caption: "Pero si alg\u00FAn d\u00EDa vuelven las aves... el traje estar\u00E1 listo."
+  music: Creditos
+  keepMusic: 1

@@ -11,9 +11,9 @@ brillo azul de la interfaz holográfica.
     python3 Herramientas/Logo/logo.py              (desde cualquier carpeta)
 
 Lee Herramientas/Logo/renders/pez_logo.png, pez_icono.png y sus *_brillo.png. Escribe:
-  - Assets/Resources/UI/Logo.png    el logo completo (el menú principal lo usa como título)
+  - Assets/Resources/UI/Logo.png    solo el título, sin el pez (el menú principal lo usa como título)
   - Assets/Resources/UI/Icono.png   ícono cuadrado 1024 (el protagonista 3D de frente sobre azul marino): ícono de la app
-  - Itch/logo.png                   el logo para la página de itch.io
+  - Itch/logo.png                   el logo completo con el pez 3D, para la página de itch.io
 """
 import os
 import uuid
@@ -129,8 +129,9 @@ def a_alto(img, alto):
 
 # ======================= EL TÍTULO =======================
 
-def titulo(c, x, y, texto, alto, arriba, abajo, relieve=14):
-    """Una línea del título: relieve azul marino, contorno y relleno en degradado (x, y = arriba a la izquierda)."""
+def titulo(c, x, y, texto, alto, arriba, abajo, relieve=14, rayas=False):
+    """Una línea del título: relieve azul marino, contorno y relleno en degradado (x, y = arriba a la izquierda).
+    rayas: líneas de escaneo finas sobre las letras, como los hologramas de la interfaz."""
     f = ImageFont.truetype(FUENTE, int(alto * SS))
     d = ImageDraw.Draw(c.img)
     X, Y = x * SS, y * SS
@@ -147,7 +148,27 @@ def titulo(c, x, y, texto, alto, arriba, abajo, relieve=14):
     ImageDraw.Draw(franja).rectangle([0, bb[1], c.img.size[0], bb[1] + (bb[3] - bb[1]) * 0.28], fill=110)
     brillo = Image.fromarray((np.asarray(m, np.float32) * np.asarray(franja, np.float32) / 255).astype(np.uint8))
     c.pintar(brillo, (255, 255, 255))
+    if rayas:
+        lineas = Image.new('L', c.img.size, 0)
+        d2 = ImageDraw.Draw(lineas)
+        paso = int(alto * 0.045 * SS)
+        for yy in range(bb[1], bb[3], paso):
+            d2.rectangle([0, yy, c.img.size[0], yy + max(1, paso // 3)], fill=46)
+        c.pintar(Image.fromarray((np.asarray(m, np.float32) * np.asarray(lineas, np.float32) / 255).astype(np.uint8)),
+                 MARINO_HONDO)
     return bb[2] / SS, bb[3] / SS
+
+
+def esquinas(c, x0, y0, x1, y1, color, largo=70, grosor=7):
+    """Esquinas de marco de la interfaz (como los paneles del casco) alrededor de una caja."""
+    d = ImageDraw.Draw(c.img)
+    g = int(grosor * SS)
+    for (cx, cy, sx, sy) in ((x0, y0, 1, 1), (x1, y0, -1, 1), (x0, y1, 1, -1), (x1, y1, -1, -1)):
+        X, Y = cx * SS, cy * SS
+        d.line([(X, Y + sy * largo * SS), (X, Y), (X + sx * largo * SS, Y)], fill=color + (255,), width=g, joint='curve')
+        r = g * 0.9
+        for (px, py) in ((X + sx * largo * SS, Y), (X, Y + sy * largo * SS)):
+            d.polygon([(px, py - r), (px + r, py), (px, py + r), (px - r, py)], fill=NARANJA_ABAJO + (255,))
 
 
 # ======================= SALIDAS =======================
@@ -197,6 +218,26 @@ def logo_completo():
     return img.crop((max(0, bb[0] - m), max(0, bb[1] - m), min(img.width, bb[2] + m), min(img.height, bb[3] + m)))
 
 
+def titulo_menu():
+    """Solo el título (sin el pez), fondo transparente: el del menú principal. Mismo estilo del juego, con las líneas
+    de escaneo de los hologramas y las esquinas de marco de los paneles de la interfaz."""
+    alto = 270
+    f = ImageFont.truetype(FUENTE, alto)
+    ancho = max(f.getbbox('FISH OUT')[2], f.getbbox('OF WATER')[2] + 60)
+    x0, y0 = 110, 90
+    c = Lienzo(ancho + 2 * x0, 860)
+    x1, y1 = titulo(c, x0, y0, 'FISH OUT', alto, NARANJA_ARRIBA, NARANJA_ABAJO, rayas=True)
+    x2, y2 = titulo(c, x0 + 60, y1 + 30, 'OF WATER', alto, AZUL_ARRIBA, AZUL_ABAJO, rayas=True)
+    m = Image.new('L', (c.w, c.h), 0)
+    ImageDraw.Draw(m).text((x0 * SS, y0 * SS), 'FISH OUT', font=ImageFont.truetype(FUENTE, alto * SS), fill=255)
+    top = m.getbbox()[1] / SS
+    esquinas(c, x0 - 56, top - 46, max(x1, x2) + 56, y2 + 46, (64, 184, 255))
+    img = c.resultado(glow=12)
+    bb = img.split()[3].point(lambda v: 255 if v > 4 else 0).getbbox()
+    mg = 20
+    return img.crop((max(0, bb[0] - mg), max(0, bb[1] - mg), min(img.width, bb[2] + mg), min(img.height, bb[3] + mg)))
+
+
 def icono():
     """El protagonista 3D de frente sobre azul marino, con un halo azul detrás de la cabeza."""
     c = Lienzo(1024, 1024)
@@ -223,11 +264,12 @@ def main():
     ui = os.path.join(REPO, 'Assets', 'Resources', 'UI')
     os.makedirs(ui, exist_ok=True)
     carpeta_meta(ui)
-    logo = logo_completo()
+    menu = titulo_menu()
     ruta = os.path.join(ui, 'Logo.png')
-    logo.save(ruta, optimize=True)
+    menu.save(ruta, optimize=True)
     meta_sprite(ruta)
-    print('LOGO', ruta, logo.size)
+    print('TITULO DEL MENU', ruta, menu.size)
+    logo = logo_completo()
     ic = icono()
     ruta = os.path.join(ui, 'Icono.png')
     ic.save(ruta, optimize=True)

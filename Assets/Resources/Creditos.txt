@@ -1,0 +1,53 @@
+// Créditos del final (los muestra CreditsRoll al vencer al jefe final). Edita los nombres a tu gusto:
+//   [LOGO]       el título del juego (Resources/UI/Logo.png)
+//   # Texto      título grande
+//   ## Texto     nombre de una sección (en azul)
+//   Texto        un nombre
+//   ### Texto    texto pequeño (licencias, notas)
+//   (línea vacía) un espacio
+//   Las líneas que empiezan con // no se muestran.
+[LOGO]
+
+
+Un juego de
+# KAI CODEX
+
+
+## Dirección y diseño
+Kai Codex
+
+## Programación
+Kai Codex
+
+## Modelado 3D y animación
+Kai Codex
+
+## Arte, cómics y logo
+Kai Codex
+
+## Música y sonido
+Kai Codex
+### Música original interpretada con los instrumentos FluidR3_GM (Frank Wen, licencia MIT)
+
+
+## Con
+El pez del traje
+El viejo bagre mecánico
+El cardumen del lago
+
+## Y los villanos
+La Garza Gris Gigante
+El Pelícano Saco Sin Fondo
+El Cormorán Rey
+La Reina Águila Marina
+
+
+## Hecho con
+Unity 6
+### Recursos de la Unity Asset Store: Bitgem · Fantasy Skybox FREE · Fantasy Environments · NamuFX
+### Fuentes: Oxanium, Rajdhani y Lilita One (SIL Open Font License)
+
+
+## Gracias especiales
+A todos los que jugaron las primeras versiones
+### y a ti, por defender el lago hasta el final.

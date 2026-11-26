@@ -18,3 +18,5 @@ MonoBehaviour:
     caption: "Los peces escaparon del saco y el pel\u00EDcano se fue con el pico vac\u00EDo."
   - image: {fileID: 21300000, guid: 3139cb6073db464291b83e662ef6977f, type: 3}
     caption: "Desde ese d\u00EDa, otros peces se ponen un traje para pelear a tu lado."
+  music: 
+  keepMusic: 0

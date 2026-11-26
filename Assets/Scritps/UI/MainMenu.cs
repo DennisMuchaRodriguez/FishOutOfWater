@@ -55,8 +55,6 @@ public partial class MainMenu : MonoBehaviour
     RectTransform infoContent;
     TextMeshProUGUI totalStarsText;
     readonly List<LevelNode> nodes = new List<LevelNode>();
-    float resetArmedUntil;
-    TextMeshProUGUI resetLabel;
     TextMeshProUGUI mapMessage;
     float mapMessageTimer;
 
@@ -546,9 +544,6 @@ public partial class MainMenu : MonoBehaviour
         infoContent = MenuUI.Rect("Contenido", info, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(360f, 548f));
 
         MenuUI.ComicButton("VOLVER", s, new Vector2(0f, 0f), new Vector2(120f, 40f), new Vector2(180f, 48f), MenuUI.BlueDark, () => Go(modesScreen), 22f);
-        Button reset = MenuUI.ComicButton("BORRAR PROGRESO", s, new Vector2(0f, 0f), new Vector2(360f, 40f), new Vector2(250f, 40f),
-                                          Color.Lerp(MenuUI.Locked, MenuUI.Red, 0.35f), ResetProgress, 17f);
-        resetLabel = reset.GetComponentInChildren<TextMeshProUGUI>();
 
         mapMessage = MenuUI.Text("Mensaje", s, "", 22f, new Vector2(0.5f, 0f), new Vector2(-210f, 40f), new Vector2(640f, 40f), MenuUI.Yellow);
 
@@ -716,7 +711,9 @@ public partial class MainMenu : MonoBehaviour
 
         if (unlocked)
         {
-            bool hasComic = level.comicBefore != null;
+            // Cómics para volver a ver: el de antes del nivel, y el de después cuando ya lo ganaste
+            ComicDefinition after = SaveSystem.IsCompleted(index) ? level.comicAfter : null;
+            bool hasComic = level.comicBefore != null || after != null;
             if (WorkshopFlow.IsPending(index))
             {
                 // Ganó el nivel pero todavía no instaló la mejora: el Taller lo espera
@@ -734,14 +731,13 @@ public partial class MainMenu : MonoBehaviour
             }
             if (hasComic)
             {
-                ComicDefinition comic = level.comicBefore;
-                Button comicButton = null;
-                comicButton = MenuUI.ComicButton("VER CÓMIC", infoContent, bottom, new Vector2(0f, 38f), new Vector2(230f, 40f), MenuUI.Blue,
-                                   () => ComicViewer.Show(comic, () =>
-                                   {
-                                       SaveSystem.MarkSeen(comic);
-                                       if (comicButton != null) comicButton.Select();   // recupera la navegación con teclado
-                                   }), 20f);
+                bool both = level.comicBefore != null && after != null;
+                if (level.comicBefore != null)
+                    ComicButton(both ? "CÓMIC: ANTES" : "VER CÓMIC", level.comicBefore, new Vector2(both ? -78f : 0f, 38f),
+                                new Vector2(both ? 150f : 230f, 40f), both ? 16f : 20f);
+                if (after != null)
+                    ComicButton(both ? "DESPUÉS" : "VER CÓMIC", after, new Vector2(both ? 78f : 0f, 38f),
+                                new Vector2(both ? 150f : 230f, 40f), both ? 16f : 20f);
             }
         }
         else
@@ -753,6 +749,18 @@ public partial class MainMenu : MonoBehaviour
         }
 
         foreach (LevelNode n in nodes) n.ring.color = n.index == index ? MenuUI.Cream : new Color(1f, 1f, 1f, 0f);
+    }
+
+    // Botón de la ficha que abre un cómic a pantalla completa y, al cerrarlo, devuelve la navegación con teclado
+    void ComicButton(string label, ComicDefinition comic, Vector2 pos, Vector2 size, float fontSize)
+    {
+        Button b = null;
+        b = MenuUI.ComicButton(label, infoContent, new Vector2(0.5f, 0f), pos, size, MenuUI.Blue,
+                               () => ComicViewer.Show(comic, () =>
+                               {
+                                   SaveSystem.MarkSeen(comic);
+                                   if (b != null) b.Select();
+                               }), fontSize);
     }
 
     void OpenWorkshop(int index)
@@ -793,22 +801,6 @@ public partial class MainMenu : MonoBehaviour
         busy = true;
         yield return FadeTo(1f, 0.5f);
         GameSession.PlayLevel(index);
-    }
-
-    void ResetProgress()
-    {
-        if (Time.unscaledTime > resetArmedUntil)
-        {
-            resetArmedUntil = Time.unscaledTime + 3f;
-            resetLabel.text = "¿SEGURO? CLIC OTRA VEZ";
-            return;
-        }
-        resetArmedUntil = 0f;
-        resetLabel.text = "BORRAR PROGRESO";
-        SaveSystem.ResetProgress();
-        selectedLevel = -1;
-        RebuildMap();
-        ShowMapMessage("Progreso borrado");
     }
 
     void ShowMapMessage(string text)
@@ -961,11 +953,6 @@ public partial class MainMenu : MonoBehaviour
             {
                 mapMessageTimer -= dt;
                 if (mapMessageTimer <= 0f) mapMessage.text = "";
-            }
-            if (resetArmedUntil > 0f && time > resetArmedUntil)
-            {
-                resetArmedUntil = 0f;
-                resetLabel.text = "BORRAR PROGRESO";
             }
             // Prueba: F9 desbloquea todos los niveles
             if (Input.GetKeyDown(KeyCode.F9) && catalog != null)

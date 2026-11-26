@@ -219,7 +219,12 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 
 **Botones con teclado**: Enter o clic. **Espacio no pulsa botones** (se quitó del eje *Submit* en Project Settings > Input Manager, porque es el propulsor). Los botones del resultado y de "TRAJE DESTRUIDO" esperan medio segundo antes de responder, para no pulsarlos sin querer mientras juegas.
 
-**Visor de cómics** (`ComicViewer`): clic, Espacio, Enter o flecha derecha pasan a la siguiente viñeta; Esc o **SALTAR** lo cierran. Una viñeta sin dibujo sale en blanco con el texto "VIÑETA 2 DE 6" para saber dónde va cada dibujo.
+**Visor de cómics** (`ComicViewer`): a **pantalla completa**. Cada viñeta ocupa toda la pantalla (con franjas negras si la proporción no coincide), entra con un fundido y se acerca muy despacio, como una cámara; el recuadro de narración va arriba a la izquierda del dibujo (esa esquina se deja libre al dibujar) y el título, los puntos y los botones van en las franjas. Clic, Espacio, Enter o flecha derecha: siguiente viñeta; flecha izquierda: la anterior; Esc o **SALTAR**: lo cierran. Una viñeta sin dibujo sale en blanco con el texto "VIÑETA 2 DE 6" para saber dónde va cada dibujo.
+- **Música de cada cómic** (campo **Music** del cómic): vacío = "Historia" (Cuentos del lago); los de antes de un jefe usan "Amenaza"; el final usa "Creditos" con **Keep Music** marcado (sigue sonando en los créditos). Al cerrar el cómic vuelve la música que sonaba antes (o el silencio después de la fanfarria de victoria).
+- **Volver a verlos**: en la ficha de cada nivel del mapa, **VER CÓMIC** abre el de antes; cuando ya ganaste el nivel aparece también el de después (con los dos, los botones dicen **CÓMIC: ANTES** y **DESPUÉS**).
+
+**Créditos del final** (`CreditsRoll`, nombres en `Assets/Resources/Creditos.txt`): al ganar el **último nivel** del catálogo en la Historia (de un jugador), después del cómic final. Es una cinemática sobre el lago: la cámara deja la vista del jugador, gira a ras del agua alrededor del pez y se aleja subiendo hasta ver todo el lago en calma, mientras los nombres suben por el centro con franjas de cine y suena "El lago a salvo"; al final, fundido a negro con **GRACIAS POR JUGAR** y aparece el resultado del nivel. El tiempo corre normal durante los créditos (el cardumen nada, el agua se mueve) y el pez se queda quieto. Esc o **SALTAR** los terminan. Como la cinemática de oleada, no cambia de cámara: la del jugador mezcla la pose que calcula `CreditsRoll` (`GameDirector.InCinematic` es true y el HUD se esconde).
+- **Para cambiar los nombres**: edita `Creditos.txt` (`[LOGO]` el título del juego, `# ` título grande, `## ` sección, una línea sola = un nombre, `### ` texto chico, línea vacía = espacio, `//` = comentario).
 
 **Progreso guardado** (`SaveSystem`): se guarda solo en el archivo `progreso.json`, en `Application.persistentDataPath` (en Windows: `C:\Users\<tú>\AppData\LocalLow\<Company>\<Product>`). Guarda:
 - `unlockedLevels`: cuántos niveles están desbloqueados.
@@ -233,7 +238,7 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 **Atajos para probar:**
 - **F9** en el mapa: desbloquea todos los niveles.
 - **F9** en el Archivo de aves: registra todas las especies (para ver todas las fichas).
-- **BORRAR PROGRESO** (abajo a la izquierda del mapa): pulsa dos veces para confirmar. Deja todo como nuevo.
+- **Empezar de cero**: el juego ya no tiene botón para borrar el progreso. Para probar desde cero, borra el archivo `progreso.json` (ver arriba) con el juego cerrado.
 - Para probar un nivel sin pasar por el menú: ponlo en **Test Level** del GameDirector y dale Play en SampleScene (no guarda progreso si no está en el catálogo).
 
 ### Modo Supervivencia (oleadas sin fin)
@@ -1026,7 +1031,7 @@ Muestra los mensajes, la barra del jefe, las flechas a pájaros y cápsulas, y l
 | **Low Ammo For Arrow** | 8 | Con estas balas o menos, muestra la flecha a la cápsula más cercana |
 
 ### MainMenu (escena MainMenu)
-Construye todo por código: las pantallas Título, Modos, Mapa, Controles (`MainMenu.Controls.cs`), Cooperativo y Archivo de aves, y el fondo. Los niveles los lee de `Resources/LevelCatalog`; los bocetos del Archivo, de `Resources/Archivo`; el **logo** del título, de `Resources/UI/Logo.png` (si falta, escribe el título con `Title Line 1` y `Title Line 2`).
+Construye todo por código: las pantallas Título, Modos, Mapa, Controles (`MainMenu.Controls.cs`), Cooperativo y Archivo de aves, y el fondo. Los niveles los lee de `Resources/LevelCatalog`; los bocetos del Archivo, de `Resources/Archivo`; el **título**, de `Resources/UI/Logo.png` (solo el texto FISH OUT / OF WATER, sin el pez; si falta, escribe el título con `Title Line 1` y `Title Line 2`).
 
 **Logo** (`Herramientas/Logo`): el protagonista es un **render 3D del modelo del juego** (`PESCAO.fbx` con sus
 texturas, la luz del pecho encendida y la luz azul marino del menú) que sale volando de una salpicadura de agua con el
@@ -1035,9 +1040,13 @@ relieve azul marino y borde de luz azul. Dos pasos:
 1. `render_pez_3d.py` (Blender como módulo, `pip install bpy`; Cycles en CPU) hace los renders con fondo transparente en
    `Herramientas/Logo/renders/` (el del logo, el del ícono y una toma de solo lo que brilla, para el resplandor). Solo
    hace falta si cambia el modelo o la pose. `python Herramientas/Logo/render_pez_3d.py` (desde la raíz del proyecto)
-2. `logo.py` (numpy y Pillow) les pone el resplandor y el halo azul y compone `Assets/Resources/UI/Logo.png` (el título
-   del menú), `Assets/Resources/UI/Icono.png` (1024 × 1024, el pez 3D de frente sobre azul marino: es el **ícono de la
-   aplicación**, en Project Settings > Player > Default Icon) e `Itch/logo.png` (para la página de itch.io).
+2. `logo.py` (numpy y Pillow) les pone el resplandor y el halo azul y compone:
+   - `Assets/Resources/UI/Logo.png`: **el título del menú, solo el texto** (sin el pez), fondo transparente, con las
+     líneas de escaneo de los hologramas y las esquinas de marco de los paneles de la interfaz. También sale al
+     principio de los créditos.
+   - `Assets/Resources/UI/Icono.png` (1024 × 1024, el pez 3D de frente sobre azul marino): el **ícono de la
+     aplicación**, en Project Settings > Player > Default Icon.
+   - `Itch/logo.png`: el logo completo con el pez 3D y el título, para la página de itch.io.
    `python3 Herramientas/Logo/logo.py`
 
 | Campo | Defecto | En escena | Qué hace |
@@ -1294,6 +1303,9 @@ Música original compuesta para el juego (partituras en `Herramientas/Musica/com
 | **Carga** "Bajo la superficie" | Pantalla de carga (si la escena que viene usa otra pista) | Tranquila, 25 s en bucle: pads, cristal y arpa |
 | **Derrota** | Al perder (traje destruido, peces cazados, cae el equipo) | Lamento de unos 18 s (con su cola): cuerdas y trompa que bajan, coro y timbal. Después, silencio |
 | **Victoria** | Al ganar un nivel | Fanfarria de 8 s en Re mayor |
+| **Historia** "Cuentos del lago" | Los cómics (los que no dicen otra cosa) | Fa mayor, 46 s en bucle: arpa, pizzicato, la flauta con el tema en mayor y el clarinete; tierna y con ganas de aventura |
+| **Amenaza** "Sombra en el cielo" | Los cómics de antes de un jefe | Re menor, 38 s en bucle: chelos en semicorcheas, pedal grave, taikos, trompas con el tema y coro |
+| **Creditos** "El lago a salvo" | El cómic final y los créditos | Re mayor, 96 s en bucle: el tema en mayor, de la trompa sola a toda la orquesta con coro, y vuelve a la calma |
 
 - Cambia de pista con un fundido cruzado; en la pausa baja; no la apaga el filtro de "bajo el agua".
 - **Para usar una música propia**, reemplaza el `.ogg` con el mismo nombre (si falta, no suena y no da error; sin Derrota/Victoria vuelven los sonidos de antes).

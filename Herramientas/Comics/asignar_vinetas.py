@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Viñetas del modo Historia, paso 3: pone los dibujos (Assets/Art/Comics/<id>.jpg o .png) y los textos de guion.py en los
-cómics del juego (Assets/Data/Comics/<Comic>.asset). Reescribe solo la lista de viñetas de cada cómic (el título y
-lo demás quedan igual). Una viñeta cuyo dibujo todavía no existe queda en blanco (con su texto).
+cómics del juego (Assets/Data/Comics/<Comic>.asset). Reescribe solo la lista de viñetas de cada cómic (el título, la
+música y lo demás quedan igual). Una viñeta cuyo dibujo todavía no existe queda en blanco (con su texto).
 
     python3 Herramientas/Comics/asignar_vinetas.py
 """
@@ -57,7 +57,13 @@ def main():
             img = '{fileID: %d, guid: %s, type: 3}' % (SPRITE_FILE_ID, guid) if guid else '{fileID: 0}'
             lines.append('  - image: %s' % img)
             lines.append('    caption: %s' % yaml_text(texto))
-        new = text[:i + 1] + '\n'.join(lines) + '\n'
+        # Lo que viene después de la lista (música del cómic...) se conserva
+        resto = text[i + 1:].split('\n')[1:]
+        k = 0
+        while k < len(resto) and (resto[k].startswith('  - ') or resto[k].startswith('    ')):
+            k += 1
+        cola = '\n'.join(l for l in resto[k:] if l.strip())
+        new = text[:i + 1] + '\n'.join(lines) + '\n' + (cola + '\n' if cola else '')
         with open(path, 'w', encoding='utf-8', newline='\n') as f:
             f.write(new)
         print('%-24s %d viñetas' % (comic, len(vinetas)))

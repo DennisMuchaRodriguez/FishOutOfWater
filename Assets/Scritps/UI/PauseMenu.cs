@@ -179,6 +179,15 @@ public class PauseMenu : MonoBehaviour
             ShowCursor();
         }
 
+        // Jefe final vencido: los créditos, con la cinemática sobre el lago (CreditsRoll)
+        if (victory && CreditsRoll.ShouldPlay(director, level))
+        {
+            bool done = false;
+            CreditsRoll.Play(director.player, () => done = true);
+            while (!done) yield return null;
+            ShowCursor();
+        }
+
         BuildResults(victory, director, level);
     }
 

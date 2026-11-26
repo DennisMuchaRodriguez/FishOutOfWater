@@ -20,3 +20,5 @@ MonoBehaviour:
     caption: "Un viejo bagre mec\u00E1nico arregla todo lo que cae al agua."
   - image: {fileID: 21300000, guid: 41cde43864a943b6a6bc3a85e0dd86ce, type: 3}
     caption: "\u00ABEse traje se puede mejorar\u00BB, dijo, ajust\u00E1ndose los lentes."
+  music: 
+  keepMusic: 0

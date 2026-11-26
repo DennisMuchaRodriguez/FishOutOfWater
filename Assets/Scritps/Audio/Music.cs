@@ -7,6 +7,8 @@ using UnityEngine.SceneManagement;
 //  - "Juego"    (Batalla en el lago): la partida.
 //  - "Carga"    (Bajo la superficie): pantalla de carga (si la escena que viene usa otra pista).
 //  - "Derrota" / "Victoria": una vez al terminar la partida; después, silencio hasta la escena siguiente.
+//  - "Historia" (Cuentos del lago): los cómics. "Amenaza" (Sombra en el cielo): los cómics de antes de un jefe.
+//  - "Creditos" (El lago a salvo): el cómic final y los créditos.
 // Cambia de pista con un fundido cruzado; en la pausa baja a menos de la mitad. La música no pasa por el filtro de
 // "bajo el agua" del oyente (se oye igual dentro y fuera del agua).
 // Volumen propio (Ajustes > MÚSICA), aparte del general (Sfx.Volume) y de los efectos (Sfx.EffectsVolume).
@@ -19,6 +21,9 @@ public class Music : MonoBehaviour
     public const string Loading = "Carga";
     public const string Defeat = "Derrota";
     public const string Victory = "Victoria";
+    public const string Story = "Historia";
+    public const string Threat = "Amenaza";
+    public const string Credits = "Creditos";
 
     const string Folder = "Musica/";
     const string VolumeKey = "VolumenMusica";
@@ -139,12 +144,19 @@ public class Music : MonoBehaviour
         return track != Defeat && track != Victory;
     }
 
+    // true si la pista suena en bucle (para volver a ella después de un cómic); false para los remates y "nada"
+    public static bool IsLoopTrack(string track)
+    {
+        return !string.IsNullOrEmpty(track) && IsLoop(track);
+    }
+
     static float GainOf(string track)
     {
         switch (track)
         {
             case Game: return 0.62f;      // debajo de los disparos, las aves y el traje
             case Loading: return 0.8f;
+            case Story: return 0.85f;
             case Defeat:
             case Victory: return 0.95f;
             default: return 1f;

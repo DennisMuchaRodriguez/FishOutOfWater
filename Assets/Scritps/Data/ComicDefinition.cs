@@ -12,6 +12,13 @@ public class ComicDefinition : ScriptableObject
     [Tooltip("Las viñetas, en orden. Una viñeta sin dibujo se muestra en blanco")]
     public List<ComicPanel> panels = new List<ComicPanel>();
 
+    [Header("Música")]
+    [Tooltip("Pista de Resources/Musica que suena mientras se ve (vacío = \"Historia\"). \"Amenaza\" para los de antes " +
+             "de un jefe, \"Creditos\" para el final")]
+    public string music = "";
+    [Tooltip("Al terminar, la música del cómic sigue sonando (el final: sigue en los créditos). Si no, vuelve la de antes")]
+    public bool keepMusic;
+
     // Para recordar si ya se vio (se guarda en el progreso)
     public string Id { get { return name; } }
 }

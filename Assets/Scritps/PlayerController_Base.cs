@@ -815,8 +815,8 @@ public partial class PlayerController_Base : MonoBehaviour
     {
         if (IsNetworkProxy || cameraHolder == null) return;
 
-        // Seguro: fuera de una cinemática la cámara del jugador siempre está encendida
-        if (!WaveCinematic.IsPlaying)
+        // Seguro: fuera de una cinemática (oleada o créditos) la cámara del jugador siempre está encendida
+        if (!GameDirector.InCinematic)
         {
             if (PlayerCamera != null && !PlayerCamera.enabled) PlayerCamera.enabled = true;
             if (InputLocked) SetCinematicLock(false);
@@ -889,7 +889,8 @@ public partial class PlayerController_Base : MonoBehaviour
         Vector3 cinePos;
         Quaternion cineRot;
         float cineFov, cineWeight;
-        if (WaveCinematic.TryGetPose(out cinePos, out cineRot, out cineFov, out cineWeight))
+        if (WaveCinematic.TryGetPose(out cinePos, out cineRot, out cineFov, out cineWeight) ||
+            CreditsRoll.TryGetPose(out cinePos, out cineRot, out cineFov, out cineWeight))
         {
             pos = Vector3.Lerp(pos, cinePos, cineWeight);
             rot = Quaternion.Slerp(rot, cineRot, cineWeight);
