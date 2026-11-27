@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 // ESTILOS (skins) del pez: cambian los colores de la textura del pez (cara y aletas) y de su traje.
@@ -5,8 +6,11 @@ using UnityEngine;
 // viaja con tu nombre, así los demás te ven con tu estilo (en la sala y en el lago).
 // Las texturas están en Assets/Resources/Skins/<Estilo>/ (Cuerpo.png, Armadura.png y la vista previa Vista.png); las
 // arma Herramientas/Estilos/estilos.py (y las vistas, Herramientas/Logo/render_pez_3d.py estilos).
-// Se aplica cambiando la textura de los materiales del modelo que usan las texturas del pez ("..._Body_BaseColor") o
-// del traje ("..._Armor_BaseColor"); el resto del modelo (vidrio, luces) no se toca.
+// Se aplica cambiando la textura de los materiales del pez y del traje. Se reconocen por su textura
+// ("..._Body_BaseColor" / "..._Armor_BaseColor") o por el nombre del material que trae el modelo ("Body_Color" para el
+// cuerpo del pez, "aiStandardSurface2" para el traje): en la escena el cuerpo usa el material de dentro del FBX. Con un
+// estilo, la textura nueva va con el color base en blanco (se ve tal cual); con el Original vuelve lo de antes. El vidrio
+// de la escafandra no se toca.
 public static class SkinCatalog
 {
     public class Skin
@@ -45,7 +49,10 @@ public static class SkinCatalog
 
     static Texture2D[] bodies, armors;
     static Sprite[] previews;
-    static Texture origBody, origArmor;    // las texturas originales (se anotan la primera vez que se ven)
+    // Lo original de cada material (textura y color), por nombre: se anota la primera vez que se ve sin tocar
+    static readonly Dictionary<string, Texture> origTex = new Dictionary<string, Texture>();
+    static readonly Dictionary<string, Color> origColor = new Dictionary<string, Color>();
+    static readonly HashSet<Material> touched = new HashSet<Material>();
 
     static void Load()
     {
@@ -71,8 +78,9 @@ public static class SkinCatalog
         bodies = null;
         armors = null;
         previews = null;
-        origBody = null;
-        origArmor = null;
+        origTex.Clear();
+        origColor.Clear();
+        touched.Clear();
     }
 
     public static Sprite Preview(int skin)
@@ -83,6 +91,8 @@ public static class SkinCatalog
 
     static readonly int BaseMapId = Shader.PropertyToID("_BaseMap");
     static readonly int MainTexId = Shader.PropertyToID("_MainTex");
+    static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+    static readonly int ColorId = Shader.PropertyToID("_Color");
 
     static Texture TexOf(Material m)
     {
@@ -92,18 +102,46 @@ public static class SkinCatalog
         return null;
     }
 
-    // 1 = cuerpo del pez, 2 = traje, 0 = otra cosa
-    static int RoleOf(Texture t)
+    static string BaseName(Material m)
     {
-        if (t == null) return 0;
-        string n = t.name;
-        if (n.Contains("Body_BaseColor") || n == "Cuerpo") return 1;
-        if (n.Contains("Armor_BaseColor") || n == "Armadura") return 2;
+        return m.name.Replace(" (Instance)", "").Trim();
+    }
+
+    static bool Has(string text, string part)
+    {
+        return text.IndexOf(part, System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    // 1 = cuerpo del pez, 2 = traje, 0 = otra cosa (vidrio, luces...)
+    static int RoleOf(Material m)
+    {
+        if (m == null) return 0;
+        string n = BaseName(m);
+        if (Has(n, "Glass") || Has(n, "Vidrio") || Has(n, "Eskafandra") || Has(n, "Escafandra")) return 0;
+        Texture t = TexOf(m);
+        string tn = t != null ? t.name : "";
+        if (Has(tn, "Body_BaseColor") || tn == "Cuerpo" || Has(n, "Body")) return 1;
+        if (Has(tn, "Armor_BaseColor") || tn == "Armadura" || Has(n, "Armor") || Has(n, "aiStandardSurface")) return 2;
         return 0;
     }
 
+    static Color ColorOf(Material m)
+    {
+        if (m.HasProperty(BaseColorId)) return m.GetColor(BaseColorId);
+        if (m.HasProperty(ColorId)) return m.GetColor(ColorId);
+        return Color.white;
+    }
+
+    static void Set(Material m, Texture tex, Color color)
+    {
+        if (m.HasProperty(BaseMapId)) m.SetTexture(BaseMapId, tex);
+        if (m.HasProperty(MainTexId)) m.SetTexture(MainTexId, tex);
+        if (m.HasProperty(BaseColorId)) m.SetColor(BaseColorId, color);
+        if (m.HasProperty(ColorId)) m.SetColor(ColorId, color);
+    }
+
     // Pone el estilo 'skin' en un modelo del pez (el del jugador, la copia de un compañero o un traje de la sala).
-    // Con 0 (Original) vuelve a las texturas de siempre.
+    // Con 0 (Original) vuelve a las texturas y colores de siempre.
     public static void Apply(GameObject model, int skin)
     {
         if (model == null) return;
@@ -114,24 +152,40 @@ public static class SkinCatalog
             if (r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer) continue;
             Material[] shared = r.sharedMaterials;
             bool any = false;
-            for (int i = 0; i < shared.Length && !any; i++) any = RoleOf(TexOf(shared[i])) != 0;
+            for (int i = 0; i < shared.Length && !any; i++) any = RoleOf(shared[i]) != 0;
             if (!any) continue;
+
+            // Lo original se anota antes de tocar nada (si el material compartido no es uno que ya cambiamos)
+            for (int i = 0; i < shared.Length; i++)
+            {
+                Material sm = shared[i];
+                int role = RoleOf(sm);
+                if (role == 0 || touched.Contains(sm)) continue;
+                string key = BaseName(sm) + "#" + role;
+                if (origTex.ContainsKey(key)) continue;
+                origTex[key] = TexOf(sm);
+                origColor[key] = ColorOf(sm);
+            }
 
             Material[] mats = r.materials;   // copias propias de este modelo (no cambia el material del proyecto)
             for (int i = 0; i < mats.Length; i++)
             {
-                Texture t = TexOf(mats[i]);
-                int role = RoleOf(t);
+                Material m = mats[i];
+                int role = RoleOf(m);
                 if (role == 0) continue;
-                if (t.name.Contains("_BaseColor"))
+                if (skin == 0)
                 {
-                    if (role == 1 && origBody == null) origBody = t;
-                    if (role == 2 && origArmor == null) origArmor = t;
+                    string key = BaseName(m) + "#" + role;
+                    Texture t;
+                    Color c;
+                    if (origTex.TryGetValue(key, out t) && origColor.TryGetValue(key, out c)) Set(m, t, c);
                 }
-                Texture target = skin == 0 ? (role == 1 ? origBody : origArmor) : (role == 1 ? bodies[skin] : armors[skin]);
-                if (target == null || target == t) continue;
-                if (mats[i].HasProperty(BaseMapId)) mats[i].SetTexture(BaseMapId, target);
-                if (mats[i].HasProperty(MainTexId)) mats[i].SetTexture(MainTexId, target);
+                else
+                {
+                    Texture tex = role == 1 ? bodies[skin] : armors[skin];
+                    if (tex != null) Set(m, tex, Color.white);
+                }
+                touched.Add(m);
             }
             r.materials = mats;
         }
