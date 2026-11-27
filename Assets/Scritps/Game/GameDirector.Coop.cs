@@ -37,7 +37,7 @@ public partial class GameDirector
             lake.TryGetRandomSwimPoint(0.5f, 1.5f, 0.6f, out p);
             FishAI.SchoolAnchors[s] = p;
         }
-        TotalFish = Mathf.Max(1, survivalFish);
+        TotalFish = Mathf.Max(1, survivalLakeFish);
         FishLost = 0;
         State = GameState.Calm;
         Banner?.Invoke("COOPERATIVO", "Esperando al anfitrión…", Cyan);

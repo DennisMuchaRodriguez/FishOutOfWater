@@ -121,7 +121,18 @@ public partial class GameDirector : MonoBehaviour
     // Estrellas al ganar (1–3)
     public int Stars { get; private set; }
     // Porcentaje de peces cazados con el que se pierde
-    public float FishLossFraction { get { return IsSurvival ? survivalLossFraction : (Level != null ? Level.maxFishLossFraction : 0.7f); } }
+    public float FishLossFraction { get { return IsSurvival ? survivalLossShare : StoryLossFraction(Level); } }
+
+    // Historia: margen extra sobre el porcentaje de cada nivel (hay que dejar cazar más peces para perder, así hay más
+    // tiempo para defenderlos), sin pasar del 90 %. Lo usa también el mapa de niveles para el "Pierdes si cazan el X %".
+    public const float StoryLossBonus = 0.1f;
+    public const float MaxLossFraction = 0.9f;
+
+    public static float StoryLossFraction(LevelDefinition level)
+    {
+        float f = level != null ? level.maxFishLossFraction : 0.7f;
+        return Mathf.Min(MaxLossFraction, f + StoryLossBonus);
+    }
     public int FishRescued { get; private set; }
     public int BirdsKilled { get; private set; }
     public float Countdown { get; private set; }

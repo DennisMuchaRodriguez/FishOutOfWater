@@ -35,6 +35,12 @@ public class MenuBackdrop : MonoBehaviour
     }
 
     // La pantalla de título pide la cinemática; las demás, la vista tranquila
+    // Viste al pez del menú con un estilo (al elegirlo en COOPERATIVO > ESTILOS se ve enseguida)
+    public static void ShowSkin(int skin)
+    {
+        if (Instance != null && Instance.heroModel != null) SkinCatalog.Apply(Instance.heroModel, skin);
+    }
+
     public static void SetCinematic(bool on)
     {
         wantCinematic = on;
@@ -73,6 +79,7 @@ public class MenuBackdrop : MonoBehaviour
     Transform hero;
     Animator heroAnim;
     readonly List<Renderer> suitRenderers = new List<Renderer>();
+    GameObject heroModel;
     readonly List<Piece> pieces = new List<Piece>();
     readonly List<Mesh> bakedMeshes = new List<Mesh>();
     bool bakeRequested;
@@ -177,6 +184,9 @@ public class MenuBackdrop : MonoBehaviour
         if (model != null)
         {
             workshop.ApplyVisorGlassTo(model);
+            // Con el estilo elegido (antes de copiar las piezas del traje: las piezas comparten estos materiales)
+            heroModel = model;
+            SkinCatalog.Apply(model, SkinCatalog.Selected);
             heroAnim = model.GetComponentInChildren<Animator>();
             if (heroAnim == null && workshop.suitAnimator != null) heroAnim = model.AddComponent<Animator>();
             if (heroAnim != null)

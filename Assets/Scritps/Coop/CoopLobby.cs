@@ -32,6 +32,8 @@ public class CoopLobby : MonoBehaviour
     readonly GameObject[] waiting = new GameObject[4];
     readonly float[] appear = new float[4];
     readonly bool[] shown = new bool[4];
+    // Estilo con el que está vestido cada traje (si cambia en la lista de jugadores, se vuelve a vestir)
+    readonly int[] suitSkins = { -1, -1, -1, -1 };
 
     TextMeshProUGUI codeText, modeText, countText, statusText;
     Button startButton, readyButton;
@@ -196,6 +198,7 @@ public class CoopLobby : MonoBehaviour
             bool used = slots != null && slots[i].used;
             if (used && !shown[i]) ShowSuit(i);
             else if (!used && shown[i]) HideSuit(i);
+            else if (used && suits[i] != null && suitSkins[i] >= 0 && CoopSession.SkinOf(i) != suitSkins[i]) DressSuit(i);
             waiting[i].SetActive(!used);
             string n = used ? slots[i].name.ToUpperInvariant() : "";
             if (used && i == CoopSession.LocalSlot) n += "  (TÚ)";
@@ -237,10 +240,6 @@ public class CoopLobby : MonoBehaviour
                 anim.runtimeAnimatorController = workshop.suitAnimator;
                 anim.applyRootMotion = false;
             }
-            // El estilo de cada uno (con el original, el color de su casilla)
-            int skin = CoopSession.SkinOf(i);
-            SkinCatalog.Apply(suit, skin);
-            if (i > 0 && skin == 0) CoopVisuals.TintSuit(suit, CoopSession.SlotColors[i]);
         }
         else
         {
@@ -248,14 +247,27 @@ public class CoopLobby : MonoBehaviour
             suit = WorkshopKit.Shape(PrimitiveType.Capsule, "Traje", spins[i], Vector3.up * 0.75f, new Vector3(0.8f, 0.75f, 0.8f), m);
         }
         suits[i] = suit;
+        suitSkins[i] = -1;
+        if (workshop != null && workshop.suitModel != null) DressSuit(i);
         spins[i].localScale = Vector3.one * 0.01f;
         if (lights[i] != null) lights[i].intensity = 5f;
         Sfx.Play2D(i == CoopSession.LocalSlot ? Sonido.Instalar : Sonido.PezRescatado, 0.7f);
     }
 
+    // El estilo de cada uno (con el original, el color de su casilla; el anfitrión se queda con el de siempre)
+    void DressSuit(int i)
+    {
+        if (suits[i] == null) return;
+        int skin = CoopSession.SkinOf(i);
+        SkinCatalog.Apply(suits[i], skin);
+        if (i > 0 && skin == 0) CoopVisuals.TintSuit(suits[i], CoopSession.SlotColors[i]);
+        suitSkins[i] = skin;
+    }
+
     void HideSuit(int i)
     {
         shown[i] = false;
+        suitSkins[i] = -1;
         if (suits[i] != null) Destroy(suits[i]);
         suits[i] = null;
         spins[i].localScale = Vector3.one;

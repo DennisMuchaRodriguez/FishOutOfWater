@@ -158,13 +158,15 @@ public static class CoopVisuals
                 if (n.StartsWith(part, System.StringComparison.OrdinalIgnoreCase)) skip = true;
             if (skip) continue;
             Material m = r.sharedMaterial;
-            if (m == null) continue;
-            Color baseColor = m.HasProperty(BaseColorId) ? m.GetColor(BaseColorId) : (m.HasProperty(ColorId) ? m.GetColor(ColorId) : Color.white);
+            if (m == null || SkinCatalog.PartOf(m) == 1) continue;   // el cuerpo del pez no se tiñe
+            // El color base del shader que tenga (el de Arnold del modelo usa _BASE_COLOR; el Lit, _BaseColor)
+            int[] ids = SkinCatalog.BaseColorIds(m);
+            if (ids.Length == 0) ids = new[] { BaseColorId, ColorId };
+            Color baseColor = m.HasProperty(ids[0]) ? m.GetColor(ids[0]) : Color.white;
             Color tinted = Color.Lerp(baseColor, color * new Color(1.15f, 1.15f, 1.15f, 1f), 0.45f);
             tinted.a = baseColor.a;
             r.GetPropertyBlock(block);
-            block.SetColor(BaseColorId, tinted);
-            block.SetColor(ColorId, tinted);
+            foreach (int id in ids) block.SetColor(id, tinted);
             r.SetPropertyBlock(block);
         }
     }

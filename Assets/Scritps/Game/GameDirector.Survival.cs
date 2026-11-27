@@ -13,19 +13,20 @@ using UnityEngine;
 //     una mejora (estilo roguelike: solo para esta partida), el traje vuelve reparado y recargado (es la ÚNICA vez que
 //     te curas) y llega 1 pez defensor más. Con el traje ya al máximo igual se baja al Taller a repararlo.
 //     Al vencer a un jefe llegan unos peces nuevos al lago.
-//  4. Se pierde si el traje se destruye o si cazan demasiados peces (el 75 % de los del lago).
+//  4. Se pierde si el traje se destruye o si cazan demasiados peces (el 85 % de los del lago: con 50 peces, a los 43 cazados).
 // Para probar sin pasar por el menú: marca "Test Survival" y dale Play en la escena del lago.
 public partial class GameDirector
 {
     [Header("Supervivencia")]
     [Tooltip("Para probar: al dar Play directo en esta escena se juega Supervivencia en vez de 'Test Level'")]
     public bool testSurvival = false;
-    [Tooltip("Peces del lago al empezar la partida (los cazados no vuelven)")]
-    [Min(4)] public int survivalFish = 28;
-    [Tooltip("Pierdes si cazan este porcentaje de los peces del lago")]
-    [Range(0.3f, 1f)] public float survivalLossFraction = 0.75f;
+    // (Nombres nuevos a propósito: así la escena, que tenía guardados 28 peces y el 75 %, toma estos valores)
+    [Tooltip("Peces del lago al empezar la partida (los cazados no vuelven). Muchos desde la primera oleada")]
+    [Min(4)] public int survivalLakeFish = 50;
+    [Tooltip("Pierdes si cazan este porcentaje de los peces del lago (con 50 peces y el 85 %: a los 43 cazados)")]
+    [Range(0.3f, 1f)] public float survivalLossShare = 0.85f;
     [Tooltip("Peces nuevos que llegan al lago al vencer una oleada con jefe (sin pasar de los del principio)")]
-    [Min(0)] public int survivalFishPerBoss = 3;
+    [Min(0)] public int survivalNewFishPerBoss = 6;
     [Tooltip("Segundos de calma antes de cada oleada")]
     public float survivalCalm = 10f;
 
@@ -80,7 +81,7 @@ public partial class GameDirector
             return false;
         }
 
-        int alive = Mathf.Clamp(survivalFish - SurvivalRun.FishLost, 0, survivalFish);
+        int alive = Mathf.Clamp(survivalLakeFish - SurvivalRun.FishLost, 0, survivalLakeFish);
         int given = 0;
         for (int i = 0; i < valid.Count; i++)
         {
@@ -89,14 +90,15 @@ public partial class GameDirector
             given += c;
             fishPlan.Add(new FishPlan { type = valid[i].type.fish, count = c });
         }
-        schoolCount = Mathf.Max(1, Level.schools);
+        // Más cardúmenes con más peces (unos 12 por cardumen), repartidos por el lago
+        schoolCount = Mathf.Max(Mathf.Max(1, Level.schools), Mathf.CeilToInt(survivalLakeFish / 12f));
         return true;
     }
 
     // Después de soltar los peces: los totales de la partida (los defensores no cuentan)
     void RestoreSurvivalTotals()
     {
-        TotalFish = Mathf.Max(1, survivalFish);
+        TotalFish = Mathf.Max(1, survivalLakeFish);
         FishLost = Mathf.Clamp(SurvivalRun.FishLost, 0, TotalFish);
         BirdsKilled = SurvivalRun.BirdsKilled;
         FishRescued = SurvivalRun.FishRescued;
@@ -221,9 +223,9 @@ public partial class GameDirector
             if (ended) yield break;
 
             // ---- Oleada superada ----
-            if (wave.IsBossWave && survivalFishPerBoss > 0 && FishLost > 0)
+            if (wave.IsBossWave && survivalNewFishPerBoss > 0 && FishLost > 0)
             {
-                int back = Mathf.Min(survivalFishPerBoss, FishLost);
+                int back = Mathf.Min(survivalNewFishPerBoss, FishLost);
                 FishLost -= back;
                 AddSurvivalFish(back, fishLayer);
                 Toast?.Invoke("¡LLEGAN " + back + " PECES NUEVOS AL LAGO!", Cyan);

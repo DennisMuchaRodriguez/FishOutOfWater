@@ -258,7 +258,8 @@ Taller), `SurvivalWaves` (arma cada oleada) y `GameDirector.Survival.cs` (el flu
 
 **Cómo es una partida**
 1. Menú → ELIGE TU MODO → **SUPERVIVENCIA**. Empiezas con el traje **sin mejoras** (las de la historia no cuentan y las
-   de la partida no pasan a la historia) y con **28 peces** en el lago.
+   de la partida no pasan a la historia) y con **50 peces** en el lago desde la primera oleada (en unos 5 cardúmenes,
+   uno cada 12 peces, repartidos por el lago).
 2. Cuenta atrás de calma (13 s la primera vez, 10 s después) y llega la oleada. Cinemática de llegada en la oleada 1 y
    en las de jefe.
 3. **Oleada superada** → la siguiente llega en el mismo lago, **sin reparar el traje**: la armadura que perdiste no
@@ -275,9 +276,9 @@ Taller), `SurvivalWaves` (arma cada oleada) y `GameDirector.Survival.cs` (el flu
    - Al volver, **el traje está reparado y recargado** (armadura, combustible y munición llenos). Es el único momento
      en que se repara.
    - Con el traje ya al máximo igual se baja al Taller cada 5 oleadas, solo para repararlo.
-5. **Los peces cazados no vuelven** entre oleadas. Al vencer una oleada **con jefe** llegan **3 peces nuevos** (sin pasar
-   de los 28 del principio).
-6. **Pierdes** si el traje se destruye o si cazan el **75 %** de los peces (21 de 28). Pantalla final: oleadas
+5. **Los peces cazados no vuelven** entre oleadas. Al vencer una oleada **con jefe** llegan **6 peces nuevos** (sin pasar
+   de los 50 del principio).
+6. **Pierdes** si el traje se destruye o si cazan el **85 %** de los peces (43 de 50: hay mucho margen para defenderlos). Pantalla final: oleadas
    superadas, hasta qué oleada llegaste, récord, aves derribadas y peces rescatados; **NUEVA PARTIDA** o **MENÚ PRINCIPAL**.
 7. El **récord** (más oleadas superadas) se guarda en `progreso.json` (`bestSurvivalWave`) y sale en la tarjeta del menú.
    En la pausa: CONTINUAR, NUEVA PARTIDA y MENÚ PRINCIPAL (volver al menú termina la partida).
@@ -321,7 +322,7 @@ la cantidad sube más despacio y la oleada 4 de cada tramo es la más dura antes
 - La oleada no termina hasta que llegaron y cayeron todos los grupos.
 
 **Peces defensores** (solo jugando solo: en el cooperativo en línea no hay): **1 más cada 5 oleadas**, al volver del Taller (ninguno en las oleadas 1-5, 1 en las 6-10, 2 en
-las 11-15, 3 en las 16-20... hasta 8). Al volver del Taller todos tienen el traje reparado. No cuentan entre los 28 peces del lago (si cazan a uno no suma a la derrota).
+las 11-15, 3 en las 16-20... hasta 8). Al volver del Taller todos tienen el traje reparado. No cuentan entre los 50 peces del lago (si cazan a uno no suma a la derrota).
 
 **El casco**: en Supervivencia el panel de misión dice "OLEADA n" y las 5 pastillas son el tramo hasta el próximo jefe
 y el Taller (la última, roja, es la del jefe).
@@ -335,9 +336,12 @@ Taller después de cada oleada.
 | Campo del GameDirector (Supervivencia) | Defecto | Qué hace |
 |---|---|---|
 | Test Survival | ✘ | Play directo en la escena = partida de Supervivencia |
-| Survival Fish | 28 | Peces del lago al empezar (tipos y cardúmenes del último nivel de la historia) |
-| Survival Loss Fraction | 0.75 | Pierdes si cazan este porcentaje |
-| Survival Fish Per Boss | 3 | Peces nuevos al vencer una oleada con jefe |
+| Survival Lake Fish | 50 | Peces del lago al empezar (tipos del último nivel de la historia; un cardumen cada 12 peces) |
+| Survival Loss Share | 0.85 | Pierdes si cazan este porcentaje |
+| Survival New Fish Per Boss | 6 | Peces nuevos al vencer una oleada con jefe |
+
+Estos tres campos se llamaban `Survival Fish`, `Survival Loss Fraction` y `Survival Fish Per Boss` (28, 0,75 y 3). Se
+renombraron a propósito: la escena tenía guardados los valores viejos y con el nombre nuevo toma los de ahora.
 | Survival Calm | 10 s | Calma antes de cada oleada (+3 s en la primera) |
 
 ### Modo Cooperativo en línea (salas de 4 con código)
@@ -562,7 +566,7 @@ Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel 
 | **Description** | — | Texto corto de la ficha del mapa |
 | **Fish** | vacío | Lista de peces: **Type** (un archivo Pez) y **Count** (cuántos) |
 | **Schools** | 3 | Número de cardúmenes |
-| **Max Fish Loss Fraction** | 0.7 | Pierdes si cazan este porcentaje de peces |
+| **Max Fish Loss Fraction** | 0.7 | Pierdes si cazan este porcentaje de peces (en el juego se le suma un **10 %**, sin pasar del 90 %: ver abajo) |
 | **Waves** | vacío | Oleadas, en orden. Cada una: **Delay Before** (segundos de calma antes), **Birds** (lista de **Type** = un archivo Ave + **Count**) y **Health Multiplier** |
 | **Time Of Day** | Día | Hora en que se juega: Día, Tarde, Atardecer, Noche o Amanecer (cielo, luz, sol o luna; fija todo el nivel) |
 | **Is Boss Level** | ✘ | Marca el nivel con "JEFE" en el mapa |
@@ -575,10 +579,14 @@ Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel 
 
 | Bloque | Niveles | Peces | Pierdes con | Aves por oleada | Jefe | Taller después de |
 |---|---|---|---|---|---|---|
-| 1 · La llegada | 1–5 | 16 | 70 % | de 2/3/4 a 3/4/6 | Nivel 5 | 3 |
-| 2 · La orilla | 6–10 | 20 | 65 % | de 4/5/6 a 5/6/8 | Nivel 10 | 6 y 9 |
-| 3 · Bajo el agua | 11–15 | 24 | 60 % | de 5/7/8 a 6/8/10 | Nivel 15 | 12 y 15 |
-| 4 · Los cielos | 16–20 | 28 | 55 % | de 7/9/10 a 8/10/12 | Nivel 20 | 18 |
+| 1 · La llegada | 1–5 | 16 | 80 % | de 2/3/4 a 3/4/6 | Nivel 5 | 3 |
+| 2 · La orilla | 6–10 | 20 | 75 % | de 4/5/6 a 5/6/8 | Nivel 10 | 6 y 9 |
+| 3 · Bajo el agua | 11–15 | 24 | 70 % | de 5/7/8 a 6/8/10 | Nivel 15 | 12 y 15 |
+| 4 · Los cielos | 16–20 | 28 | 65 % | de 7/9/10 a 8/10/12 | Nivel 20 | 18 |
+
+- **Margen para perder** (`GameDirector.StoryLossBonus`, 0,1): al porcentaje de cada nivel (70/65/60/55 %) se le
+  suma un 10 % (tope `MaxLossFraction`, 90 %), así hay que dejar cazar más peces para perder y hay más tiempo para
+  defenderlos. Es la columna "Pierdes con" de arriba y lo que dice el mapa ("Pierdes si cazan el X %").
 
 - **Dificultad (GameDirector > Dificultad)**: cada oleada de la Historia trae **2,5 veces** las aves del nivel **+ 3**
   (tope 40 por oleada; los jefes no se multiplican y las extra son de las mismas especies de la oleada), y los
@@ -1593,6 +1601,19 @@ En el menú **COOPERATIVO**, el botón **ESTILOS** (abajo a la derecha) abre un 
 traje dorado). El elegido queda marcado y se guarda (PlayerPrefs `FOW_Estilo`); se usa en todos los modos y, en
 cooperativo, los demás te ven con él (en la sala de espera y en el lago).
 - `SkinCatalog.cs`: la lista de estilos y cómo se aplican (cambia la textura de los materiales del pez y del traje).
+  - **Por qué antes no se veía**: el modelo (`PESCAO.fbx` / `Fish_3DModel.fbx`) viene de Maya con materiales
+    *aiStandardSurface* de Arnold (`Body_Color` el pez, `aiStandardSurface2` el traje, `Glass` el vidrio). Con
+    *Material Creation Mode = Import via MaterialDescription*, Unity les pone su shader **Arnold Standard Surface**, que
+    guarda la textura en `_BASE_COLOR_MAP` y el color en `_BASE_COLOR`, no en `_BaseMap` / `_BaseColor` como el Lit de
+    URP. El código viejo solo cambiaba `_BaseMap`, así que no cambiaba nada. Ahora busca en el shader de cada material
+    sus propiedades de textura y color base (sirve para Arnold, Lit u otro).
+  - Cada modelo recibe sus propias copias de los materiales (el tuyo, el de cada compañero y cada traje de la sala no
+    se pisan) y el Original vuelve a una copia del material tal como venía.
+  - Dónde se aplica: el pez del **menú** (cambia en cuanto eliges el estilo), los trajes de la **sala de espera** (se
+    vuelven a vestir si cambia el estilo de alguien en la lista de jugadores), **tu pez** en el lago y las **copias de
+    tus compañeros** (con su estilo; con el Original, el traje toma el color de su casilla).
+  - Si un estilo no se pudiera poner, la consola avisa una vez con la lista de materiales y shaders del modelo
+    ("SkinCatalog: no se pudo poner el estilo...").
 - Las texturas: `Assets/Resources/Skins/<Estilo>/Cuerpo.png`, `Armadura.png` y la vista previa `Vista.png`.
 - Para rehacerlas: `python3 Herramientas/Estilos/estilos.py` (recolorea las texturas del modelo: tono de la cara y de
   las aletas, y un degradado nuevo para el traje) y `python Herramientas/Logo/render_pez_3d.py estilos` (las vistas

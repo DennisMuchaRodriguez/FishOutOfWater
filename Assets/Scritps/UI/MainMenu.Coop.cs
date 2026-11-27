@@ -147,6 +147,7 @@ public partial class MainMenu
     void SelectStyle(int skin)
     {
         SkinCatalog.Selected = skin;
+        MenuBackdrop.ShowSkin(SkinCatalog.Selected);
         RefreshStyles();
     }
 

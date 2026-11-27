@@ -697,7 +697,7 @@ public partial class MainMenu : MonoBehaviour
         int fish = 0;
         foreach (FishSpawn f in level.fish) if (f != null && f.type != null) fish += f.count;
         string details = level.waves.Count + " OLEADAS  ·  " + fish + " PECES  ·  " + LevelDefinition.TimeName(level.timeOfDay) +
-                         "\nPierdes si cazan el " + Mathf.RoundToInt(level.maxFishLossFraction * 100f) + " %";
+                         "\nPierdes si cazan el " + Mathf.RoundToInt(GameDirector.StoryLossFraction(level) * 100f) + " %";
         MenuUI.Text("Detalles", infoContent, details, 18f, top, new Vector2(0f, -314f), new Vector2(320f, 56f), MenuUI.Accent);
 
         float tagY = -360f;
