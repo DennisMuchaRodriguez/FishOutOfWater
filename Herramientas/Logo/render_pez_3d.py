@@ -12,6 +12,8 @@ Escribe en Herramientas/Logo/renders/:
   - pez_icono.png   el pez de frente (cabeza y pecho), para el ícono de la aplicación
   - *_brillo.png    lo mismo, pero solo lo que brilla (la luz del pecho y el fuego): logo.py lo usa para el resplandor
 Con "solo_brillo" hace solo las imágenes de brillo (rápidas).
+Con "estilos" hace las vistas previas de los estilos (skins) del menú: Assets/Resources/Skins/<Estilo>/Vista.png, con las
+texturas de Herramientas/Estilos/estilos.py (y la original en Skins/Original).
 """
 import math
 import os
@@ -26,6 +28,7 @@ TEX = os.path.join(ROOT, 'Assets', 'Models', 'Texturas')
 OUT = os.path.join(ROOT, 'Herramientas', 'Logo', 'renders')
 BORRADOR = 'borrador' in sys.argv
 SOLO_BRILLO = 'solo_brillo' in sys.argv
+ESTILO_DIR = None     # carpeta con Cuerpo.png y Armadura.png (vistas previas de los estilos)
 
 
 # ---------------------------------------------------------------- materiales
@@ -44,7 +47,12 @@ def pbr(mat, prefix, emissive=None, strength=0.0):
     out = nt.nodes.new('ShaderNodeOutputMaterial')
     b = nt.nodes.new('ShaderNodeBsdfPrincipled')
     nt.links.new(b.outputs['BSDF'], out.inputs['Surface'])
-    nt.links.new(_img(nt, prefix + '_BaseColor.png', False).outputs['Color'], b.inputs['Base Color'])
+    base = prefix + '_BaseColor.png'
+    if ESTILO_DIR:
+        propio = os.path.join(ESTILO_DIR, 'Cuerpo.png' if 'Body' in prefix else 'Armadura.png')
+        if os.path.exists(propio):
+            base = propio
+    nt.links.new(_img(nt, base, False).outputs['Color'], b.inputs['Base Color'])
     nt.links.new(_img(nt, prefix + '_Metallic.png', True).outputs['Color'], b.inputs['Metallic'])
     nt.links.new(_img(nt, prefix + '_Roughness.png', True).outputs['Color'], b.inputs['Roughness'])
     nm = nt.nodes.new('ShaderNodeNormalMap')
@@ -445,7 +453,28 @@ def toma_icono():
     render(sc, 'pez_icono.png')
 
 
+def toma_estilos():
+    """Vista previa de cada estilo para el menú (cuerpo entero de 3/4, fondo transparente)."""
+    global ESTILO_DIR, OUT
+    skins = os.path.join(ROOT, 'Assets', 'Resources', 'Skins')
+    for nombre in ('Original', 'NeonAbisal', 'SolDorado'):
+        ESTILO_DIR = None if nombre == 'Original' else os.path.join(skins, nombre)
+        OUT = os.path.join(skins, nombre)
+        os.makedirs(OUT, exist_ok=True)
+        sc = escena(24 if BORRADOR else 96, 640, 640)
+        raiz = cargar_pez()
+        raiz.rotation_euler = Euler((0, 0, math.radians(24)))
+        luces(sc, Vector((0.0, 0.0, 0.85)))
+        camara(sc, (0.55, -4.8, 1.05), (0.0, 0.0, 0.74), 58)
+        sc.render.filepath = os.path.join(OUT, 'Vista.png')
+        bpy.ops.render.render(write_still=True)
+        print('RENDER', sc.render.filepath, flush=True)
+
+
 if __name__ == '__main__':
+    if 'estilos' in sys.argv:
+        toma_estilos()
+        sys.exit(0)
     solo = [a for a in sys.argv[1:] if a in ('logo', 'icono')]
     if not solo or 'logo' in solo:
         toma_logo()

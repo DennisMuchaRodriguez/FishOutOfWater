@@ -237,7 +237,10 @@ public class CoopLobby : MonoBehaviour
                 anim.runtimeAnimatorController = workshop.suitAnimator;
                 anim.applyRootMotion = false;
             }
-            if (i > 0) CoopVisuals.TintSuit(suit, CoopSession.SlotColors[i]);
+            // El estilo de cada uno (con el original, el color de su casilla)
+            int skin = CoopSession.SkinOf(i);
+            SkinCatalog.Apply(suit, skin);
+            if (i > 0 && skin == 0) CoopVisuals.TintSuit(suit, CoopSession.SlotColors[i]);
         }
         else
         {

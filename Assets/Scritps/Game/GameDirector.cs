@@ -53,8 +53,8 @@ public partial class GameDirector : MonoBehaviour
     public int earlyLevelExtraBirds = 10;
     [Tooltip("Nivel en el que el refuerzo de los primeros niveles llega a 0")]
     public int earlyLevels = 8;
-    [Tooltip("Escala final de la cantidad de aves de la Historia (después de todo lo de arriba): 0,8 = 20 % menos")]
-    [Range(0.3f, 1.5f)] public float birdCountScale = 0.8f;
+    [Tooltip("Escala final de la cantidad de aves de la Historia (después de todo lo de arriba): 0,7 = 30 % menos")]
+    [Range(0.3f, 1.5f)] public float finalBirdScale = 0.7f;
 
     [Header("Cooperativo")]
     [Tooltip("Al terminar cada oleada, los compañeros caídos vuelven a la pelea con esta parte de la armadura")]
@@ -476,7 +476,7 @@ public partial class GameDirector : MonoBehaviour
         int target = Mathf.RoundToInt(normal.Count * Mathf.Max(1f, birdCountMultiplier)) + Mathf.Max(0, extraBirdsPerWave)
                      + EarlyLevelBonus();
         target = Mathf.Max(normal.Count, Mathf.Min(target, Mathf.Max(1, maxBirdsPerWave)));
-        target = Mathf.Max(normal.Count, Mathf.RoundToInt(target * Mathf.Clamp(birdCountScale, 0.3f, 1.5f)));
+        target = Mathf.Max(normal.Count, Mathf.RoundToInt(target * Mathf.Clamp(finalBirdScale, 0.3f, 1.5f)));
         for (int k = 0; normal.Count + k < target; k++) wave.Add(normal[k % normal.Count]);
     }
 
@@ -888,7 +888,7 @@ public partial class GameDirector : MonoBehaviour
     void OnPickupCollected(AmmoPickup pickup)
     {
         pickups.Remove(pickup);
-        LocalToast(IsCoop ? "¡MUNICIÓN LLENA!" : "+" + pickup.ammo + " MUNICIÓN", Cyan);
+        LocalToast("¡MUNICIÓN LLENA!", Cyan);
         StartCoroutine(RespawnPickup());
     }
 

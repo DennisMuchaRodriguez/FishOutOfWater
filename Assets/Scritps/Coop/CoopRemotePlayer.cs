@@ -55,7 +55,10 @@ public class CoopRemotePlayer : MonoBehaviour
                 }
             }
             if (rp.jet != null) rp.jet.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-            CoopVisuals.TintSuit(copy, CoopSession.SlotColors[Mathf.Clamp(slot, 0, 3)]);
+            // Su estilo (o, con el original, el color de su casilla para distinguirlo)
+            int skin = CoopSession.SkinOf(slot);
+            SkinCatalog.Apply(copy, skin);
+            if (skin == 0) CoopVisuals.TintSuit(copy, CoopSession.SlotColors[Mathf.Clamp(slot, 0, 3)]);
         }
 
         rp.label = CoopVisuals.NameTag(go.transform, Vector3.up * 1.7f, playerName, CoopSession.SlotColors[Mathf.Clamp(slot, 0, 3)], 3.2f);

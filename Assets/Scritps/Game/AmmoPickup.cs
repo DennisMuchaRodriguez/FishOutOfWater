@@ -1,8 +1,14 @@
 using UnityEngine;
 
-// Cápsula de munición que flota en el lago (o un poco sumergida).
-// Se construye por código: núcleo brillante, anillo que gira, luz, burbujas y un haz de luz hacia el cielo (se ve de
-// lejos). En cooperativo llena el cargador entero y se agarra desde un poco más lejos.
+// Esfera de munición que flota en el lago (o un poco sumergida). Al tocarla, el cargador se llena entero.
+// Se construye por código y se ve como uno de los disparos de agua del pez, pero grande, brillante y celeste
+// (energía para disparar):
+//  - la esfera de agua con el mismo material del disparo (Bullet.prefab), cubierta por una capa de energía celeste
+//    que late;
+//  - un halo de luz alrededor y una luz celeste;
+//  - tres chispas de energía que giran en órbitas inclinadas dejando una estela;
+//  - chispas que suben.
+// En cooperativo se agarra desde un poco más lejos.
 public class AmmoPickup : MonoBehaviour
 {
     public int ammo = 10;
@@ -30,60 +36,101 @@ public class AmmoPickup : MonoBehaviour
     static PlayerShooting magnetTarget;
     public bool IsUnderwater { get; set; }
 
-    Transform core;
-    Transform ring;
-    Transform beam;
+    const float ShellSize = 0.8f;
+    const float OrbitRadius = 0.72f;
+
+    Transform shell;
+    Transform aura;
+    Transform halo;
+    readonly Transform[] sparks = new Transform[3];
+    readonly Vector3[] sparkAxis = new Vector3[3];
+    readonly float[] sparkSpeed = new float[3];
     Light glow;
     Vector3 basePos;
     float phase;
+
+    // El material del disparo de agua del pez (se busca una vez)
+    static Material shotMaterial;
+    static bool shotSearched;
+
+    static Material ShotMaterial()
+    {
+        if (shotSearched) return shotMaterial;
+        shotSearched = true;
+        PlayerShooting s = FindFirstObjectByType<PlayerShooting>();
+        if (s != null && s.projectilePrefab != null)
+        {
+            MeshRenderer mr = s.projectilePrefab.GetComponentInChildren<MeshRenderer>();
+            if (mr != null) shotMaterial = mr.sharedMaterial;
+        }
+        return shotMaterial;
+    }
 
     public void Build(Material template)
     {
         basePos = transform.position;
         phase = Random.Range(0f, 10f);
 
-        Material coreMat = FXFactory.ParticleMaterial(template, FXFactory.SoftDot, color);
-        Material ringMat = FXFactory.ParticleMaterial(template, FXFactory.White, new Color(color.r, color.g, color.b, 0.6f));
+        Material energy = FXFactory.ParticleMaterial(template, FXFactory.White, new Color(color.r, color.g, color.b, 0.5f));
+        Material bright = FXFactory.ParticleMaterial(template, FXFactory.White, new Color(0.8f, 1f, 1f, 1f));
+        Material glowMat = FXFactory.ParticleMaterial(template, FXFactory.SoftDot, new Color(color.r, color.g, color.b, 0.9f));
 
-        // Núcleo: dos esferas (interior blanco y halo cian)
-        core = CreatePrimitive(PrimitiveType.Sphere, "Nucleo", coreMat, Vector3.one * 0.6f);
-        Transform halo = CreatePrimitive(PrimitiveType.Sphere, "Halo", coreMat, Vector3.one * 1.3f);
-        halo.SetParent(core, true);
+        // La esfera de agua (como el disparo) y su capa de energía celeste
+        Material water = ShotMaterial();
+        shell = CreatePrimitive(PrimitiveType.Sphere, "Esfera", water != null ? water : energy, Vector3.one * ShellSize);
+        aura = CreatePrimitive(PrimitiveType.Sphere, "Energia", energy, Vector3.one * ShellSize * 1.08f);
+        if (water == null)
+        {
+            // Sin el material del disparo: un núcleo blanco adentro de la energía
+            CreatePrimitive(PrimitiveType.Sphere, "Nucleo", bright, Vector3.one * ShellSize * 0.55f);
+        }
 
-        // Anillo
-        ring = CreatePrimitive(PrimitiveType.Cylinder, "Anillo", ringMat, new Vector3(1.4f, 0.02f, 1.4f));
-        ring.localRotation = Quaternion.Euler(75f, 0f, 0f);
+        // Halo de luz alrededor (se ve por fuera de la esfera)
+        halo = FXBillboard.Create("Halo", transform, glowMat, 2.6f, 0f).transform;
+        FXBillboard.Create("Resplandor", transform, glowMat, 4.2f, 0f);
+
+        // Tres chispas de energía en órbitas inclinadas, con estela
+        for (int i = 0; i < sparks.Length; i++)
+        {
+            Transform sp = CreatePrimitive(PrimitiveType.Sphere, "Chispa" + i, bright, Vector3.one * 0.12f);
+            TrailRenderer tr = sp.gameObject.AddComponent<TrailRenderer>();
+            tr.sharedMaterial = energy;
+            tr.time = 0.35f;
+            tr.startWidth = 0.09f;
+            tr.endWidth = 0f;
+            tr.minVertexDistance = 0.03f;
+            tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            tr.receiveShadows = false;
+            sparks[i] = sp;
+            sparkAxis[i] = Quaternion.Euler(Random.Range(-60f, 60f), i * 120f, Random.Range(-60f, 60f)) * Vector3.up;
+            sparkSpeed[i] = Random.Range(160f, 240f) * (i % 2 == 0 ? 1f : -1f);
+        }
 
         GameObject lightGo = new GameObject("Luz");
         lightGo.transform.SetParent(transform, false);
         glow = lightGo.AddComponent<Light>();
         glow.type = LightType.Point;
         glow.color = color;
-        glow.range = 6f;
-        glow.intensity = 3f;
+        glow.range = 7f;
+        glow.intensity = 3.5f;
         glow.shadows = LightShadows.None;
 
-        // Burbujas / chispas alrededor
-        Material sparkMat = FXFactory.ParticleMaterial(template, FXFactory.Bubble, Color.white);
-        ParticleSystem ps = FXFactory.CreateParticleSystem("Burbujas", transform, sparkMat);
+        // Chispas que suben
+        Material sparkMat = FXFactory.ParticleMaterial(template, FXFactory.SoftDot, Color.white);
+        ParticleSystem ps = FXFactory.CreateParticleSystem("Chispas", transform, sparkMat);
         var main = ps.main;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(0.8f, 1.6f);
-        main.startSpeed = new ParticleSystem.MinMaxCurve(0.2f, 0.8f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.15f);
-        main.startColor = new Color(color.r, color.g, color.b, 0.8f);
-        main.gravityModifier = -0.1f;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.6f, 1.3f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.3f, 1f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.06f, 0.16f);
+        main.startColor = new Color(0.7f, 1f, 1f, 0.9f);
+        main.gravityModifier = -0.15f;
         var e = ps.emission;
-        e.rateOverTime = 8f;
+        e.rateOverTime = 12f;
         var shape = ps.shape;
         shape.enabled = true;
         shape.shapeType = ParticleSystemShapeType.Sphere;
-        shape.radius = 0.6f;
+        shape.radius = 0.5f;
         ps.Play();
-
-        // Haz de luz hacia arriba: se ve desde lejos dónde hay munición
-        Material beamMat = FXFactory.ParticleMaterial(template, FXFactory.White, new Color(color.r, color.g, color.b, 0.16f));
-        beam = CreatePrimitive(PrimitiveType.Cylinder, "Haz", beamMat, new Vector3(0.35f, 9f, 0.35f));
-        beam.localPosition = Vector3.up * 9f;
 
         if (CoopSession.Active) pickupRadius *= 1.4f;
         SphereCollider trigger = gameObject.AddComponent<SphereCollider>();
@@ -107,17 +154,36 @@ public class AmmoPickup : MonoBehaviour
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics() { MagnetMultiplier = 1f; magnetTarget = null; }
+    static void ResetStatics()
+    {
+        MagnetMultiplier = 1f;
+        magnetTarget = null;
+        shotMaterial = null;
+        shotSearched = false;
+    }
 
     void Update()
     {
-        phase += Time.deltaTime;
-        if (MagnetMultiplier > 1.01f) Attract(Time.deltaTime);
+        float dt = Time.deltaTime;
+        phase += dt;
+        if (MagnetMultiplier > 1.01f) Attract(dt);
         transform.position = basePos + Vector3.up * Mathf.Sin(phase * bobSpeed) * bobAmplitude;
-        if (ring != null) ring.Rotate(0f, spinSpeed * Time.deltaTime, 0f, Space.World);
-        if (core != null) core.localScale = Vector3.one * (0.6f + Mathf.Sin(phase * 4f) * 0.05f);
-        if (glow != null) glow.intensity = 2.5f + Mathf.Sin(phase * 4f) * 0.8f;
-        if (beam != null) beam.localScale = new Vector3(0.35f + Mathf.Sin(phase * 3f) * 0.08f, 9f, 0.35f + Mathf.Sin(phase * 3f) * 0.08f);
+
+        // La esfera gira despacio y la energía late
+        if (shell != null) shell.Rotate(0f, spinSpeed * 0.5f * dt, 0f, Space.World);
+        float beat = Mathf.Sin(phase * 4f);
+        if (aura != null) aura.localScale = Vector3.one * ShellSize * (1.08f + beat * 0.035f);
+        if (halo != null) halo.localScale = Vector3.one * (1f + beat * 0.08f);
+        if (glow != null) glow.intensity = 3.2f + beat * 0.9f;
+
+        // Las chispas dan vueltas alrededor
+        for (int i = 0; i < sparks.Length; i++)
+        {
+            if (sparks[i] == null) continue;
+            Vector3 axis = sparkAxis[i];
+            Vector3 start = Vector3.Cross(axis, i == 1 ? Vector3.forward : Vector3.right).normalized * OrbitRadius;
+            sparks[i].localPosition = Quaternion.AngleAxis(phase * sparkSpeed[i], axis) * start;
+        }
     }
 
     void Attract(float dt)
@@ -137,8 +203,8 @@ public class AmmoPickup : MonoBehaviour
         if (shooting == null || !shooting.enabled) return;
         if (!shooting.WantsAmmo) return;
 
-        // Cooperativo: llena el cargador entero
-        shooting.AddAmmo(CoopSession.Active ? shooting.maxAmmo : ammo);
+        // Llena el cargador entero (en todos los modos)
+        shooting.AddAmmo(shooting.maxAmmo);
         FXFactory.SpawnOneShot(collectPrefab, transform.position, Quaternion.identity, 0.8f, 3f);
         Collected?.Invoke(this);
         Destroy(gameObject);

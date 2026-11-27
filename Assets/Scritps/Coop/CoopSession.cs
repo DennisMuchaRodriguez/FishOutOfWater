@@ -42,6 +42,7 @@ public class CoopSession : MonoBehaviour
         public string name = "";
         public bool ready;
         public bool workshopDone;
+        public byte skin;           // estilo del pez (SkinCatalog)
         public string scene = "";   // escena que ya terminó de cargar (lo sabe el anfitrión)
     }
 
@@ -261,6 +262,13 @@ public class CoopSession : MonoBehaviour
     {
         if (Instance == null || slot < 0 || slot >= MaxPlayers || !Instance.slots[slot].used) return "";
         return Instance.slots[slot].name;
+    }
+
+    // Estilo (skin) del pez de esa casilla (0 = original)
+    public static int SkinOf(int slot)
+    {
+        if (Instance == null || slot < 0 || slot >= MaxPlayers || !Instance.slots[slot].used) return 0;
+        return SkinCatalog.Clamp(Instance.slots[slot].skin);
     }
 
     // ======================= CREAR Y UNIRSE =======================
@@ -491,6 +499,7 @@ public class CoopSession : MonoBehaviour
             me.used = true;
             me.clientId = net.LocalClientId;
             me.name = localName;
+            me.skin = (byte)SkinCatalog.Selected;
             me.ready = true;
             localSlot = 0;
             Report("");
@@ -499,7 +508,12 @@ public class CoopSession : MonoBehaviour
         else
         {
             Report("Entrando a la sala…");
-            SendToHost(CoopOp.Hello, w => CoopWire.WriteText(w, localName));
+            byte skin = (byte)SkinCatalog.Selected;
+            SendToHost(CoopOp.Hello, w =>
+            {
+                CoopWire.WriteText(w, localName);
+                w.WriteValueSafe(skin);
+            });
         }
         GoToLobbyScene();
     }
@@ -633,6 +647,8 @@ public class CoopSession : MonoBehaviour
     {
         if (!host) return;
         string name = CleanName(CoopWire.ReadText(r));
+        byte skin = 0;
+        if (r.Position < r.Length) r.ReadValueSafe(out skin);
         if (SlotOf(sender) >= 0) { BroadcastRoster(); return; }
         int free = -1;
         for (int i = 1; i < MaxPlayers; i++) if (!slots[i].used) { free = i; break; }
@@ -645,6 +661,7 @@ public class CoopSession : MonoBehaviour
         s.used = true;
         s.clientId = sender;
         s.name = name == "" ? "Pez " + (free + 1) : name;
+        s.skin = (byte)SkinCatalog.Clamp(skin);
         s.ready = false;
         BroadcastRoster();
     }
@@ -662,6 +679,7 @@ public class CoopSession : MonoBehaviour
                 CoopWire.WriteText(w, s.name);
                 w.WriteValueSafe(s.ready);
                 w.WriteValueSafe(s.workshopDone);
+                w.WriteValueSafe(s.skin);
             }
         });
         RosterChanged?.Invoke();
@@ -679,6 +697,7 @@ public class CoopSession : MonoBehaviour
             s.name = CoopWire.ReadText(r);
             r.ReadValueSafe(out s.ready);
             r.ReadValueSafe(out s.workshopDone);
+            r.ReadValueSafe(out s.skin);
             if (s.used && net != null && s.clientId == net.LocalClientId) localSlot = i;
         }
         if (localSlot >= 0 && LastStatus != "") Report("");

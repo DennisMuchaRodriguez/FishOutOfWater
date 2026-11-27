@@ -219,6 +219,14 @@ No te ve si estás más hondo que `Player Hidden Depth` bajo el agua.
 
 **Botones con teclado**: Enter o clic. **Espacio no pulsa botones** (se quitó del eje *Submit* en Project Settings > Input Manager, porque es el propulsor). Los botones del resultado y de "TRAJE DESTRUIDO" esperan medio segundo antes de responder, para no pulsarlos sin querer mientras juegas.
 
+**Bucear hasta el fondo**: manteniendo **Ctrl** bajo el agua el pez baja de a poco (**Dive Speed**, 5 m/s) hasta el
+fondo del lago (deja **Floor Clearance**, 0,9 m); al soltar vuelve a subir despacio (**Dive Rise Speed**, 2,5 m/s). El
+propulsor (Espacio) lo saca rápido como siempre. Las aves no ven al pez muy hondo (salvo las que bucean).
+
+**Esferas de munición** (`AmmoPickup`): se ven como un disparo de agua del pez, pero grande, **brillante y celeste**: la
+esfera con el mismo material del disparo, una capa de energía celeste que late, un halo de luz, tres chispas que giran
+alrededor dejando una estela y chispas que suben. Cada una **llena el cargador entero** (60 balas, en todos los modos).
+
 **Visor de cómics** (`ComicViewer`): a **pantalla completa**. Cada viñeta ocupa toda la pantalla (con franjas negras si la proporción no coincide), entra con un fundido y se acerca muy despacio, como una cámara; el recuadro de narración va arriba a la izquierda del dibujo (esa esquina se deja libre al dibujar) y el título, los puntos y los botones van en las franjas. Clic, Espacio, Enter o flecha derecha: siguiente viñeta; flecha izquierda: la anterior; Esc o **SALTAR**: lo cierran. Una viñeta sin dibujo sale en blanco con el texto "VIÑETA 2 DE 6" para saber dónde va cada dibujo.
 - **Música de cada cómic** (campo **Music** del cómic): vacío = "Historia" (Cuentos del lago); los de antes de un jefe usan "Amenaza"; el final usa "Creditos" con **Keep Music** marcado (sigue sonando en los créditos). Al cerrar el cómic vuelve la música que sonaba antes (o el silencio después de la fanfarria de victoria).
 - **Volver a verlos**: en la ficha de cada nivel del mapa, **VER CÓMIC** abre el de antes; cuando ya ganaste el nivel aparece también el de después (con los dos, los botones dicen **CÓMIC: ANTES** y **DESPUÉS**).
@@ -279,28 +287,28 @@ la cantidad sube más despacio y la oleada 4 de cada tramo es la más dura antes
 
 | Oleada | Aves | Vida | Qué llega |
 |---|---|---|---|
-| 1 | 11–13 | ×1,05 | Gaviotas y martines pescadores: muchas desde la primera |
-| 2–4 | 12–15 | ×1,09–1,17 | + garzas (2), charranes (3), pelícanos (4) |
-| **5** | jefe + 7–8 | ×1,21 | **La Garza Gris Gigante** → Taller (1.ª mejora) |
-| 6–9 | 15–19 | ×1,25–1,37 | + cormoranes (6), serretas (8) |
-| **10** | jefe + 10 | ×1,41 | **El Pelícano Saco Sin Fondo** → Taller |
-| 11–14 | 19–23 | ×1,45–1,57 | + águilas pescadoras (11): ya están todas las especies |
-| **15** | jefe + 11 | ×1,61 | **El Cormorán Rey** → Taller |
-| 16–19 | 23–27 | ×1,65–1,77 | más aves fuertes en la mezcla |
-| **20** | jefe + 14 | ×1,81 | **La Reina Águila Marina** → Taller |
-| 21–26 | 27–32 | +7 % por oleada | 32 aves a la vez es el tope |
+| 1 | 10–12 | ×1,05 | Gaviotas y martines pescadores: muchas desde la primera |
+| 2–4 | 11–13 | ×1,09–1,17 | + garzas (2), charranes (3), pelícanos (4) |
+| **5** | jefe + 6–7 | ×1,21 | **La Garza Gris Gigante** → Taller (1.ª mejora) |
+| 6–9 | 14–17 | ×1,25–1,37 | + cormoranes (6), serretas (8) |
+| **10** | jefe + 9 | ×1,41 | **El Pelícano Saco Sin Fondo** → Taller |
+| 11–14 | 18–20 | ×1,45–1,57 | + águilas pescadoras (11): ya están todas las especies |
+| **15** | jefe + 10 | ×1,61 | **El Cormorán Rey** → Taller |
+| 16–19 | 21–24 | ×1,65–1,77 | más aves fuertes en la mezcla |
+| **20** | jefe + 12 | ×1,81 | **La Reina Águila Marina** → Taller |
+| 21–25 | 25–28 | +7 % por oleada | 28 aves a la vez es el tope |
 | **25, 30, 35, 40** | **2 jefes** + escolta | | dos jefes distintos al azar, cada uno por su lado; +15 % de vida por vuelta |
 | **45 en adelante** | **3 jefes** + escolta | | tres jefes distintos a la vez |
 
-- La cantidad: 11,2 + 0,8 por oleada (± 1), entre 11 y 32 (las oleadas grandes llegan en bandadas de 8 por lados
+- La cantidad: 10 + 0,72 por oleada (± 1), entre 10 y 28 (las oleadas grandes llegan en bandadas de 8 por lados
   distintos). La oleada que sigue a un jefe (la primera después del Taller)
   trae un 15 % menos.
 - Cada especie tiene un **tope por oleada** (lo máximo que llega junto en la historia: 5 gaviotas, 3 charranes, 1
   pelícano...) que sube cada 8 oleadas. Las recién llegadas salen más seguido; las gaviotas, cada vez menos; las pesadas
   (garza, pelícano, cormorán, águila), un poco menos.
 - Las oleadas salen de la **semilla de la partida**: la misma partida siempre arma las mismas oleadas.
-- **Piqueros kamikaze** (aparte de esa cantidad, desde la oleada 1): 1,6 + 0,36 por oleada (2 al principio, 6 como
-  mucho jugando solo). En la oleada de respiro, un 15 % menos; en las de jefe, la mitad.
+- **Piqueros kamikaze** (aparte de esa cantidad, desde la oleada 1): 1,4 + 0,32 por oleada (1 o 2 al principio, 5
+  como mucho jugando solo). En la oleada de respiro, un 15 % menos; en las de jefe, la mitad.
 
 **Grupos por distintos lados** (desde la oleada 2; cada vez más seguido, hasta 3 de cada 4 oleadas):
 - **Tenaza**: dos grupos a la vez por lados opuestos.
@@ -369,7 +377,7 @@ Usa **Netcode for GameObjects 2.14** y **Multiplayer Services 2.5** (Lobby + Rel
 **Más jugadores, más difícil** (`SurvivalWaves.Build(n, semilla, jugadores)`, constantes `...PerPlayer` al principio
 de `SurvivalWaves.cs`; cuenta los jugadores de la sala al armar cada oleada). Por cada jugador extra:
 - **+55 % de aves** y la cantidad **crece un 25 % más rápido** de oleada en oleada (el tope sube 7 aves por jugador).
-- **+70 % de piqueros kamikaze** (tope: 6 por jugador).
+- **+70 % de piqueros kamikaze** (tope: 5 por jugador).
 - Aves con **+10 % de vida** y jefes con **+35 %** (si no, cuatro trajes los bajan en segundos).
 
 | Jugadores | Aves oleada 1 | Oleada 4 | Oleada 9 | Tope | Kamikazes (oleada 1 → 9) | Vida aves / jefes |
@@ -389,9 +397,11 @@ El cartel de cada oleada dice "COOPERATIVO" y, al volver del Taller, "Más jugad
 - **En los demás jugadores** las aves, los peces y las cápsulas son "marionetas": el mismo modelo,
   colisionador y vida (así la mira, los misiles y los disparos funcionan igual), pero no piensan: siguen lo que
   manda el anfitrión, suavizado.
-- **Munición en cooperativo**: el cargador es de **60** (en vez de 30) y cada cápsula de munición lo **llena entero**
-  (`PlayerShooting.CoopMaxAmmo`, `AmmoPickup`); las cápsulas se agarran desde un poco más lejos. En todos los modos
-  las cápsulas tienen un **haz de luz hacia el cielo**, así se ve de lejos dónde hay.
+- **Munición**: en todos los modos el cargador es de **60** y cada esfera de munición lo **llena entero**
+  (`PlayerShooting.MaxAmmoAll`, `AmmoPickup`); en cooperativo las esferas se agarran desde un poco más lejos.
+- **Estilos** (menú COOPERATIVO > **ESTILOS**): cada jugador elige los colores de su pez y de su traje (ver
+  [Estilos](#estilos-skins-del-pez)); viaja con su nombre (Hello y Roster) y los demás lo ven así en la sala y en el
+  lago. Con el estilo Original se sigue usando el color de su casilla.
 - **Los caídos vuelven**: el que cae mira a los demás hasta que termina la oleada; al superarla, todos los caídos
   vuelven a la pelea junto a un compañero, con **media armadura** (GameDirector > Cooperativo > Coop Revive Armor;
   mensaje `CoopOp.Revive` del anfitrión). Si caen todos a la vez, se pierde como antes.
@@ -455,7 +465,7 @@ El GameDirector ya **no tiene listas de peces, aves ni oleadas**: todo eso vive 
 | **Max Birds Per Wave** | 40 | 40 | Tope de aves en una oleada de la Historia |
 | **Early Level Extra Birds** | 10 | 10 | Refuerzo de los primeros niveles: aves extra por oleada en el nivel 1 (baja hasta 0) |
 | **Early Levels** | 8 | 8 | Nivel en el que el refuerzo de los primeros niveles llega a 0 |
-| **Bird Count Scale** | 0.8 | 0.8 | Escala final de la cantidad de aves de la Historia (0,8 = un 20 % menos) |
+| **Final Bird Scale** | 0.7 | 0.7 | Escala final de la cantidad de aves de la Historia (0,7 = un 30 % menos) |
 
 ### Cooperativo
 | Campo | Defecto | En escena | Qué hace |
@@ -573,8 +583,8 @@ Se crean con **clic derecho en una carpeta > Create > Fish Out Of Water > Nivel 
 - **Dificultad (GameDirector > Dificultad)**: cada oleada de la Historia trae **2,5 veces** las aves del nivel **+ 3**
   (tope 40 por oleada; los jefes no se multiplican y las extra son de las mismas especies de la oleada), y los
   **primeros niveles** tienen un refuerzo: **+10 aves por oleada en el nivel 1**, que baja de a poco hasta 0 en el nivel
-  8 (**Early Level Extra Birds** y **Early Levels**). Al final todo se multiplica por **Bird Count Scale** (0,8: un 20 %
-  menos). Así el nivel 1 tiene 14, 17 y 18 aves; el 2, 14, 16 y 19; el 4, 14, 17 y 23; el 19, 18, 22 y 32. Las oleadas grandes llegan en **varias bandadas de 8**
+  8 (**Early Level Extra Birds** y **Early Levels**). Al final todo se multiplica por **Final Bird Scale** (0,7: un 30 %
+  menos). Así el nivel 1 tiene 13, 15 y 16 aves; el 2, 12, 14 y 17; el 4, 12, 15 y 20; el 19, 16, 20 y 28. Las oleadas grandes llegan en **varias bandadas de 8**
   por lados distintos (0°, +40°, -40°, +80°...). Con tantas aves hay **1,6 veces más cápsulas** de munición y vuelven más
   rápido (×0,65 del tiempo). Para bajarla o subirla: **Bird Count Multiplier**, **Extra Birds Per Wave** y **Max Birds
   Per Wave** (1 / 0 = como dicen los niveles).
@@ -1575,3 +1585,17 @@ desde el editor no aparece.
    - Si cambias las capas o los valores del `TerrainStylizer`, usa otra vez **Herramientas > Terreno > Pintar terreno (permanente)** antes de la build (si el terreno ya tiene esas 6 capas, la build no lo vuelve a pintar).
    - En la build el terreno nunca se cambia por una copia. Cada vez que carga el lago, la build escribe en `Player.log` cómo quedó cada terreno (activo, si se dibuja, sus capas, su material y si la cámara lo ve). En Windows está en `%USERPROFILE%\AppData\LocalLow\DefaultCompany\Fish Out of Water\Player.log` (busca "TerrainStylizer").
 9. **La niebla en las builds** (la de bajo el agua, que no deja ver lejos; la bruma del horizonte y la de la cueva del Taller). Las escenas tienen la niebla apagada y el código la prende al jugar (`LakeAmbience`, `WorkshopScene`). Con la opción de Unity en "Automatic", la build quitaba los shaders con niebla porque ninguna escena guardada la usaba: en el editor se veía, pero en la build (y por eso en el cooperativo en línea) bajo el agua se veía todo, aun lo lejano. Ahora **Project Settings > Graphics > Shader Stripping > Fog Modes** está en **Custom** con **Exponential** y **Exponential Squared** marcados (Linear no se usa). No lo vuelvas a poner en Automatic.
+
+
+### Estilos (skins) del pez
+En el menú **COOPERATIVO**, el botón **ESTILOS** (abajo a la derecha) abre un panel con tres tarjetas: **ORIGINAL**,
+**NEÓN ABISAL** (cara magenta, aletas turquesa, traje morado oscuro) y **SOL DORADO** (cara violeta, aletas doradas,
+traje dorado). El elegido queda marcado y se guarda (PlayerPrefs `FOW_Estilo`); se usa en todos los modos y, en
+cooperativo, los demás te ven con él (en la sala de espera y en el lago).
+- `SkinCatalog.cs`: la lista de estilos y cómo se aplican (cambia la textura de los materiales del pez y del traje).
+- Las texturas: `Assets/Resources/Skins/<Estilo>/Cuerpo.png`, `Armadura.png` y la vista previa `Vista.png`.
+- Para rehacerlas: `python3 Herramientas/Estilos/estilos.py` (recolorea las texturas del modelo: tono de la cara y de
+  las aletas, y un degradado nuevo para el traje) y `python Herramientas/Logo/render_pez_3d.py estilos` (las vistas
+  previas con Blender).
+- **Para agregar otro estilo**: súmalo a `ESTILOS` en `estilos.py` y a `SkinCatalog.All` (con el mismo nombre de
+  carpeta), corre los dos scripts y listo.

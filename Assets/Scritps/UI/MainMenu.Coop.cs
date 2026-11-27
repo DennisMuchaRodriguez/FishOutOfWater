@@ -6,6 +6,7 @@ using UnityEngine.UI;
 //  - TU NOMBRE (lo ven los demás en la sala).
 //  - CREAR SALA: EN LÍNEA (por internet, con los servicios de Unity) o RED LOCAL (misma Wi-Fi).
 //  - UNIRSE: escribir el código que te pasó el anfitrión (sirve para los dos tipos de sala).
+//  - ESTILOS: los colores de tu pez y de su traje (SkinCatalog); los demás te ven así en la sala y en el lago.
 // Al crear o unirse, se abre la sala de espera en el Taller (CoopLobby). Si algo falla, el mensaje aparece abajo.
 public partial class MainMenu
 {
@@ -13,6 +14,11 @@ public partial class MainMenu
     TMP_InputField coopName, coopCode;
     TextMeshProUGUI coopStatus;
     Button[] coopButtons;
+    RectTransform stylesPanel;
+    Image[] styleFrames;
+    TextMeshProUGUI[] styleTags;
+    TextMeshProUGUI styleLabel;
+    bool StylesOpen { get { return stylesPanel != null && stylesPanel.gameObject.activeSelf; } }
 
     CanvasGroup BuildCoopScreen()
     {
@@ -52,11 +58,108 @@ public partial class MainMenu
         coopStatus.textWrappingMode = TextWrappingModes.Normal;
 
         Button back = MenuUI.ComicButton("VOLVER", s, new Vector2(0f, 0f), new Vector2(130f, 52f), new Vector2(200f, 52f), MenuUI.BlueDark, () => Go(modesScreen), 24f);
-        coopButtons = new[] { online, lan, go, back };
+
+        // Estilos (skins) del pez, antes de entrar a una sala
+        Button styles = MenuUI.ComicButton("ESTILOS", s, new Vector2(1f, 0f), new Vector2(-150f, 52f), new Vector2(220f, 52f), MenuUI.Purple, OpenStyles, 24f);
+        styleLabel = MenuUI.Text("EstiloActual", s, "", 16f, new Vector2(1f, 0f), new Vector2(-150f, 96f), new Vector2(320f, 24f), MenuUI.TextDim);
+        coopButtons = new[] { online, lan, go, back, styles };
+        BuildStylesPanel(s);
+        RefreshStyles();
 
         CoopSession.StatusChanged -= OnCoopStatus;
         CoopSession.StatusChanged += OnCoopStatus;
         return g;
+    }
+
+    // ======================= ESTILOS =======================
+
+    void BuildStylesPanel(RectTransform s)
+    {
+        Vector2 top = new Vector2(0.5f, 1f), center = new Vector2(0.5f, 0.5f), bottom = new Vector2(0.5f, 0f);
+        stylesPanel = MenuUI.Stretch("Estilos", s);
+        Image dim = stylesPanel.gameObject.AddComponent<Image>();
+        dim.color = MenuUI.WithAlpha(MenuUI.Ink, 0.88f);
+        dim.raycastTarget = true;
+
+        RectTransform box = MenuUI.HoloPanel("Caja", stylesPanel, center, new Vector2(0f, -10f), new Vector2(1000f, 500f),
+                                             MenuUI.WithAlpha(MenuUI.Ink, 0.92f), MenuUI.WithAlpha(MenuUI.Purple, 0.85f),
+                                             MenuUI.WithAlpha(MenuUI.Purple, 0.2f), MenuUI.WithAlpha(MenuUI.Purple, 0.25f), 0.05f);
+        MenuUI.Title("TituloEstilos", box, "ESTILOS", 40f, top, new Vector2(0f, -36f), new Vector2(600f, 54f), MenuUI.Cream);
+        MenuUI.Text("SubEstilos", box, "Los colores de tu pez y de su traje  ·  los demás te ven así en la sala y en el lago", 17f,
+                    top, new Vector2(0f, -74f), new Vector2(920f, 26f), MenuUI.TextDim);
+
+        int n = SkinCatalog.Count;
+        styleFrames = new Image[n];
+        styleTags = new TextMeshProUGUI[n];
+        for (int i = 0; i < n; i++)
+        {
+            SkinCatalog.Skin sk = SkinCatalog.All[i];
+            float x = (i - (n - 1) * 0.5f) * 310f;
+            RectTransform card = MenuUI.HoloPanel("Estilo" + i, box, center, new Vector2(x, -10f), new Vector2(280f, 320f),
+                                                  MenuUI.WithAlpha(MenuUI.Ink, 0.85f), MenuUI.WithAlpha(sk.accent, 0.9f),
+                                                  MenuUI.WithAlpha(sk.accent, 0.15f), MenuUI.WithAlpha(sk.accent, 0.2f), 0.06f);
+            Image view = MenuUI.Img("Vista", card, SkinCatalog.Preview(i), Color.white, top, new Vector2(0f, -112f), new Vector2(200f, 200f));
+            view.preserveAspect = true;
+            view.raycastTarget = false;
+            MenuUI.Text("Nombre", card, sk.name, 22f, bottom, new Vector2(0f, 88f), new Vector2(260f, 30f), sk.accent, true);
+            TextMeshProUGUI d = MenuUI.Text("Descripcion", card, sk.description, 14f, bottom, new Vector2(0f, 52f), new Vector2(250f, 40f), MenuUI.TextDim);
+            d.textWrappingMode = TextWrappingModes.Normal;
+            styleTags[i] = MenuUI.Text("Elegido", card, "ELEGIDO", 15f, bottom, new Vector2(0f, 18f), new Vector2(200f, 22f), MenuUI.Green, true);
+            styleTags[i].characterSpacing = 6f;
+            Image frame = MenuUI.Img("Marco", card, MenuUI.RoundedSmall, MenuUI.WithAlpha(MenuUI.Orange, 0.95f), center, Vector2.zero, new Vector2(294f, 334f));
+            frame.type = Image.Type.Sliced;
+            frame.fillCenter = false;
+            frame.raycastTarget = false;
+            styleFrames[i] = frame;
+
+            // Toda la tarjeta es el botón
+            Image hit = card.GetComponent<Image>();
+            if (hit == null)
+            {
+                hit = card.gameObject.AddComponent<Image>();
+                hit.color = new Color(0f, 0f, 0f, 0f);
+            }
+            hit.raycastTarget = true;
+            Button b = card.gameObject.AddComponent<Button>();
+            b.transition = Selectable.Transition.None;
+            b.targetGraphic = hit;
+            int captured = i;
+            b.onClick.AddListener(() => SelectStyle(captured));
+            card.gameObject.AddComponent<MenuButtonFX>();
+        }
+        MenuUI.ComicButton("LISTO", box, bottom, new Vector2(0f, 40f), new Vector2(220f, 50f), MenuUI.Orange, CloseStyles, 24f);
+        stylesPanel.gameObject.SetActive(false);
+    }
+
+    void OpenStyles()
+    {
+        if (stylesPanel == null) return;
+        stylesPanel.gameObject.SetActive(true);
+        stylesPanel.SetAsLastSibling();
+        RefreshStyles();
+    }
+
+    void CloseStyles()
+    {
+        if (stylesPanel != null) stylesPanel.gameObject.SetActive(false);
+    }
+
+    void SelectStyle(int skin)
+    {
+        SkinCatalog.Selected = skin;
+        RefreshStyles();
+    }
+
+    void RefreshStyles()
+    {
+        int sel = SkinCatalog.Selected;
+        if (styleFrames != null)
+            for (int i = 0; i < styleFrames.Length; i++)
+            {
+                if (styleFrames[i] != null) styleFrames[i].enabled = i == sel;
+                if (styleTags[i] != null) styleTags[i].gameObject.SetActive(i == sel);
+            }
+        if (styleLabel != null) styleLabel.text = "Estilo: " + SkinCatalog.All[sel].name;
     }
 
     void OnDestroy()

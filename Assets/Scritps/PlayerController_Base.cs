@@ -110,7 +110,14 @@ public partial class PlayerController_Base : MonoBehaviour
     [Tooltip("Profundidad de la cámara bajo la superficie al nadar")]
     public float swimEyeDepth = 0.7f;
     public KeyCode diveKey = KeyCode.LeftControl;
+    [Tooltip("Ya no se usa: manteniendo Ctrl baja hasta el fondo del lago (Dive Speed)")]
     public float diveDepth = 3f;
+    [Tooltip("Metros por segundo que baja manteniendo Ctrl (llega hasta el fondo del lago)")]
+    public float diveSpeed = 5f;
+    [Tooltip("Al soltar Ctrl vuelve a subir hacia la superficie a esta velocidad (m/s)")]
+    public float diveRiseSpeed = 2.5f;
+    [Tooltip("Distancia que deja con el fondo al bajar del todo (m)")]
+    public float floorClearance = 0.9f;
     [Tooltip("Fuerza con la que se mantiene a la profundidad de nado")]
     public float buoyancySpring = 6f;
     public float buoyancyDamping = 3.5f;
@@ -234,6 +241,9 @@ public partial class PlayerController_Base : MonoBehaviour
         {
             initialModelRotation = modeloPez.localRotation;
         }
+
+        // Estilo elegido (COOPERATIVO > ESTILOS): los colores del pez y de su traje
+        SkinCatalog.Apply(gameObject, SkinCatalog.Selected);
 
         if (cameraHolder != null)
         {
@@ -629,7 +639,13 @@ public partial class PlayerController_Base : MonoBehaviour
         }
         else
         {
-            float targetY = WaterSurfaceY - swimEyeDepth - firstPersonOffset.y - (IsDiving ? diveDepth : 0f);
+            // Bucear: manteniendo Ctrl baja de a poco hasta el fondo del lago; al soltar vuelve a subir despacio
+            float swimLine = WaterSurfaceY - swimEyeDepth - firstPersonOffset.y;
+            float floorDepth = Mathf.Max(0f, swimLine - (FloorBelow() + floorClearance));
+            diveOffset = IsDiving ? Mathf.Min(diveOffset + diveSpeed * dt, floorDepth)
+                                  : Mathf.Max(0f, diveOffset - diveRiseSpeed * dt);
+            diveOffset = Mathf.Min(diveOffset, floorDepth);
+            float targetY = swimLine - diveOffset;
             float error = targetY - transform.position.y;
             float spring = buoyancySpring;
 
@@ -653,6 +669,25 @@ public partial class PlayerController_Base : MonoBehaviour
         float speed01 = Mathf.Clamp01(flat.magnitude / swimSpeed);
         SwimSpeed01 = Mathf.Lerp(SwimSpeed01, speed01, 1f - Mathf.Exp(-6f * dt));
         swimPhase += dt * Mathf.Lerp(3f, 13f, Mathf.Clamp01(SwimSpeed01));
+    }
+
+    float diveOffset;          // metros que bajó buceando (bajo la línea de nado)
+    float floorCacheY = float.NegativeInfinity;
+    float floorCacheTime = -1f;
+
+    // Altura del fondo del lago debajo del pez (el terreno; se mira cada 0,2 s)
+    float FloorBelow()
+    {
+        if (Time.time - floorCacheTime < 0.2f) return floorCacheY;
+        floorCacheTime = Time.time;
+        RaycastHit hit;
+        if (Physics.Raycast(transform.position + Vector3.up * 0.5f, Vector3.down, out hit, 300f, groundLayer, QueryTriggerInteraction.Ignore))
+            floorCacheY = hit.point.y;
+        else if (LakeVolume.Instance != null)
+            floorCacheY = LakeVolume.Instance.GroundHeight(transform.position.x, transform.position.z);
+        else
+            floorCacheY = transform.position.y - 3f;
+        return floorCacheY;
     }
 
     // El filtro submarino depende de dónde está la CÁMARA de verdad (con balanceo, tercera persona

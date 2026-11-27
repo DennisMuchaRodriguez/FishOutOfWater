@@ -968,7 +968,8 @@ public partial class MainMenu : MonoBehaviour
         if (busy || ComicViewer.IsShowing || Time.frameCount == ComicViewer.ClosedFrame) return;
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (current == archiveScreen) Go(mapScreen);
+            if (current == coopScreen && StylesOpen) CloseStyles();
+            else if (current == archiveScreen) Go(mapScreen);
             else if (current == mapScreen) Go(modesScreen);
             else if (current == settingsScreen) CloseSettings();
             else if (current == modesScreen || current == controlsScreen) Go(titleScreen);
