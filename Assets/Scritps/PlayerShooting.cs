@@ -148,8 +148,12 @@ public class PlayerShooting : MonoBehaviour
     private PlayerController_Base controller;
     private Rigidbody body;
 
+    // Cooperativo: el cargador es más grande (y las cápsulas lo llenan entero: AmmoPickup)
+    public const int CoopMaxAmmo = 60;
+
     void Start()
     {
+        if (CoopSession.Active && maxAmmo < CoopMaxAmmo) maxAmmo = CoopMaxAmmo;
         currentAmmo = maxAmmo;
         controller = GetComponent<PlayerController_Base>();
         body = GetComponent<Rigidbody>();

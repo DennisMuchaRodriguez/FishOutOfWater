@@ -1086,6 +1086,39 @@ public partial class PlayerController_Base : MonoBehaviour
         Debug.Log("¡Has muerto!");
     }
 
+    // Cooperativo: vuelve a la pelea (al terminar una oleada) con parte de la armadura, en 'position'
+    public void Revive(float armor01, Vector3 position)
+    {
+        if (!isDead) return;
+        isDead = false;
+        currentArmor = Mathf.Clamp(maxArmor * Mathf.Clamp01(armor01), 1f, maxArmor);
+        currentJetpackEnergy = maxJetpackEnergy;
+        dashChargesLeft = Mathf.Max(1, dashCharges);
+        StrandedTime = 0f;
+        uTurnTimer = 0f;
+        SetJetting(false, 0f);
+        SetTurbo(false);
+        Quaternion upright = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+        if (rb != null)
+        {
+            rb.isKinematic = false;
+            rb.useGravity = true;
+            rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.position = position;
+            rb.rotation = upright;
+        }
+        transform.SetPositionAndRotation(position, upright);
+        if (uiStatus != null) uiStatus.SetDeadState(false);
+        PlayerShooting shooting = GetComponent<PlayerShooting>();
+        if (shooting != null)
+        {
+            shooting.enabled = true;
+            shooting.AddAmmo(shooting.maxAmmo);
+        }
+    }
+
     void OnDrawGizmosSelected()
     {
         if (currentWater == null) return;

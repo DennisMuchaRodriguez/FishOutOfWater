@@ -1,7 +1,8 @@
 using UnityEngine;
 
 // Cápsula de munición que flota en el lago (o un poco sumergida).
-// Se construye por código: núcleo brillante, anillo que gira, luz y burbujas.
+// Se construye por código: núcleo brillante, anillo que gira, luz, burbujas y un haz de luz hacia el cielo (se ve de
+// lejos). En cooperativo llena el cargador entero y se agarra desde un poco más lejos.
 public class AmmoPickup : MonoBehaviour
 {
     public int ammo = 10;
@@ -31,6 +32,7 @@ public class AmmoPickup : MonoBehaviour
 
     Transform core;
     Transform ring;
+    Transform beam;
     Light glow;
     Vector3 basePos;
     float phase;
@@ -78,6 +80,12 @@ public class AmmoPickup : MonoBehaviour
         shape.radius = 0.6f;
         ps.Play();
 
+        // Haz de luz hacia arriba: se ve desde lejos dónde hay munición
+        Material beamMat = FXFactory.ParticleMaterial(template, FXFactory.White, new Color(color.r, color.g, color.b, 0.16f));
+        beam = CreatePrimitive(PrimitiveType.Cylinder, "Haz", beamMat, new Vector3(0.35f, 9f, 0.35f));
+        beam.localPosition = Vector3.up * 9f;
+
+        if (CoopSession.Active) pickupRadius *= 1.4f;
         SphereCollider trigger = gameObject.AddComponent<SphereCollider>();
         trigger.isTrigger = true;
         trigger.radius = pickupRadius;
@@ -109,6 +117,7 @@ public class AmmoPickup : MonoBehaviour
         if (ring != null) ring.Rotate(0f, spinSpeed * Time.deltaTime, 0f, Space.World);
         if (core != null) core.localScale = Vector3.one * (0.6f + Mathf.Sin(phase * 4f) * 0.05f);
         if (glow != null) glow.intensity = 2.5f + Mathf.Sin(phase * 4f) * 0.8f;
+        if (beam != null) beam.localScale = new Vector3(0.35f + Mathf.Sin(phase * 3f) * 0.08f, 9f, 0.35f + Mathf.Sin(phase * 3f) * 0.08f);
     }
 
     void Attract(float dt)
@@ -128,7 +137,8 @@ public class AmmoPickup : MonoBehaviour
         if (shooting == null || !shooting.enabled) return;
         if (!shooting.WantsAmmo) return;
 
-        shooting.AddAmmo(ammo);
+        // Cooperativo: llena el cargador entero
+        shooting.AddAmmo(CoopSession.Active ? shooting.maxAmmo : ammo);
         FXFactory.SpawnOneShot(collectPrefab, transform.position, Quaternion.identity, 0.8f, 3f);
         Collected?.Invoke(this);
         Destroy(gameObject);

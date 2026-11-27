@@ -53,6 +53,12 @@ public partial class GameDirector : MonoBehaviour
     public int earlyLevelExtraBirds = 10;
     [Tooltip("Nivel en el que el refuerzo de los primeros niveles llega a 0")]
     public int earlyLevels = 8;
+    [Tooltip("Escala final de la cantidad de aves de la Historia (después de todo lo de arriba): 0,8 = 20 % menos")]
+    [Range(0.3f, 1.5f)] public float birdCountScale = 0.8f;
+
+    [Header("Cooperativo")]
+    [Tooltip("Al terminar cada oleada, los compañeros caídos vuelven a la pelea con esta parte de la armadura")]
+    [Range(0.1f, 1f)] public float coopReviveArmor = 0.5f;
     [Tooltip("Con más aves hace falta más munición: cápsulas en el lago = Ammo Pickups x esto")]
     public float ammoPickupScale = 1.6f;
     [Tooltip("...y vuelven más rápido: Pickup Respawn Time x esto")]
@@ -306,6 +312,7 @@ public partial class GameDirector : MonoBehaviour
             {
                 Banner?.Invoke("OLEADA SUPERADA", "Recarga munición antes de que vuelvan", Cyan);
                 Sfx.Play2D(Sonido.PezRescatado, 0.8f, 0.85f);
+                ReviveFallenCoop();
             }
         }
 
@@ -316,7 +323,7 @@ public partial class GameDirector : MonoBehaviour
     {
         if (ended || IsCoopClient) return;
 
-        // Cooperativo: se pierde cuando caen todos (el que cae mira a los demás hasta el Taller)
+        // Cooperativo: se pierde cuando caen todos (el que cae mira a los demás y vuelve al terminar la oleada)
         if (IsCoop)
         {
             if (coop != null && coop.AllPlayersDead)
@@ -469,7 +476,16 @@ public partial class GameDirector : MonoBehaviour
         int target = Mathf.RoundToInt(normal.Count * Mathf.Max(1f, birdCountMultiplier)) + Mathf.Max(0, extraBirdsPerWave)
                      + EarlyLevelBonus();
         target = Mathf.Max(normal.Count, Mathf.Min(target, Mathf.Max(1, maxBirdsPerWave)));
+        target = Mathf.Max(normal.Count, Mathf.RoundToInt(target * Mathf.Clamp(birdCountScale, 0.3f, 1.5f)));
         for (int k = 0; normal.Count + k < target; k++) wave.Add(normal[k % normal.Count]);
+    }
+
+    // Cooperativo: al terminar una oleada, los compañeros caídos vuelven a la pelea (con media armadura)
+    void ReviveFallenCoop()
+    {
+        if (!IsCoop || IsCoopClient || coop == null) return;
+        int n = coop.HostReviveFallen(coopReviveArmor);
+        if (n > 0) Toast?.Invoke(n == 1 ? "¡UN COMPAÑERO VUELVE A LA PELEA!" : "¡" + n + " COMPAÑEROS VUELVEN A LA PELEA!", Cyan);
     }
 
     // Aves extra de los primeros niveles: el máximo en el nivel 1, bajando hasta 0 en el nivel 'earlyLevels'
@@ -872,7 +888,7 @@ public partial class GameDirector : MonoBehaviour
     void OnPickupCollected(AmmoPickup pickup)
     {
         pickups.Remove(pickup);
-        LocalToast("+" + pickup.ammo + " MUNICIÓN", Cyan);
+        LocalToast(IsCoop ? "¡MUNICIÓN LLENA!" : "+" + pickup.ammo + " MUNICIÓN", Cyan);
         StartCoroutine(RespawnPickup());
     }
 

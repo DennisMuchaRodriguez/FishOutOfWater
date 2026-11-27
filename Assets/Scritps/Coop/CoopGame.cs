@@ -96,6 +96,7 @@ public class CoopGame : MonoBehaviour
             CoopSession.On(CoopOp.EnemyShot, OnEnemyShot);
             CoopSession.On(CoopOp.GameOver, OnGameOver);
             CoopSession.On(CoopOp.GroupIncoming, OnGroupIncoming);
+            CoopSession.On(CoopOp.Revive, OnRevive);
         }
     }
 
@@ -165,6 +166,7 @@ public class CoopGame : MonoBehaviour
             CoopSession.Off(CoopOp.EnemyShot, OnEnemyShot);
             CoopSession.Off(CoopOp.GameOver, OnGameOver);
             CoopSession.Off(CoopOp.GroupIncoming, OnGroupIncoming);
+            CoopSession.Off(CoopOp.Revive, OnRevive);
         }
         CoopSession.PlayerLeft -= OnPlayerLeft;
         CoopSession.RosterChanged -= OnRosterChanged;
@@ -944,7 +946,7 @@ public class CoopGame : MonoBehaviour
         if (p == null) return;
         int id = p.NetId;
         pickupsById.Remove(id);
-        if (director != null) director.LocalToast("+" + p.ammo + " MUNICIÓN", GameDirector.Cyan);
+        if (director != null) director.LocalToast("¡MUNICIÓN LLENA!", GameDirector.Cyan);
         CoopSession.SendToHost(CoopOp.TakePickup, w => w.WriteValueSafe(id));
     }
 
@@ -1152,8 +1154,56 @@ public class CoopGame : MonoBehaviour
         {
             spectateText.gameObject.SetActive(true);
             spectateText.text = "MIRANDO A " + remotes[spectateSlot].PlayerName.ToUpperInvariant() +
-                                "  ·  clic para cambiar  ·  vuelves reparado en el próximo Taller";
+                                "  ·  clic para cambiar  ·  vuelves a la pelea al terminar la oleada";
         }
+    }
+
+    // ======================= LOS CAÍDOS VUELVEN =======================
+
+    // Anfitrión: al terminar una oleada, los que cayeron vuelven a la pelea con parte de la armadura. Devuelve cuántos
+    public int HostReviveFallen(float armor01)
+    {
+        int fallen = 0;
+        if (local != null && local.isDead)
+        {
+            fallen++;
+            ReviveLocal(armor01);
+        }
+        for (int i = 0; i < remotes.Length; i++)
+            if (remotes[i] != null && remotes[i].HasState && remotes[i].Dead) fallen++;
+        if (fallen > 0)
+        {
+            byte a = CoopWire.Unit(armor01);
+            CoopSession.SendToClients(CoopOp.Revive, w => w.WriteValueSafe(a));
+        }
+        return fallen;
+    }
+
+    void OnRevive(ulong sender, FastBufferReader r)
+    {
+        r.ReadValueSafe(out byte a);
+        if (local != null && local.isDead) ReviveLocal(CoopWire.Unit(a));
+    }
+
+    // Vuelve junto a un compañero vivo (o en el centro del lago), un poco sobre el agua
+    void ReviveLocal(float armor01)
+    {
+        LakeVolume lake = LakeVolume.Instance;
+        Vector3 near = lake != null && lake.IsValid ? lake.Center : local.transform.position;
+        for (int i = 0; i < remotes.Length; i++)
+        {
+            if (remotes[i] == null || remotes[i].Dead || !remotes[i].HasState) continue;
+            near = remotes[i].transform.position;
+            break;
+        }
+        Vector3 pos = near + new Vector3(UnityEngine.Random.Range(-5f, 5f), 0f, UnityEngine.Random.Range(-5f, 5f));
+        float surface = lake != null && lake.IsValid ? lake.SurfaceY : pos.y;
+        pos.y = surface + 3f;
+        if (lake != null && lake.IsValid) pos.y = Mathf.Max(pos.y, lake.GroundHeight(pos.x, pos.z) + 3f);
+        local.Revive(armor01, pos);
+        spectating = false;
+        if (director != null)
+            director.LocalToast("¡VUELVES A LA PELEA!  Traje al " + Mathf.RoundToInt(armor01 * 100f) + " %", GameDirector.Cyan);
     }
 
     int NextAlive(int from)

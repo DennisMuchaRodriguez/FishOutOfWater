@@ -269,6 +269,7 @@ public partial class GameDirector
             Banner?.Invoke("OLEADA " + cleared + " SUPERADA",
                            news + next + (hurt ? "  //  El traje no se repara hasta entonces" : "  //  Recarga munición"), Cyan);
             Play2DAll(Sonido.PezRescatado, 0.8f, 0.85f);
+            ReviveFallenCoop();
             int before = DefendersSpawned;
             // (en cooperativo no hay defensores: DefenderCount es 0)
             AddDefenders(fishLayer, IsCoop ? 0 : SurvivalWaves.DefendersFor(n, every));

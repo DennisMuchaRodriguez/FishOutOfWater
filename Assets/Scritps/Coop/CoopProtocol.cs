@@ -45,6 +45,7 @@ public static class CoopOp
     public const byte EnemyShot = 43;     // anfitrión -> todos: proyectil de un ave (solo se ve)
     public const byte GameOver = 44;      // anfitrión -> todos: fin de la partida
     public const byte GroupIncoming = 45; // anfitrión -> todos: llega otro grupo de aves (cada uno calcula el lado)
+    public const byte Revive = 46;        // anfitrión -> todos: oleada superada, los caídos vuelven (armadura 0..1)
 }
 
 // Ayudas para escribir y leer compacto
